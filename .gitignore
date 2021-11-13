@@ -1,0 +1,5 @@
+*.db
+*.bat
+sqlite_test/
+*.exp
+*.pdb
