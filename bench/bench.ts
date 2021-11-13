@@ -1,4 +1,5 @@
 import {
+  cstr,
   sqlite3_bind_text,
   sqlite3_close_v2,
   sqlite3_exec,
@@ -7,11 +8,7 @@ import {
   sqlite3_prepare_v3,
   sqlite3_reset,
   sqlite3_step,
-} from "./ffi.ts";
-import { cstr } from "./util.ts";
-
-await Deno.remove("bench_test.db").catch(() => {});
-await Deno.remove("bench_test.db-journal").catch(() => {});
+} from "../mod.ts";
 
 const db = sqlite3_open_v2("bench_test.db");
 

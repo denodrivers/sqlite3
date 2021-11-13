@@ -1,8 +1,5 @@
 import { DB } from "https://deno.land/x/sqlite@v3.0.0/mod.ts";
 
-await Deno.remove("bench_wasm.db").catch(() => {});
-await Deno.remove("bench_wasm.db-journal").catch(() => {});
-
 const db = new DB("bench_wasm.db");
 
 db.query("pragma journal_mode = WAL");

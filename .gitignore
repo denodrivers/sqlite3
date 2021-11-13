@@ -1,3 +1,4 @@
+.vscode/
 *.db
 *.bat
 sqlite_test/

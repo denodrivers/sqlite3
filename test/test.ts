@@ -4,22 +4,18 @@ import {
   sqlite3_column_count,
   sqlite3_column_text,
   sqlite3_column_type,
-  sqlite3_exec,
   sqlite3_finalize,
   sqlite3_open_v2,
   sqlite3_prepare_v3,
   SQLITE3_ROW,
   sqlite3_step,
-} from "./ffi.ts";
+} from "../mod.ts";
 
 console.log("sqlite3_open_v2");
 const db = sqlite3_open_v2("test.db");
 
 console.log("sqlite3_prepare_v3");
 const stmt = sqlite3_prepare_v3(db, "select sqlite_version()");
-
-console.log("sqlite3_exec");
-sqlite3_exec(db, "select sqlite_nonexistent()");
 
 while (sqlite3_step(db, stmt) == SQLITE3_ROW) {
   console.log("sqlite3_step");
