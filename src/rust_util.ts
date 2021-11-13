@@ -1,6 +1,8 @@
-import { decode, u64ToF64 } from "./util.ts";
+import { decode, getPlatformFileName, u64ToF64 } from "./util.ts";
 
-const libutil = Deno.dlopen(new URL("../util.dll", import.meta.url), {
+const file = `../${getPlatformFileName("util")}`;
+
+const libutil = Deno.dlopen(new URL(file, import.meta.url), {
   read_ptr: {
     parameters: ["f64"],
     result: "u8",

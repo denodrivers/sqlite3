@@ -7,14 +7,14 @@ db.query("pragma synchronous = normal");
 db.query("pragma temp_store = memory");
 
 db.query(
-  "CREATE TABLE IF NOT EXISTS Test (key INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT NOT NULL)",
+  "create table test (key integer primary key autoincrement, value text not null)",
 );
 
 let loops = 100;
 const payload = JSON.stringify({ money: 578, name: "Amatsagu" });
 const now = performance.now();
 
-const prep = db.prepareQuery("INSERT INTO Test (value) VALUES (?)");
+const prep = db.prepareQuery("insert into test (value) values (?)");
 
 while (loops--) {
   prep.execute([payload]);

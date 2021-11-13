@@ -37,3 +37,19 @@ export function decode(bytes: Uint8Array) {
 export function cstr(str: string) {
   return new Uint8Array([...encode(str), 0]);
 }
+
+export const NULL_F64 = u64ToF64(0n);
+
+export function getPlatformFileName(base: string, skipLib = false) {
+  let prefix = "lib", suffix = "dll";
+
+  if (Deno.build.os === "windows") {
+    prefix = "";
+  } else if (Deno.build.os === "darwin") {
+    suffix = "dylib";
+  } else if (Deno.build.os === "linux") {
+    suffix = "so";
+  }
+
+  return `${prefix}${base}.${suffix}`;
+}
