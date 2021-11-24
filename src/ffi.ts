@@ -352,7 +352,7 @@ export function sqlite3_close_v2(handle: sqlite3) {
 export function sqlite3_prepare_v3(
   handle: sqlite3,
   sql: string,
-  flags: number = 0,
+  flags = 0,
 ): sqlite3_stmt {
   const sqlPtr = cstr(sql);
   const outStmt = new Uint8Array(8);
@@ -407,7 +407,7 @@ export function sqlite3_bind_text(
   stmt: sqlite3_stmt,
   index: number,
   value: Uint8Array,
-  length: number = -1,
+  length = -1,
 ) {
   const result = lib.symbols.sqlite3_bind_text(
     stmt,

@@ -20,7 +20,7 @@ export function u64ToF64(u64: bigint) {
 export function encode(str: string) {
   try {
     return (Deno as any).core.encode(str);
-  } catch (e) {
+  } catch (_e) {
     return new TextEncoder().encode(str);
   }
 }
@@ -28,7 +28,7 @@ export function encode(str: string) {
 export function decode(bytes: Uint8Array) {
   try {
     return (Deno as any).core.decode(bytes);
-  } catch (e) {
+  } catch (_e) {
     return new TextDecoder("utf-8").decode(bytes);
   }
 }
@@ -40,7 +40,7 @@ export function cstr(str: string) {
 
 export const NULL_F64 = u64ToF64(0n);
 
-export function getPlatformFileName(base: string, skipLib = false) {
+export function getPlatformFileName(base: string) {
   let prefix = "lib", suffix = "dll";
 
   if (Deno.build.os === "windows") {

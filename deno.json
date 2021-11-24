@@ -1,0 +1,10 @@
+{
+  "lint": {
+    "rules": {
+      "exclude": [
+        "camelcase",
+        "no-explicit-any"
+      ]
+    }
+  }
+}

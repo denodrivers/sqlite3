@@ -15,7 +15,8 @@ export function read_ptr(ptr: bigint) {
 }
 
 export function read_cstr(ptr: bigint) {
-  let res = [], byte;
+  const res = [];
+  let byte;
   while ((byte = read_ptr(ptr)) !== 0) {
     res.push(byte);
     ptr += 1n;

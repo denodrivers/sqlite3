@@ -21,7 +21,6 @@ import {
   sqlite3_bind_parameter_index,
   sqlite3_bind_parameter_name,
   sqlite3_bind_text,
-  sqlite3_blob_read,
   sqlite3_changes,
   sqlite3_close_v2,
   sqlite3_column_blob,
@@ -400,7 +399,7 @@ export class PreparedStatement {
       case SqliteType.TEXT:
         return sqlite3_column_text(this.#handle, index);
 
-      case SqliteType.BLOB:
+      case SqliteType.BLOB: {
         const blob = f64ToU64(sqlite3_column_blob(this.#handle, index));
         const length = sqlite3_column_bytes(this.#handle, index);
         const data = new Uint8Array(length);
@@ -409,6 +408,7 @@ export class PreparedStatement {
           data[i] = read_ptr(blob + BigInt(i));
         }
         return data;
+      }
 
       default:
         throw new Error(`Unsupported column type: ${this.columnType(index)}`);
