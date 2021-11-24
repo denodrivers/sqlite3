@@ -13,14 +13,14 @@ jobs:
 
     steps:
       - name: Download source
-        run: git clone https://github.com/sqlite/sqlite.git . --branch version-3.36.0
+        run: git clone https://github.com/sqlite/sqlite.git --branch version-3.36.0
 
       - name: Build for Unix
         if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest' }}
         run: |
           mkdir bld
           cd bld
-          ../configure
+          ../sqlite/configure
           make
           make sqlite3.c
           make test
@@ -34,8 +34,8 @@ jobs:
         run: |
           mkdir bld
           cd bld
-          nmake /f ..\Makefile.msc TOP=..\sqlite
-          nmake /f ..\Makefile.msc sqlite3.c TOP=..\sqlite
-          nmake /f ..\Makefile.msc sqlite3.dll TOP=..\sqlite
-          nmake /f ..\Makefile.msc sqlite3.exe TOP=..\sqlite
-          nmake /f ..\Makefile.msc test TOP=..\sqlite
+          nmake /f ..\sqlite\Makefile.msc TOP=..\sqlite
+          nmake /f ..\sqlite\Makefile.msc sqlite3.c TOP=..\sqlite
+          nmake /f ..\sqlite\Makefile.msc sqlite3.dll TOP=..\sqlite
+          nmake /f ..\sqlite\Makefile.msc sqlite3.exe TOP=..\sqlite
+          nmake /f ..\sqlite\Makefile.msc test TOP=..\sqlite
