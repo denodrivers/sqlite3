@@ -10,6 +10,7 @@ const libutil = Deno.dlopen(new URL(file, import.meta.url), {
 });
 
 export function read_ptr(ptr: bigint) {
+  if (ptr === 0n) return 0;
   return libutil.symbols.read_ptr(u64ToF64(ptr)) as number;
 }
 

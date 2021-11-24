@@ -38,6 +38,16 @@ const lib = Deno.dlopen(
       result: "u64",
     },
 
+    sqlite3_changes: {
+      parameters: ["f64" /* sqlite3 *db */],
+      result: "i32",
+    },
+
+    sqlite3_total_changes: {
+      parameters: ["f64" /* sqlite3 *db */],
+      result: "i32",
+    },
+
     sqlite3_prepare_v3: {
       parameters: [
         "f64", /* sqlite3 *db */
@@ -481,13 +491,12 @@ export function sqlite3_bind_blob(
   stmt: sqlite3_stmt,
   index: number,
   value: Uint8Array,
-  length: number,
 ) {
   const result = lib.symbols.sqlite3_bind_blob(
     stmt,
     index,
     value,
-    length,
+    value.length,
     NULL_F64,
   ) as number;
 
@@ -662,4 +671,14 @@ export function sqlite3_blob_read(
   if (result !== SQLITE3_OK) {
     throw new Error(`${result}`);
   }
+}
+
+export function sqlite3_changes(db: sqlite3) {
+  const changes = lib.symbols.sqlite3_changes(db) as number;
+  return changes;
+}
+
+export function sqlite3_total_changes(db: sqlite3) {
+  const changes = lib.symbols.sqlite3_total_changes(db) as number;
+  return changes;
 }
