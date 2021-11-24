@@ -16,7 +16,7 @@ jobs:
         run: git clone https://github.com/sqlite/sqlite.git --branch version-3.36.0
 
       - name: Install Tcl on Ubuntu
-        if: ${{ matrix.os == "ubuntu-latest" }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get install tcl
 
       - name: Build for Unix
