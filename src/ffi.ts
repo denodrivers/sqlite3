@@ -70,6 +70,27 @@ const lib = Deno.dlopen(
       result: "i32",
     },
 
+    sqlite3_bind_parameter_count: {
+      parameters: ["f64" /* sqlite3_stmt *pStmt */],
+      result: "i32",
+    },
+
+    sqlite3_bind_parameter_index: {
+      parameters: [
+        "f64", /* sqlite3_stmt *pStmt */
+        "buffer", /* const char *zName */
+      ],
+      result: "i32",
+    },
+
+    sqlite3_bind_parameter_name: {
+      parameters: [
+        "f64", /* sqlite3_stmt *pStmt */
+        "i32", /* int i */
+      ],
+      result: "u64",
+    },
+
     sqlite3_bind_blob: {
       parameters: [
         "f64", /* sqlite3_stmt *pStmt */
@@ -86,7 +107,7 @@ const lib = Deno.dlopen(
         "f64", /* sqlite3_stmt *pStmt */
         "i32", /* int i */
         "buffer", /* const void *zData */
-        "i64", /* sqlite3_uint64 nData */
+        "u64", /* sqlite3_uint64 nData */
         "f64", /* void (*xDel)(void*) */
       ],
       result: "i32",
@@ -114,7 +135,7 @@ const lib = Deno.dlopen(
       parameters: [
         "f64", /* sqlite3_stmt *pStmt */
         "i32", /* int i */
-        "i64", /* sqlite3_int64 iValue */
+        "f64", /* sqlite3_int64 iValue */
       ],
       result: "i32",
     },
@@ -213,17 +234,26 @@ const lib = Deno.dlopen(
     },
 
     sqlite3_column_type: {
-      parameters: ["f64", /* sqlite3_stmt *pStmt */ "i32" /* int iCol */],
+      parameters: [
+        "f64", /* sqlite3_stmt *pStmt */
+        "i32", /* int iCol */
+      ],
       result: "i32",
     },
 
     sqlite3_column_value: {
-      parameters: ["f64", /* sqlite3_stmt *pStmt */ "i32" /* int iCol */],
+      parameters: [
+        "f64", /* sqlite3_stmt *pStmt */
+        "i32", /* int iCol */
+      ],
       result: "u64",
     },
 
     sqlite3_column_bytes: {
-      parameters: ["f64", /* sqlite3_stmt *pStmt */ "i32" /* int iCol */],
+      parameters: [
+        "f64", /* sqlite3_stmt *pStmt */
+        "i32", /* int iCol */
+      ],
       result: "i32",
     },
 
@@ -237,15 +267,35 @@ const lib = Deno.dlopen(
       result: "i32",
     },
 
+    sqlite3_column_name: {
+      parameters: [
+        "f64", /* sqlite3_stmt *pStmt */
+        "i32", /* int iCol */
+      ],
+      result: "u64",
+    },
+
     sqlite3_free: {
       parameters: ["f64"],
       result: "void",
+    },
+
+    sqlite3_blob_bytes: {
+      parameters: ["f64"],
+      result: "i32",
+    },
+
+    sqlite3_blob_read: {
+      parameters: ["f64", "buffer", "i32", "i32"],
+      result: "i32",
     },
   },
 );
 
 export type sqlite3 = number;
 export type sqlite3_stmt = number;
+export type sqlite3_value = number;
+export type sqlite3_blob = number;
 
 export function sqlite3_libversion() {
   const ptr = BigInt(lib.symbols.sqlite3_libversion() as number);
@@ -343,7 +393,8 @@ export function sqlite3_finalize(db: sqlite3, stmt: sqlite3_stmt) {
 }
 
 export function sqlite3_bind_text(
-  stmt: sqlite3,
+  db: sqlite3,
+  stmt: sqlite3_stmt,
   index: number,
   value: Uint8Array,
   length: number = -1,
@@ -357,14 +408,117 @@ export function sqlite3_bind_text(
   ) as number;
 
   if (result !== SQLITE3_OK) {
-    const msg = sqlite3_errmsg(stmt);
+    const msg = sqlite3_errmsg(db);
     throw new Error(`(${result}) ${msg}`);
   }
 }
 
-export function sqlite3_column_blob(stmt: sqlite3_stmt, col: number) {
+export function sqlite3_bind_null(
+  db: sqlite3,
+  stmt: sqlite3_stmt,
+  index: number,
+) {
+  const result = lib.symbols.sqlite3_bind_null(stmt, index) as number;
+
+  if (result !== SQLITE3_OK) {
+    const msg = sqlite3_errmsg(db);
+    throw new Error(`(${result}) ${msg}`);
+  }
+}
+
+export function sqlite3_bind_int(
+  db: sqlite3,
+  stmt: sqlite3_stmt,
+  index: number,
+  value: number,
+) {
+  const result = lib.symbols.sqlite3_bind_int(stmt, index, value) as number;
+
+  if (result !== SQLITE3_OK) {
+    const msg = sqlite3_errmsg(db);
+    throw new Error(`(${result}) ${msg}`);
+  }
+}
+
+export function sqlite3_bind_int64(
+  db: sqlite3,
+  stmt: sqlite3_stmt,
+  index: number,
+  value: bigint,
+) {
+  const result = lib.symbols.sqlite3_bind_int64(
+    stmt,
+    index,
+    u64ToF64(value),
+  ) as number;
+
+  if (result !== SQLITE3_OK) {
+    const msg = sqlite3_errmsg(db);
+    throw new Error(`(${result}) ${msg}`);
+  }
+}
+
+export function sqlite3_bind_double(
+  db: sqlite3,
+  stmt: sqlite3_stmt,
+  index: number,
+  value: number,
+) {
+  const result = lib.symbols.sqlite3_bind_double(
+    stmt,
+    index,
+    value,
+  ) as number;
+
+  if (result !== SQLITE3_OK) {
+    const msg = sqlite3_errmsg(db);
+    throw new Error(`(${result}) ${msg}`);
+  }
+}
+
+export function sqlite3_bind_blob(
+  db: sqlite3,
+  stmt: sqlite3_stmt,
+  index: number,
+  value: Uint8Array,
+  length: number,
+) {
+  const result = lib.symbols.sqlite3_bind_blob(
+    stmt,
+    index,
+    value,
+    length,
+    NULL_F64,
+  ) as number;
+
+  if (result !== SQLITE3_OK) {
+    const msg = sqlite3_errmsg(db);
+    throw new Error(`(${result}) ${msg}`);
+  }
+}
+
+export function sqlite3_bind_value(
+  stmt: sqlite3_stmt,
+  index: number,
+  value: sqlite3_value,
+) {
+  lib.symbols.sqlite3_bind_value(stmt, index, value);
+}
+
+export function sqlite3_column_value(
+  stmt: sqlite3_stmt,
+  col: number,
+): sqlite3_value {
+  const ptr = lib.symbols.sqlite3_column_value(stmt, col) as number;
+  return u64ToF64(BigInt(ptr));
+}
+
+export function sqlite3_column_blob(
+  stmt: sqlite3_stmt,
+  col: number,
+): sqlite3_blob {
   const ptr = lib.symbols.sqlite3_column_blob(stmt, col) as number;
-  return ptr;
+  return u64ToF64(BigInt(ptr));
 }
 
 export function sqlite3_column_bytes(stmt: sqlite3_stmt, col: number) {
@@ -392,7 +546,27 @@ export function sqlite3_column_type(stmt: sqlite3_stmt, col: number) {
 
 export function sqlite3_column_text(stmt: sqlite3_stmt, col: number) {
   const ptr = lib.symbols.sqlite3_column_text(stmt, col) as number;
+  return read_cstr(BigInt(ptr));
+}
+
+export function sqlite3_column_text16(stmt: sqlite3_stmt, col: number) {
+  const ptr = lib.symbols.sqlite3_column_text16(stmt, col) as number;
   return ptr;
+}
+
+export function sqlite3_column_int(stmt: sqlite3_stmt, col: number) {
+  const val = lib.symbols.sqlite3_column_int(stmt, col) as number;
+  return val;
+}
+
+export function sqlite3_column_int64(stmt: sqlite3_stmt, col: number) {
+  const val = lib.symbols.sqlite3_column_int64(stmt, col) as number;
+  return val;
+}
+
+export function sqlite3_column_double(stmt: sqlite3_stmt, col: number) {
+  const val = lib.symbols.sqlite3_column_double(stmt, col) as number;
+  return val;
 }
 
 export function sqlite3_free(ptr: number) {
@@ -434,4 +608,58 @@ export function sqlite3_reset(db: sqlite3, stmt: sqlite3_stmt) {
 
   const msg = sqlite3_errmsg(db);
   throw new Error(`(${result}) ${msg}`);
+}
+
+export function sqlite3_bind_parameter_count(stmt: sqlite3_stmt) {
+  const count = lib.symbols.sqlite3_bind_parameter_count(stmt) as number;
+  return count;
+}
+
+export function sqlite3_bind_parameter_index(
+  stmt: sqlite3_stmt,
+  name: string,
+) {
+  const index = lib.symbols.sqlite3_bind_parameter_index(
+    stmt,
+    cstr(name),
+  ) as number;
+  return index;
+}
+
+export function sqlite3_bind_parameter_name(
+  stmt: sqlite3_stmt,
+  index: number,
+) {
+  const name = lib.symbols.sqlite3_bind_parameter_name(
+    stmt,
+    index,
+  ) as number;
+  return read_cstr(BigInt(name));
+}
+
+export function sqlite3_column_name(stmt: sqlite3_stmt, col: number) {
+  const name = lib.symbols.sqlite3_column_name(stmt, col) as number;
+  return read_cstr(BigInt(name));
+}
+
+export function sqlite3_blob_bytes(blob: sqlite3_blob) {
+  const bytes = lib.symbols.sqlite3_blob_bytes(blob) as number;
+  return bytes;
+}
+
+export function sqlite3_blob_read(
+  blob: sqlite3_blob,
+  buf: Uint8Array,
+  offset = 0,
+) {
+  const result = lib.symbols.sqlite3_blob_read(
+    blob,
+    buf,
+    buf.byteLength,
+    offset,
+  ) as number;
+
+  if (result !== SQLITE3_OK) {
+    throw new Error(`${result}`);
+  }
 }

@@ -1,5 +1,7 @@
 import { DB } from "https://deno.land/x/sqlite@v3.0.0/mod.ts";
 
+await Deno.remove("bench_wasm.db").catch(() => {});
+
 const db = new DB("bench_wasm.db");
 
 db.query("pragma journal_mode = WAL");
@@ -11,7 +13,7 @@ db.query(
 );
 
 let loops = 100;
-const payload = JSON.stringify({ money: 578, name: "Amatsagu" });
+const payload = "hello world";
 const now = performance.now();
 
 const prep = db.prepareQuery("insert into test (value) values (?)");
