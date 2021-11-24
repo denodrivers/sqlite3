@@ -25,6 +25,10 @@ jobs:
           make sqlite3.c
           make test
 
+      - name: Setup for Windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Build for Windows
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
