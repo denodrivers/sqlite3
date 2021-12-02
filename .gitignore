@@ -5,3 +5,4 @@ sqlite_test/
 *.exp
 *.pdb
 *.dll
+*.so

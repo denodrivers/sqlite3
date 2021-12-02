@@ -52,7 +52,7 @@ jobs:
           rust-version: 1.56.1
 
       - name: Build libutil
-        run: cd src && rustc --crate-type=cdylib util.rs
+        run: rustc --crate-type=cdylib ./src/util.rs
 
       - name: Install Deno
         uses: denoland/setup-deno@main
