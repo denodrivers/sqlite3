@@ -19,7 +19,7 @@ jobs:
           deno-version: 'v1.x'
 
       - name: Check Formatting
-        run: deno fmt --check
+        run: deno fmt --check -c deno.json
 
   lint:
     runs-on: ubuntu-latest
@@ -36,13 +36,25 @@ jobs:
         run: deno lint -c deno.json
 
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Setup repo
+      - name: Checkout repo
         uses: actions/checkout@v2
 
-      - name: Setup Deno
+      - name: Install Rust
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: 1.56.1
+
+      - name: Build libutil
+        run: cd src && rustc --crate-type=cdylib util.rs
+
+      - name: Install Deno
         uses: denoland/setup-deno@main
         with:
           deno-version: 'v1.x'
