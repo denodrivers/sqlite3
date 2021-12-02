@@ -54,6 +54,10 @@ jobs:
       - name: Build libutil
         run: rustc --crate-type=cdylib ./src/util.rs
 
+      - name: Install SQLite3 on Ubuntu
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt install sqlite3
+
       - name: Install Deno
         uses: denoland/setup-deno@main
         with:
