@@ -298,7 +298,14 @@ if (envSqlitePath !== undefined) {
   lib = Deno.dlopen(envSqlitePath, symbols);
 } else {
   try {
-    lib = Deno.dlopen("sqlite3", symbols);
+    lib = Deno.dlopen(
+      Deno.build.os === "windows"
+        ? "sqlite3"
+        : Deno.build.os === "darwin"
+        ? "libsqlite3.dylib"
+        : "libsqlite3.so",
+      symbols,
+    );
   } catch (e) {
     const error = new Error(
       "Built-in SQLite3 library not found, try installing SQLite3. If you have an existing installation, either add it to path or set the `DENO_SQLITE_PATH` environment variable.",

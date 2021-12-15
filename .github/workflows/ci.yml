@@ -45,7 +45,11 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
-        
+
+      - name: Install SQLite3 on Ubuntu
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt install sqlite3
+
       - name: Install Deno
         uses: denoland/setup-deno@main
         with:
