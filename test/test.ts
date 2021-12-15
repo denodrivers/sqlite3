@@ -1,5 +1,5 @@
 import { Database, SQLITE_VERSION } from "../mod.ts";
-import { assertEquals } from "https://deno.land/std@0.115.0/testing/asserts.ts";
+import { assertEquals } from "https://deno.land/std@0.117.0/testing/asserts.ts";
 
 Deno.test("sqlite", async (t) => {
   // Remove any existing test.db.
