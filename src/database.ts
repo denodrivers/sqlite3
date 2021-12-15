@@ -41,8 +41,7 @@ import {
   sqlite3_stmt,
   sqlite3_total_changes,
 } from "./ffi.ts";
-import { read_ptr } from "./rust_util.ts";
-import { cstr, f64ToU64 } from "./util.ts";
+import { cstr } from "./util.ts";
 
 export const SQLITE_VERSION = sqlite3_libversion();
 
@@ -400,13 +399,10 @@ export class PreparedStatement {
         return sqlite3_column_text(this.#handle, index);
 
       case SqliteType.BLOB: {
-        const blob = f64ToU64(sqlite3_column_blob(this.#handle, index));
+        const blob = sqlite3_column_blob(this.#handle, index);
         const length = sqlite3_column_bytes(this.#handle, index);
         const data = new Uint8Array(length);
-        // TODO: use memcpy. Waiting for UnsafePointer API :sweat_smile:
-        for (let i = 0; i < length; i++) {
-          data[i] = read_ptr(blob + BigInt(i));
-        }
+        new Deno.UnsafePointerView(blob).copyInto(data);
         return data;
       }
 

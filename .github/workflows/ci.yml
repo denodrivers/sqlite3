@@ -45,19 +45,11 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
-
-      - name: Install Rust
-        uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: 1.56.1
-
-      - name: Build libutil
-        run: cd src && rustc --crate-type=cdylib util.rs
-
+        
       - name: Install Deno
         uses: denoland/setup-deno@main
         with:
-          deno-version: 'v1.x'
+          deno-version: 'canary'
 
       - name: Run Tests
         run: deno test --unstable -A test/test.ts
