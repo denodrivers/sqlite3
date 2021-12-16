@@ -1,9 +1,20 @@
 import { Database, SQLITE_VERSION } from "../mod.ts";
-import { assertEquals } from "https://deno.land/std@0.117.0/testing/asserts.ts";
+import {
+  assertEquals,
+  assertThrows,
+} from "https://deno.land/std@0.117.0/testing/asserts.ts";
 
 Deno.test("sqlite", async (t) => {
   // Remove any existing test.db.
   await Deno.remove("test.db").catch(() => {});
+
+  await t.step("open (expect error)", () => {
+    assertThrows(
+      () => new Database("test.db", { create: false }),
+      Error,
+      "(14)",
+    );
+  });
 
   let db!: Database;
   await t.step("open", () => {

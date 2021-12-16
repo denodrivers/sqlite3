@@ -43,8 +43,10 @@ import {
 } from "./ffi.ts";
 import { cstr } from "./util.ts";
 
+/** SQLite version string */
 export const SQLITE_VERSION = sqlite3_libversion();
 
+/** Various options that can be configured when opening Database connection. */
 export interface DatabaseOpenOptions {
   /** Whether to open database only in read-only mode. By default, this is false. */
   readonly?: boolean;
@@ -64,26 +66,26 @@ export class Database {
   #handle: sqlite3;
 
   /** Path of the  */
-  get path() {
+  get path(): string {
     return this.#path;
   }
 
   /** Unsafe Raw (pointer) to the sqlite object */
-  get unsafeRawHandle() {
+  get unsafeRawHandle(): Deno.UnsafePointer {
     return this.#handle;
   }
 
   /**
    * Number of rows changed by the last executed statement.
    */
-  get changes() {
+  get changes(): number {
     return sqlite3_changes(this.#handle);
   }
 
   /**
    * Number of rows changed since the database connection was opened.
    */
-  get totalChanges() {
+  get totalChanges(): number {
     return sqlite3_total_changes(this.#handle);
   }
 
@@ -188,7 +190,7 @@ export class Row {
   }
 
   /** Number of columns in the row. */
-  get columnCount() {
+  get columnCount(): number {
     return this.#stmt.columnCount;
   }
 
@@ -233,17 +235,17 @@ export class PreparedStatement {
   #row = new Row(this);
 
   /** Database associated with the Prepared Statement */
-  get db() {
+  get db(): Database {
     return this.#db;
   }
 
   /** Unsafe Raw Handle (pointer) to the sqlite_stmt object. */
-  get unsafeRawHandle() {
+  get unsafeRawHandle(): Deno.UnsafePointer {
     return this.#handle;
   }
 
   /** Current row */
-  get row() {
+  get row(): Row {
     return this.#row;
   }
 
