@@ -49,7 +49,7 @@ jobs:
       - name: Install Deno
         uses: denoland/setup-deno@main
         with:
-          deno-version: 'canary'
+          deno-version: 'v1.x'
 
       - name: Run Tests
         run: deno test --unstable -A test/test.ts
