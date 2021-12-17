@@ -3,7 +3,7 @@
 Fast, native bindings to SQLite3 C API, using Deno FFI.
 
 ```ts
-import { Database } from "https://deno.land/x/sqlite3@0.0.1/mod.ts";
+import { Database } from "https://deno.land/x/sqlite3@0.2.1/mod.ts";
 
 const db = new Database("test.db");
 
@@ -16,7 +16,7 @@ db.close();
 ## Documentation
 
 Check out the documentation
-[here](https://doc.deno.land/https://deno.land/x/sqlite3@0.0.1/mod.ts).
+[here](https://doc.deno.land/https://deno.land/x/sqlite3@0.2.1/mod.ts).
 
 ## Native Library
 
