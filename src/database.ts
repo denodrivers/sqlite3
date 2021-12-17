@@ -42,6 +42,7 @@ import {
   sqlite3_total_changes,
 } from "./ffi.ts";
 import { cstr } from "./util.ts";
+import { fromFileUrl } from "../deps.ts";
 
 /** SQLite version string */
 export const SQLITE_VERSION = sqlite3_libversion();
@@ -59,7 +60,17 @@ export interface DatabaseOpenOptions {
 }
 
 /**
- * A SQLite3 database connection.
+ * Represents a SQLite3 database connection.
+ *
+ * Example:
+ * ```ts
+ * // Open a database from file, creates if doesn't exist.
+ * const db = new Database("myfile.db");
+ * // Open an in-memory database.
+ * const db = new Database(":memory:");
+ * // Open a read-only database.
+ * const db = new Database("myfile.db", { readonly: true });
+ * ```
  */
 export class Database {
   #path: string;
@@ -75,33 +86,58 @@ export class Database {
     return this.#handle;
   }
 
-  /**
-   * Number of rows changed by the last executed statement.
-   */
+  /** Number of rows changed by the last executed statement. */
   get changes(): number {
     return sqlite3_changes(this.#handle);
   }
 
-  /**
-   * Number of rows changed since the database connection was opened.
-   */
+  /** Number of rows changed since the database connection was opened. */
   get totalChanges(): number {
     return sqlite3_total_changes(this.#handle);
   }
 
-  constructor(path: string, options: DatabaseOpenOptions = {}) {
-    this.#path = path;
-    this.#handle = sqlite3_open_v2(
-      path,
-      options.flags ??
-        (options.readonly ? SQLITE3_OPEN_READONLY : (SQLITE3_OPEN_READWRITE |
-          ((options.create ?? true) ? SQLITE3_OPEN_CREATE : 0) | (options.memory
-            ? SQLITE3_OPEN_MEMORY
-            : 0))),
-    );
+  constructor(path: string | URL, options: DatabaseOpenOptions = {}) {
+    this.#path = path instanceof URL ? fromFileUrl(path) : path;
+    let flags = 0;
+    if (options.flags !== undefined) {
+      flags = options.flags;
+    } else {
+      if (options.memory === true) {
+        flags |= SQLITE3_OPEN_MEMORY;
+      }
+
+      if (options.readonly === true) {
+        flags |= SQLITE3_OPEN_READONLY;
+      } else {
+        flags |= SQLITE3_OPEN_READWRITE;
+      }
+
+      if (options.create !== false) {
+        flags |= SQLITE3_OPEN_CREATE;
+      }
+    }
+
+    this.#handle = sqlite3_open_v2(this.#path, flags);
   }
 
-  /** Simply executes the SQL, without returning anything. */
+  /**
+   * Simply executes the SQL, without returning anything.
+   *
+   * Example:
+   * ```ts
+   * // Create table
+   * db.execute("create table users (id integer not null, username varchar(20) not null)");
+   * // Inserts
+   * db.execute("insert into users (id, username) values(?, ?)", id, username);
+   * // Pragma statements
+   * db.execute("pragma journal_mode = WAL");
+   * db.execute("pragma synchronous = normal");
+   * db.execute("pragma temp_store = memory");
+   * ```
+   *
+   * Under the hood, it uses `sqlite3_exec` if no parameters are given to bind
+   * with the SQL statement, a prepared statement otherwise.
+   */
   execute(sql: string, ...args: unknown[]) {
     if (args.length) {
       const prep = this.prepare(sql);
@@ -111,13 +147,36 @@ export class Database {
     } else sqlite3_exec(this.#handle, sql);
   }
 
-  /** Creates a new prepared statement. */
+  /**
+   * Creates a new prepared statement.
+   *
+   * Example:
+   * ```ts
+   * const stmt = db.prepare("insert into users (id, username) values (?, ?)");
+   * for (const user of usersToInsert) {
+   *   stmt.execute(id, user);
+   * }
+   * stmt.finalize();
+   * ```
+   *
+   * @param sql SQL string for prepared query.
+   * @returns A `PreparedStatement` object, on which you can call `execute` multiple
+   * times and then `finalize` it.
+   */
   prepare(sql: string) {
     return new PreparedStatement(this, sqlite3_prepare_v3(this.#handle, sql));
   }
 
   /**
-   * Runs an SQL query with given parameters.
+   * Runs an SQL query with given parameters, and returns rows as array of columns.
+   * If you need the rows as objects, use `queryObject` instead. However, it is
+   * recommended to use `queryArray` because of the extra overhead added by FFI
+   * calls to get column names to create row objects.
+   *
+   * Example:
+   * ```ts
+   * const users = db.queryArray<[number, string]>("select id, username from users");
+   * ```
    *
    * @param sql SQL query to execute.
    * @param args Parameters to bind to the query.
@@ -136,12 +195,23 @@ export class Database {
   }
 
   /**
+   * Executes an SQL query and returns the rows as objects.
+   *
+   * Note: if you do not need the column names, consider calling `queryArray` instead.
+   * As this method does an extra FFI call to get the column names, it is more expensive than `queryArray`.
+   *
+   * Example:
+   * ```ts
+   * const users = db.queryObject<{
+   *   id: number,
+   *   username: string,
+   * }>("select id, username from users");
+   * ```
+   *
    * @param sql SQL query to execute.
    * @param args Parameters to bind to the query.
    *
    * @returns Array of rows, where rows are objects mapping column names to values.
-   * Note: if you do not need the column names, consider calling `queryArray` instead.
-   * As this method does an extra FFI call to get the column names, it is more expensive than `queryArray`.
    */
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
     sql: string,
