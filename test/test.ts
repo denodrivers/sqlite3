@@ -2,20 +2,28 @@ import { Database, SQLITE_VERSION } from "../mod.ts";
 import { assertEquals, assertThrows } from "./deps.ts";
 
 Deno.test("sqlite", async (t) => {
+  const DB_URL = new URL("./test.db", import.meta.url);
+
   // Remove any existing test.db.
-  await Deno.remove("test.db").catch(() => {});
+  await Deno.remove(DB_URL).catch(() => {});
 
   await t.step("open (expect error)", () => {
     assertThrows(
-      () => new Database("test.db", { create: false }),
+      () => new Database(DB_URL, { create: false }),
       Error,
       "(14)",
     );
   });
 
+  await t.step("open (path string)", () => {
+    const db = new Database("test-path.db");
+    db.close();
+    Deno.removeSync("test-path.db");
+  });
+
   let db!: Database;
-  await t.step("open", () => {
-    db = new Database("test.db");
+  await t.step("open (url)", () => {
+    db = new Database(DB_URL);
   });
 
   if (typeof db !== "object") throw new Error("db open failed");
@@ -107,5 +115,6 @@ Deno.test("sqlite", async (t) => {
 
   await t.step("close", () => {
     db.close();
+    Deno.removeSync(DB_URL);
   });
 });
