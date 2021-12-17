@@ -1,9 +1,9 @@
 import { Database } from "../src/database.ts";
 import { Backend } from "./backend.ts";
 
-await Deno.remove("bench_class.db").catch(() => {});
-
-const db = new Database("bench_class.db");
+const DB_URL = new URL("./bench_native.db", import.meta.url);
+await Deno.remove(DB_URL).catch(() => {});
+const db = new Database(DB_URL);
 
 export default <Backend> {
   name: "sqlite_native",

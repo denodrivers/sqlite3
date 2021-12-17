@@ -1,9 +1,10 @@
 import { DB } from "https://deno.land/x/sqlite@v3.0.0/mod.ts";
+import { fromFileUrl } from "../deps.ts";
 import { Backend } from "./backend.ts";
 
-await Deno.remove("bench_wasm.db").catch(() => {});
-
-const db = new DB("bench_wasm.db");
+const DB_URL = new URL("./bench_wasm.db", import.meta.url);
+await Deno.remove(DB_URL).catch(() => {});
+const db = new DB(fromFileUrl(DB_URL));
 
 export default <Backend> {
   name: "sqlite_wasm",
