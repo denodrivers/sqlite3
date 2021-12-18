@@ -30,7 +30,7 @@ bundled with this module.
 ## Related
 
 - [x/sqlite](https://deno.land/x/sqlite), WASM based.
-- [deno_sqlite3](https://github.com/littledivy/deno_sqlite3), asynchronous
+- [async-sqlite3](https://github.com/denodrivers/async-sqlite3), asynchronous
   SQLite3 bindings using `rusqlite`.
 
 ## License
