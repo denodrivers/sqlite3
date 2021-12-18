@@ -1,5 +1,6 @@
 import {
   SQLITE3_DONE,
+  SQLITE3_MISUSE,
   SQLITE3_OK,
   SQLITE3_OPEN_CREATE,
   SQLITE3_OPEN_READWRITE,
@@ -289,6 +290,11 @@ const symbols = <Record<string, Deno.ForeignFunction>> {
     parameters: ["pointer", "pointer", "i32", "i32"],
     result: "i32",
   },
+
+  sqlite3_errstr: {
+    parameters: ["i32"],
+    result: "pointer",
+  },
 };
 
 let lib: Deno.DynamicLibrary<typeof symbols>;
@@ -330,14 +336,27 @@ export function sqlite3_errmsg(handle: sqlite3) {
   return new Deno.UnsafePointerView(ptr).getCString();
 }
 
+export function sqlite3_errstr(result: number) {
+  const ptr = lib.symbols.sqlite3_errstr(result) as Deno.UnsafePointer;
+  return new Deno.UnsafePointerView(ptr).getCString();
+}
+
 export function unwrap_error(
   db: sqlite3,
   result: number,
   valid: number[] = [SQLITE3_OK],
 ) {
   if (!valid.includes(result)) {
-    const msg = sqlite3_errmsg(db);
-    throw new Error(`(${result}) ${msg}`);
+    let msg;
+    try {
+      if (result === SQLITE3_MISUSE) {
+        msg = sqlite3_errstr(result);
+      } else msg = sqlite3_errmsg(db);
+    } catch (e) {
+      msg = new Error(`Failed to get error message.`);
+      msg.cause = e;
+    }
+    throw new Error(`(${result}) ${sqlite3_errstr(result)}: ${msg}`);
   }
 }
 
@@ -410,13 +429,12 @@ export function sqlite3_bind_text(
   stmt: sqlite3_stmt,
   index: number,
   value: Uint8Array,
-  length = -1,
 ) {
   const result = lib.symbols.sqlite3_bind_text(
     stmt,
     index,
     Deno.UnsafePointer.of(value),
-    length,
+    value.length,
     new Deno.UnsafePointer(0n),
   ) as number;
 
