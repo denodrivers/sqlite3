@@ -339,6 +339,15 @@ export class PreparedStatement {
     return sqlite3_bind_parameter_index(this.#handle, name);
   }
 
+  /**
+   * We need to store references to any type that involves passing pointers
+   * to avoid V8's GC deallocating them before the statement is finalized.
+   *
+   * In SQLite C API, there is a callback that we can pass for such types
+   * to deallocate only when they're not in use. But this is not possible
+   * using Deno FFI. So we will just store references to them until `finalize`
+   * is called.
+   */
   #bufferRefs = new Set<Uint8Array>();
 
   /** Bind a parameter for the prepared query either by index or name. */
