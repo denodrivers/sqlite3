@@ -10,29 +10,7 @@ export function encode(str: string) {
   }
 }
 
-export function decode(bytes: Uint8Array) {
-  try {
-    return (Deno as any).core.decode(bytes);
-  } catch (_e) {
-    return new TextDecoder("utf-8").decode(bytes);
-  }
-}
-
 // C String utility
 export function cstr(str: string) {
   return new Uint8Array([...encode(str), 0]);
-}
-
-export function getPlatformFileName(base: string) {
-  let prefix = "lib", suffix = "dll";
-
-  if (Deno.build.os === "windows") {
-    prefix = "";
-  } else if (Deno.build.os === "darwin") {
-    suffix = "dylib";
-  } else if (Deno.build.os === "linux") {
-    suffix = "so";
-  }
-
-  return `${prefix}${base}.${suffix}`;
 }
