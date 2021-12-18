@@ -339,6 +339,8 @@ export class PreparedStatement {
     return sqlite3_bind_parameter_index(this.#handle, name);
   }
 
+  #bufferRefs = new Set<Uint8Array>();
+
   /** Bind a parameter for the prepared query either by index or name. */
   bind(param: number | string, value: unknown) {
     const index = typeof param === "number"
@@ -377,6 +379,7 @@ export class PreparedStatement {
         if (value === null) {
           sqlite3_bind_null(this.db.unsafeRawHandle, this.#handle, index);
         } else if (value instanceof Uint8Array) {
+          this.#bufferRefs.add(value);
           sqlite3_bind_blob(
             this.db.unsafeRawHandle,
             this.#handle,
@@ -399,15 +402,17 @@ export class PreparedStatement {
         );
         break;
 
-      case "string":
+      case "string": {
+        const buffer = cstr(value);
+        this.#bufferRefs.add(buffer);
         sqlite3_bind_text(
           this.db.unsafeRawHandle,
           this.#handle,
           index,
-          cstr(value),
-          value.length,
+          buffer,
         );
         break;
+      }
 
       case "boolean":
         sqlite3_bind_int(
@@ -502,7 +507,11 @@ export class PreparedStatement {
 
   /** Finalize and run the prepared statement. */
   finalize() {
-    sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
+    try {
+      sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
+    } finally {
+      this.#bufferRefs.clear();
+    }
   }
 
   /** Adds another step to prepared statement to be executed. Don't forget to call `finalize`. */
