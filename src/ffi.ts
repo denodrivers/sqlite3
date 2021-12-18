@@ -370,7 +370,7 @@ export function sqlite3_open_v2(
 
   const result = lib.symbols.sqlite3_open_v2(
     pathPtr,
-    Deno.UnsafePointer.of(outDB),
+    outDB,
     flags,
     new Deno.UnsafePointer(0n),
   ) as number;
@@ -397,11 +397,11 @@ export function sqlite3_prepare_v3(
 
   const result = lib.symbols.sqlite3_prepare_v3(
     handle,
-    Deno.UnsafePointer.of(sqlPtr),
+    sqlPtr,
     sql.length,
     flags,
-    Deno.UnsafePointer.of(outStmt),
-    Deno.UnsafePointer.of(outTail),
+    outStmt,
+    outTail,
   ) as number;
 
   const stmt = new Deno.UnsafePointer(outStmtDV.getBigUint64(0, LITTLE_ENDIAN));
@@ -433,7 +433,7 @@ export function sqlite3_bind_text(
   const result = lib.symbols.sqlite3_bind_text(
     stmt,
     index,
-    Deno.UnsafePointer.of(value),
+    value,
     value.length,
     new Deno.UnsafePointer(0n),
   ) as number;
@@ -498,7 +498,7 @@ export function sqlite3_bind_blob(
   const result = lib.symbols.sqlite3_bind_blob(
     stmt,
     index,
-    Deno.UnsafePointer.of(value),
+    value,
     value.length,
     new Deno.UnsafePointer(0n),
   ) as number;
@@ -551,6 +551,7 @@ export function sqlite3_column_type(stmt: sqlite3_stmt, col: number) {
 
 export function sqlite3_column_text(stmt: sqlite3_stmt, col: number) {
   const ptr = lib.symbols.sqlite3_column_text(stmt, col) as Deno.UnsafePointer;
+  if (ptr.value === 0n) return null;
   return new Deno.UnsafePointerView(ptr).getCString();
 }
 
@@ -559,6 +560,7 @@ export function sqlite3_column_text16(stmt: sqlite3_stmt, col: number) {
     stmt,
     col,
   ) as Deno.UnsafePointer;
+  if (ptr.value === 0n) return null;
   return new Deno.UnsafePointerView(ptr).getCString();
 }
 
@@ -590,10 +592,10 @@ export function sqlite3_exec(
 
   const result = lib.symbols.sqlite3_exec(
     db,
-    Deno.UnsafePointer.of(sqlPtr),
+    sqlPtr,
     new Deno.UnsafePointer(0n),
     new Deno.UnsafePointer(0n),
-    Deno.UnsafePointer.of(outPtr),
+    outPtr,
   );
 
   const ptr = new Deno.UnsafePointer(outDV.getBigUint64(0, LITTLE_ENDIAN));
@@ -621,7 +623,7 @@ export function sqlite3_bind_parameter_index(
   const namePtr = cstr(name);
   const index = lib.symbols.sqlite3_bind_parameter_index(
     stmt,
-    Deno.UnsafePointer.of(namePtr),
+    namePtr,
   ) as number;
   return index;
 }
@@ -653,7 +655,7 @@ export function sqlite3_blob_read(
 ) {
   const result = lib.symbols.sqlite3_blob_read(
     blob,
-    Deno.UnsafePointer.of(buf),
+    buf,
     buf.byteLength,
     offset,
   ) as number;

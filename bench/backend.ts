@@ -5,6 +5,7 @@ export interface Prepare {
 
 export interface Backend {
   name: string;
+  query(sql: string): unknown[];
   execute(sql: string, params: unknown[]): void;
   prepare(sql: string): Prepare;
   close(): void;

@@ -65,3 +65,4 @@ export const SQLITE_FLOAT = 2;
 export const SQLITE_TEXT = 3;
 export const SQLITE_BLOB = 4;
 export const SQLITE_NULL = 5;
+export const SQLITE_BIG_INTEGER = 6;

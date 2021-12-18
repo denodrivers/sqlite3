@@ -4,6 +4,7 @@ import {
   SQLITE3_OPEN_READONLY,
   SQLITE3_OPEN_READWRITE,
   SQLITE3_ROW,
+  SQLITE_BIG_INTEGER,
   SQLITE_BLOB,
   SQLITE_FLOAT,
   SQLITE_INTEGER,
@@ -28,6 +29,7 @@ import {
   sqlite3_column_count,
   sqlite3_column_double,
   sqlite3_column_int,
+  sqlite3_column_int64,
   sqlite3_column_name,
   sqlite3_column_text,
   sqlite3_column_type,
@@ -246,6 +248,7 @@ export enum SqliteType {
   FLOAT = SQLITE_FLOAT,
   TEXT = SQLITE_TEXT,
   BLOB = SQLITE_BLOB,
+  BIG_INTEGER = SQLITE_BIG_INTEGER,
 }
 
 /**
@@ -486,11 +489,15 @@ export class PreparedStatement {
 
       case SqliteType.BLOB: {
         const blob = sqlite3_column_blob(this.#handle, index);
+        if (blob.value === 0n) return null;
         const length = sqlite3_column_bytes(this.#handle, index);
         const data = new Uint8Array(length);
         new Deno.UnsafePointerView(blob).copyInto(data);
         return data;
       }
+
+      case SqliteType.BIG_INTEGER:
+        return sqlite3_column_int64(this.#handle, index);
 
       default:
         throw new Error(`Unsupported column type: ${this.columnType(index)}`);
