@@ -142,7 +142,10 @@ const symbols = <Record<string, Deno.ForeignFunction>> {
   },
 
   sqlite3_bind_null: {
-    parameters: ["pointer", /* sqlite3_stmt *pStmt */ "i32" /* int i */],
+    parameters: [
+      "pointer", /* sqlite3_stmt *pStmt */
+      "i32", /* int i */
+    ],
     result: "i32",
   },
 
@@ -204,17 +207,26 @@ const symbols = <Record<string, Deno.ForeignFunction>> {
   },
 
   sqlite3_column_double: {
-    parameters: ["pointer", /* sqlite3_stmt *pStmt */ "i32" /* int iCol */],
+    parameters: [
+      "pointer", /* sqlite3_stmt *pStmt */
+      "i32", /* int iCol */
+    ],
     result: "f64",
   },
 
   sqlite3_column_int: {
-    parameters: ["pointer", /* sqlite3_stmt *pStmt */ "i32" /* int iCol */],
+    parameters: [
+      "pointer", /* sqlite3_stmt *pStmt */
+      "i32", /* int iCol */
+    ],
     result: "i32",
   },
 
   sqlite3_column_int64: {
-    parameters: ["pointer", /* sqlite3_stmt *pStmt */ "i32" /* int iCol */],
+    parameters: [
+      "pointer", /* sqlite3_stmt *pStmt */
+      "i32", /* int iCol */
+    ],
     result: "pointer",
   },
 
@@ -259,7 +271,10 @@ const symbols = <Record<string, Deno.ForeignFunction>> {
   },
 
   sqlite3_column_bytes16: {
-    parameters: ["pointer", /* sqlite3_stmt *pStmt */ "i32" /* int iCol */],
+    parameters: [
+      "pointer", /* sqlite3_stmt *pStmt */
+      "i32", /* int iCol */
+    ],
     result: "i32",
   },
 
@@ -277,22 +292,12 @@ const symbols = <Record<string, Deno.ForeignFunction>> {
   },
 
   sqlite3_free: {
-    parameters: ["pointer"],
+    parameters: ["pointer" /** void* ptr */],
     result: "void",
   },
 
-  sqlite3_blob_bytes: {
-    parameters: ["pointer"],
-    result: "i32",
-  },
-
-  sqlite3_blob_read: {
-    parameters: ["pointer", "pointer", "i32", "i32"],
-    result: "i32",
-  },
-
   sqlite3_errstr: {
-    parameters: ["i32"],
+    parameters: ["i32" /** int errcode */],
     result: "pointer",
   },
 };
@@ -386,7 +391,7 @@ export function sqlite3_close_v2(handle: sqlite3) {
 }
 
 export function sqlite3_prepare_v3(
-  handle: sqlite3,
+  db: sqlite3,
   sql: string,
   flags = 0,
 ): sqlite3_stmt {
@@ -396,7 +401,7 @@ export function sqlite3_prepare_v3(
   const outTail = new Uint8Array(8);
 
   const result = lib.symbols.sqlite3_prepare_v3(
-    handle,
+    db,
     sqlPtr,
     sql.length,
     flags,
@@ -408,7 +413,7 @@ export function sqlite3_prepare_v3(
   if (stmt.value === 0n && result === SQLITE3_OK) {
     throw new Error(`failed to prepare`);
   }
-  unwrap_error(handle, result);
+  unwrap_error(db, result);
 
   return stmt;
 }
@@ -642,27 +647,6 @@ export function sqlite3_bind_parameter_name(
 export function sqlite3_column_name(stmt: sqlite3_stmt, col: number) {
   const name = lib.symbols.sqlite3_column_name(stmt, col) as Deno.UnsafePointer;
   return new Deno.UnsafePointerView(name).getCString();
-}
-
-export function sqlite3_blob_bytes(blob: sqlite3_blob) {
-  return lib.symbols.sqlite3_blob_bytes(blob) as number;
-}
-
-export function sqlite3_blob_read(
-  blob: sqlite3_blob,
-  buf: Uint8Array,
-  offset = 0,
-) {
-  const result = lib.symbols.sqlite3_blob_read(
-    blob,
-    buf,
-    buf.byteLength,
-    offset,
-  ) as number;
-
-  if (result !== SQLITE3_OK) {
-    throw new Error(`result not ok: ${result}`);
-  }
 }
 
 export function sqlite3_changes(db: sqlite3) {

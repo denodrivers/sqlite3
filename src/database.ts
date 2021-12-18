@@ -4,7 +4,6 @@ import {
   SQLITE3_OPEN_READONLY,
   SQLITE3_OPEN_READWRITE,
   SQLITE3_ROW,
-  SQLITE_BIG_INTEGER,
   SQLITE_BLOB,
   SQLITE_FLOAT,
   SQLITE_INTEGER,
@@ -17,7 +16,6 @@ import {
   sqlite3_bind_double,
   sqlite3_bind_int,
   sqlite3_bind_int64,
-  sqlite3_bind_null,
   sqlite3_bind_parameter_count,
   sqlite3_bind_parameter_index,
   sqlite3_bind_parameter_name,
@@ -29,7 +27,6 @@ import {
   sqlite3_column_count,
   sqlite3_column_double,
   sqlite3_column_int,
-  sqlite3_column_int64,
   sqlite3_column_name,
   sqlite3_column_text,
   sqlite3_column_type,
@@ -78,7 +75,7 @@ export class Database {
   #path: string;
   #handle: sqlite3;
 
-  /** Path of the  */
+  /** Path of the database file. */
   get path(): string {
     return this.#path;
   }
@@ -248,7 +245,6 @@ export enum SqliteType {
   FLOAT = SQLITE_FLOAT,
   TEXT = SQLITE_TEXT,
   BLOB = SQLITE_BLOB,
-  BIG_INTEGER = SQLITE_BIG_INTEGER,
 }
 
 /**
@@ -269,7 +265,7 @@ export class Row {
 
   /** Returns the names of the columns in the row. */
   get columns(): string[] {
-    const columnCount = this.columnCount;
+    const columnCount = this.#stmt.columnCount;
     const cols = new Array(columnCount);
     for (let i = 0; i < columnCount; i++) {
       cols[i] = this.#stmt.columnName(i);
@@ -279,7 +275,7 @@ export class Row {
 
   /** Returns the row as array containing columns' values. */
   asArray<T extends unknown[] = any[]>() {
-    const columnCount = this.columnCount;
+    const columnCount = this.#stmt.columnCount;
     const array = new Array(columnCount);
     for (let i = 0; i < columnCount; i++) {
       array[i] = this.#stmt.column(i);
@@ -289,7 +285,7 @@ export class Row {
 
   /** Returns the row as object with column names mapping to values. */
   asObject<T extends Record<string, unknown> = Record<string, any>>(): T {
-    const columnCount = this.columnCount;
+    const columnCount = this.#stmt.columnCount;
     const obj: Record<string, unknown> = {};
     for (let i = 0; i < columnCount; i++) {
       const name = this.#stmt.columnName(i);
@@ -342,6 +338,15 @@ export class PreparedStatement {
     return sqlite3_bind_parameter_index(this.#handle, name);
   }
 
+  #cstrCache = new Map<string, Uint8Array>();
+
+  #cstr(str: string) {
+    if (this.#cstrCache.has(str)) return this.#cstrCache.get(str)!;
+    const val = cstr(str);
+    this.#cstrCache.set(str, val);
+    return val;
+  }
+
   /**
    * We need to store references to any type that involves passing pointers
    * to avoid V8's GC deallocating them before the statement is finalized.
@@ -389,7 +394,9 @@ export class PreparedStatement {
 
       case "object":
         if (value === null) {
-          sqlite3_bind_null(this.db.unsafeRawHandle, this.#handle, index);
+          // By default, SQLite sets non-binded values to null.
+          // so this call is not needed.
+          // sqlite3_bind_null(this.db.unsafeRawHandle, this.#handle, index);
         } else if (value instanceof Uint8Array) {
           this.#bufferRefs.add(value);
           sqlite3_bind_blob(
@@ -415,7 +422,7 @@ export class PreparedStatement {
         break;
 
       case "string": {
-        const buffer = cstr(value);
+        const buffer = this.#cstr(value);
         this.#bufferRefs.add(buffer);
         sqlite3_bind_text(
           this.db.unsafeRawHandle,
@@ -457,19 +464,32 @@ export class PreparedStatement {
     }
   }
 
+  #cachedColCount?: number;
+
   /** Column count in current row. */
   get columnCount() {
-    return sqlite3_column_count(this.#handle);
+    if (this.#cachedColCount !== undefined) return this.#cachedColCount;
+    return (this.#cachedColCount = sqlite3_column_count(this.#handle));
   }
+
+  #colTypeCache = new Map<number, SqliteType>();
 
   /** Return the data type of the column at given index in current row. */
   columnType(index: number): SqliteType {
-    return sqlite3_column_type(this.#handle, index);
+    if (this.#colTypeCache.has(index)) return this.#colTypeCache.get(index)!;
+    const type = sqlite3_column_type(this.#handle, index);
+    this.#colTypeCache.set(index, type);
+    return type;
   }
+
+  #colNameCache = new Map<number, string>();
 
   /** Return the name of the column at given index in current row. */
   columnName(index: number) {
-    return sqlite3_column_name(this.#handle, index);
+    if (this.#colNameCache.has(index)) return this.#colNameCache.get(index)!;
+    const name = sqlite3_column_name(this.#handle, index);
+    this.#colNameCache.set(index, name);
+    return name;
   }
 
   /** Return value of a column at given index in current row. */
@@ -496,11 +516,8 @@ export class PreparedStatement {
         return data;
       }
 
-      case SqliteType.BIG_INTEGER:
-        return sqlite3_column_int64(this.#handle, index);
-
       default:
-        throw new Error(`Unsupported column type: ${this.columnType(index)}`);
+        return null;
     }
   }
 
@@ -521,15 +538,6 @@ export class PreparedStatement {
     sqlite3_reset(this.#db.unsafeRawHandle, this.#handle);
   }
 
-  /** Finalize and run the prepared statement. */
-  finalize() {
-    try {
-      sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
-    } finally {
-      this.#bufferRefs.clear();
-    }
-  }
-
   /** Adds another step to prepared statement to be executed. Don't forget to call `finalize`. */
   execute(...args: unknown[]) {
     this.bindAll(...args);
@@ -537,6 +545,28 @@ export class PreparedStatement {
     this.reset();
   }
 
+  /**
+   * Finalize and run the prepared statement.
+   *
+   * This also frees up any resources related to the statement.
+   * And clears all references to the buffers as they're no longer
+   * needed, allowing V8 to GC them.
+   */
+  finalize() {
+    try {
+      sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
+    } finally {
+      this.#bufferRefs.clear();
+      this.#colTypeCache.clear();
+      this.#colNameCache.clear();
+      this.#cstrCache.clear();
+      this.#cachedColCount = undefined;
+    }
+  }
+
+  /**
+   * Returns an iterator for rows.
+   */
   *[Symbol.iterator]() {
     let row;
     while ((row = this.step())) {
