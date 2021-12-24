@@ -318,6 +318,10 @@ if (envSqlitePath !== undefined) {
       symbols,
     );
   } catch (e) {
+    if (e instanceof Deno.errors.PermissionDenied) {
+      throw e;
+    }
+
     const error = new Error(
       "Native SQLite3 library not found, try installing SQLite3. If you have an existing installation, either add it to path or set the `DENO_SQLITE_PATH` environment variable.",
     );
