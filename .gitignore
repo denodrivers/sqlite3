@@ -6,3 +6,6 @@ sqlite_test/
 *.pdb
 *.dll
 *.so
+async-sqlite3
+*.db-shm
+*.db-wal

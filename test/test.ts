@@ -72,7 +72,13 @@ Deno.test("sqlite", async (t) => {
     );
 
     for (let i = 0; i < 10; i++) {
-      stmt.execute(i, `hello ${i}`, 3.14, new Uint8Array([3, 2, 1]), null);
+      stmt.execute(
+        i,
+        `hello ${i}`,
+        3.14,
+        new Uint8Array([3, 2, 1]),
+        null,
+      );
     }
 
     stmt.finalize();

@@ -17,5 +17,6 @@ export default <Backend> {
       finalize: () => prep.finalize(),
     };
   },
+  query: (sql) => db.queryArray(sql),
   close: () => db.close(),
 };
