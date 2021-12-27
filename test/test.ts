@@ -88,7 +88,8 @@ Deno.test("sqlite", async (t) => {
 
   await t.step("query array", () => {
     const row = db.queryArray<[number, string, number, Uint8Array, null]>(
-      "select * from test where integer = 0",
+      "select * from test where integer = ?",
+      0,
     )[0];
     assertEquals(row[0], 0);
     assertEquals(row[1], "hello world");
@@ -104,7 +105,7 @@ Deno.test("sqlite", async (t) => {
       double: number;
       blob: Uint8Array;
       nullable: null;
-    }>("select * from test where integer != 0");
+    }>("select * from test where integer != ?", 0);
 
     for (const row of rows) {
       assertEquals(typeof row.integer, "number");

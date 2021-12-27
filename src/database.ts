@@ -175,6 +175,8 @@ export class Database {
    * Example:
    * ```ts
    * const users = db.queryArray<[number, string]>("select id, username from users");
+   * // Using bind parameters
+   * const [user] = db.queryArray<[number, string]>("select id, username from users where email = ?", email);
    * ```
    *
    * @param sql SQL query to execute.
@@ -205,6 +207,11 @@ export class Database {
    *   id: number,
    *   username: string,
    * }>("select id, username from users");
+   * // Using bind parameters
+   * const [user] = db.queryObject<{
+   *   id: number,
+   *   username: string,
+   * }>("select id, username from users where email = ?", email);
    * ```
    *
    * @param sql SQL query to execute.
