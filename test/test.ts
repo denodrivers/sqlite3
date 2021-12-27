@@ -105,8 +105,9 @@ Deno.test("sqlite", async (t) => {
       double: number;
       blob: Uint8Array;
       nullable: null;
-    }>("select * from test where integer != ?", 0);
+    }>("select * from test where integer != ? and text != ?", 1, "hello world");
 
+    assertEquals(rows.length, 9);
     for (const row of rows) {
       assertEquals(typeof row.integer, "number");
       assertEquals(row.text, `hello ${row.integer}`);
