@@ -40,7 +40,7 @@ import {
   sqlite3_stmt,
   sqlite3_total_changes,
 } from "./ffi.ts";
-import { cstr } from "./util.ts";
+import { cstr, encode } from "./util.ts";
 import { fromFileUrl } from "../deps.ts";
 
 /** SQLite version string */
@@ -429,7 +429,9 @@ export class PreparedStatement {
         break;
 
       case "string": {
-        const buffer = this.#cstr(value);
+        // Bind parameters do not need C string,
+        // because we specify it's length.
+        const buffer = encode(value);
         this.#bufferRefs.add(buffer);
         sqlite3_bind_text(
           this.db.unsafeRawHandle,
