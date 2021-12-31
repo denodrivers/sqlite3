@@ -26,7 +26,7 @@ import {
   sqlite3_column_bytes,
   sqlite3_column_count,
   sqlite3_column_double,
-  sqlite3_column_int,
+  sqlite3_column_int64,
   sqlite3_column_name,
   sqlite3_column_text,
   sqlite3_column_type,
@@ -374,7 +374,7 @@ export class PreparedStatement {
     switch (typeof value) {
       case "number":
         if (Number.isSafeInteger(value)) {
-          if (value < 2 ** 32 / 2) {
+          if (value < 2 ** 32 / 2 && value > -(2 ** 32 / 2)) {
             sqlite3_bind_int(
               this.db.unsafeRawHandle,
               this.#handle,
@@ -507,8 +507,15 @@ export class PreparedStatement {
       case SqliteType.NULL:
         return null;
 
-      case SqliteType.INTEGER:
-        return sqlite3_column_int(this.#handle, index);
+      case SqliteType.INTEGER: {
+        const value = sqlite3_column_int64(this.#handle, index);
+        const num = Number(value);
+        if (Number.isSafeInteger(num)) {
+          return num;
+        } else {
+          return value;
+        }
+      }
 
       case SqliteType.FLOAT:
         return sqlite3_column_double(this.#handle, index);

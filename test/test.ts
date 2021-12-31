@@ -129,6 +129,60 @@ Deno.test("sqlite", async (t) => {
     assertEquals(row[4], null);
   });
 
+  await t.step("more than 32-bit int", () => {
+    const value = 978307200000;
+    db.execute(
+      `insert into test (integer, text, double, blob, nullable)
+    values (?, ?, ?, ?, ?)`,
+      value,
+      "bigint",
+      0,
+      new Uint8Array(0),
+      null,
+    );
+    const [int] = db.queryArray<[number]>(
+      "select integer from test where text = ?",
+      "bigint",
+    )[0];
+    assertEquals(int, value);
+  });
+
+  await t.step("more than 32-bit signed int", () => {
+    const value = -978307200000;
+    db.execute(
+      `insert into test (integer, text, double, blob, nullable)
+    values (?, ?, ?, ?, ?)`,
+      value,
+      "bigint2",
+      0,
+      new Uint8Array(0),
+      null,
+    );
+    const [int] = db.queryArray<[number]>(
+      "select integer from test where text = ?",
+      "bigint2",
+    )[0];
+    assertEquals(int, value);
+  });
+
+  await t.step("max 64-bit signed int", () => {
+    const value = 0x7fffffffffffffffn;
+    db.execute(
+      `insert into test (integer, text, double, blob, nullable)
+    values (?, ?, ?, ?, ?)`,
+      value,
+      "bigint3",
+      0,
+      new Uint8Array(0),
+      null,
+    );
+    const [int] = db.queryArray<[number]>(
+      "select integer from test where text = ?",
+      "bigint3",
+    )[0];
+    assertEquals(int, value);
+  });
+
   await t.step("drop table", () => {
     db.execute("drop table test");
   });
