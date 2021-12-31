@@ -475,11 +475,15 @@ export function sqlite3_bind_int64(
   index: number,
   value: bigint,
 ) {
+  const uint = new BigUint64Array(1);
+  const int = new BigInt64Array(uint.buffer);
+  int[0] = value;
+
   const result = lib.symbols.sqlite3_bind_int64(
     stmt,
     index,
     // workaround for passing bigint
-    new Deno.UnsafePointer(value),
+    new Deno.UnsafePointer(uint[0]),
   ) as number;
   unwrap_error(db, result);
 }
@@ -579,8 +583,11 @@ export function sqlite3_column_int(stmt: sqlite3_stmt, col: number) {
 
 export function sqlite3_column_int64(stmt: sqlite3_stmt, col: number) {
   // workaround for returning bigint
-  return (lib.symbols.sqlite3_column_int64(stmt, col) as Deno.UnsafePointer)
-    .value;
+  const int = new BigInt64Array(1);
+  const uint = new BigUint64Array(int.buffer);
+  uint[0] =
+    (lib.symbols.sqlite3_column_int64(stmt, col) as Deno.UnsafePointer).value;
+  return int[0];
 }
 
 export function sqlite3_column_double(stmt: sqlite3_stmt, col: number) {
