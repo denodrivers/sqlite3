@@ -6,7 +6,7 @@ import {
   SQLITE3_OPEN_READWRITE,
   SQLITE3_ROW,
 } from "./constants.ts";
-import { cstr, LITTLE_ENDIAN } from "./util.ts";
+import { cstr } from "./util.ts";
 
 const symbols = <Record<string, Deno.ForeignFunction>> {
   sqlite3_open_v2: {
@@ -374,8 +374,7 @@ export function sqlite3_open_v2(
   flags: number = SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE,
 ): sqlite3 {
   const pathPtr = cstr(path);
-  const outDB = new Uint8Array(8);
-  const outDV = new DataView(outDB.buffer);
+  const outDB = new BigUint64Array(1);
 
   const result = lib.symbols.sqlite3_open_v2(
     pathPtr,
@@ -384,7 +383,7 @@ export function sqlite3_open_v2(
     new Deno.UnsafePointer(0n),
   ) as number;
 
-  const handle = new Deno.UnsafePointer(outDV.getBigUint64(0, LITTLE_ENDIAN));
+  const handle = new Deno.UnsafePointer(outDB[0]);
   unwrap_error(handle, result);
 
   return handle;
@@ -400,8 +399,7 @@ export function sqlite3_prepare_v3(
   flags = 0,
 ): sqlite3_stmt {
   const sqlPtr = cstr(sql);
-  const outStmt = new Uint8Array(8);
-  const outStmtDV = new DataView(outStmt.buffer);
+  const outStmt = new BigUint64Array(1);
   const outTail = new Uint8Array(8);
 
   const result = lib.symbols.sqlite3_prepare_v3(
@@ -413,7 +411,7 @@ export function sqlite3_prepare_v3(
     outTail,
   ) as number;
 
-  const stmt = new Deno.UnsafePointer(outStmtDV.getBigUint64(0, LITTLE_ENDIAN));
+  const stmt = new Deno.UnsafePointer(outStmt[0]);
   if (stmt.value === 0n && result === SQLITE3_OK) {
     throw new Error(`failed to prepare`);
   }
@@ -603,8 +601,7 @@ export function sqlite3_exec(
   sql: string,
 ) {
   const sqlPtr = cstr(sql);
-  const outPtr = new Uint8Array(8);
-  const outDV = new DataView(outPtr.buffer);
+  const outPtr = new BigUint64Array(8);
 
   const result = lib.symbols.sqlite3_exec(
     db,
@@ -614,7 +611,7 @@ export function sqlite3_exec(
     outPtr,
   );
 
-  const ptr = new Deno.UnsafePointer(outDV.getBigUint64(0, LITTLE_ENDIAN));
+  const ptr = new Deno.UnsafePointer(outPtr[0]);
 
   if (result !== SQLITE3_OK) {
     const msg = new Deno.UnsafePointerView(ptr).getCString();
