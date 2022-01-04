@@ -128,6 +128,8 @@ export class Database {
    * db.execute("create table users (id integer not null, username varchar(20) not null)");
    * // Inserts
    * db.execute("insert into users (id, username) values(?, ?)", id, username);
+   * // Insert with named parameters
+   * db.execute("insert into users (id, username) values(:id, :username)", { id, username });
    * // Pragma statements
    * db.execute("pragma journal_mode = WAL");
    * db.execute("pragma synchronous = normal");
@@ -137,10 +139,16 @@ export class Database {
    * Under the hood, it uses `sqlite3_exec` if no parameters are given to bind
    * with the SQL statement, a prepared statement otherwise.
    */
+  execute(sql: string, ...args: unknown[]): void;
+  execute(sql: string, args: Record<string, unknown>): void;
   execute(sql: string, ...args: unknown[]) {
     if (args.length) {
       const prep = this.prepare(sql);
-      prep.bindAll(...args);
+      if (typeof args[0] === "object" && args[0] !== null) {
+        prep.bindAllNamed(args[0] as Record<string, unknown>);
+      } else {
+        prep.bindAll(...args);
+      }
       prep.step();
       prep.finalize();
     } else sqlite3_exec(this.#handle, sql);
@@ -177,6 +185,8 @@ export class Database {
    * const users = db.queryArray<[number, string]>("select id, username from users");
    * // Using bind parameters
    * const [user] = db.queryArray<[number, string]>("select id, username from users where email = ?", email);
+   * // Using named bind parameters
+   * const [user] = db.queryArray<[number, string]>("select id, username from users where email = :email", { email });
    * ```
    *
    * @param sql SQL query to execute.
@@ -184,9 +194,21 @@ export class Database {
    *
    * @returns Array of rows (where rows are containing array of columns).
    */
-  queryArray<T extends unknown[] = any[]>(sql: string, ...args: unknown[]) {
+  queryArray<T extends unknown[] = any[]>(sql: string, ...args: unknown[]): T[];
+  queryArray<T extends unknown[] = any[]>(
+    sql: string,
+    args: Record<string, unknown>,
+  ): T[];
+  queryArray<T extends unknown[] = any[]>(
+    sql: string,
+    ...args: unknown[]
+  ): T[] {
     const stmt = this.prepare(sql);
-    stmt.bindAll(...args);
+    if (typeof args[0] === "object" && args[0] !== null) {
+      stmt.bindAllNamed(args[0] as Record<string, unknown>);
+    } else {
+      stmt.bindAll(...args);
+    }
     const rows = [];
     for (const row of stmt) {
       rows.push(row.asArray());
@@ -212,6 +234,11 @@ export class Database {
    *   id: number,
    *   username: string,
    * }>("select id, username from users where email = ?", email);
+   * // Using named bind parameters
+   * const [user] = db.queryObject<{
+   *   id: number,
+   *   username: string,
+   * }>("select id, username from users where email = :email", { email });
    * ```
    *
    * @param sql SQL query to execute.
@@ -222,9 +249,21 @@ export class Database {
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
     sql: string,
     ...args: unknown[]
+  ): T[];
+  queryObject<T extends Record<string, unknown> = Record<string, any>>(
+    sql: string,
+    args: Record<string, unknown>,
+  ): T[];
+  queryObject<T extends Record<string, unknown> = Record<string, any>>(
+    sql: string,
+    ...args: unknown[]
   ) {
     const stmt = this.prepare(sql);
-    stmt.bindAll(...args);
+    if (typeof args[0] === "object" && args[0] !== null) {
+      stmt.bindAllNamed(args[0] as Record<string, unknown>);
+    } else {
+      stmt.bindAll(...args);
+    }
     const rows = [];
     for (const row of stmt) {
       rows.push(row.asObject());
@@ -342,7 +381,11 @@ export class PreparedStatement {
 
   /** Get index of a binding parameter by its name. */
   bindParameterIndex(name: string) {
-    return sqlite3_bind_parameter_index(this.#handle, name);
+    const index = sqlite3_bind_parameter_index(this.#handle, name);
+    if (index === 0) {
+      throw new Error(`Couldn't find index for '${name}'`);
+    }
+    return index;
   }
 
   #cstrCache = new Map<string, Uint8Array>();
@@ -473,6 +516,13 @@ export class PreparedStatement {
     }
   }
 
+  bindAllNamed(values: Record<string, unknown>) {
+    for (const name in values) {
+      const index = this.bindParameterIndex(":" + name);
+      this.bind(index, values[name]);
+    }
+  }
+
   #cachedColCount?: number;
 
   /** Column count in current row. */
@@ -555,7 +605,9 @@ export class PreparedStatement {
   }
 
   /** Adds another step to prepared statement to be executed. Don't forget to call `finalize`. */
-  execute(...args: unknown[]) {
+  execute(...args: unknown[]): void;
+  execute(args: Record<string, unknown>): void;
+  execute(...args: unknown[]): void {
     this.bindAll(...args);
     this.step();
     this.reset();
