@@ -40,7 +40,7 @@ import {
   sqlite3_stmt,
   sqlite3_total_changes,
 } from "./ffi.ts";
-import { cstr, encode, isObject } from "./util.ts";
+import { encode, isObject } from "./util.ts";
 import { fromFileUrl } from "../deps.ts";
 
 /** SQLite version string */
@@ -387,15 +387,6 @@ export class PreparedStatement {
     return index;
   }
 
-  #cstrCache = new Map<string, Uint8Array>();
-
-  #cstr(str: string) {
-    if (this.#cstrCache.has(str)) return this.#cstrCache.get(str)!;
-    const val = cstr(str);
-    this.#cstrCache.set(str, val);
-    return val;
-  }
-
   /**
    * We need to store references to any type that involves passing pointers
    * to avoid V8's GC deallocating them before the statement is finalized.
@@ -625,7 +616,6 @@ export class PreparedStatement {
       this.#bufferRefs.clear();
       this.#colTypeCache.clear();
       this.#colNameCache.clear();
-      this.#cstrCache.clear();
       this.#cachedColCount = undefined;
     }
   }
