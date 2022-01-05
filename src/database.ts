@@ -160,9 +160,7 @@ export class Database {
    * Example:
    * ```ts
    * const stmt = db.prepare("insert into users (id, username) values (?, ?)");
-   * for (const user of usersToInsert) {
-   *   stmt.execute(id, user);
-   * }
+   * usersToInsert.forEach((user) => stmt.execute(id, user));
    * stmt.finalize();
    * ```
    *
@@ -312,31 +310,32 @@ export class Row {
   /** Returns the names of the columns in the row. */
   get columns(): string[] {
     const columnCount = this.#stmt.columnCount;
-    const cols = new Array(columnCount);
-    for (let i = 0; i < columnCount; i++) {
-      cols[i] = this.#stmt.columnName(i);
-    }
-    return cols;
+    return Array.from(
+      { length: columnCount },
+      (_, i) => this.#stmt.columnName(i),
+    );
   }
 
   /** Returns the row as array containing columns' values. */
   asArray<T extends unknown[] = any[]>() {
     const columnCount = this.#stmt.columnCount;
-    const array = new Array(columnCount);
-    for (let i = 0; i < columnCount; i++) {
-      array[i] = this.#stmt.column(i);
-    }
-    return array as T;
+    return Array.from(
+      { length: columnCount },
+      (_, i) => this.#stmt.column(i),
+    ) as T;
   }
 
   /** Returns the row as object with column names mapping to values. */
   asObject<T extends Record<string, unknown> = Record<string, any>>(): T {
     const columnCount = this.#stmt.columnCount;
     const obj: Record<string, unknown> = {};
-    for (let i = 0; i < columnCount; i++) {
-      const name = this.#stmt.columnName(i);
-      obj[name] = this.#stmt.column(i);
-    }
+    Array.from(
+      { length: columnCount },
+      (_, i) => {
+        const name = this.#stmt.columnName(i);
+        obj[name] = this.#stmt.column(i);
+      },
+    );
     return obj as T;
   }
 }
@@ -511,16 +510,15 @@ export class PreparedStatement {
    * Binds all parameters to the prepared statement. This is a shortcut for calling `bind()` for each parameter.
    */
   bindAll(...values: unknown[]) {
-    for (let i = 0; i < values.length; i++) {
-      this.bind(i + 1, values[i]);
-    }
+    values.forEach((value, i) => this.bind(i + 1, value));
   }
 
   bindAllNamed(values: Record<string, unknown>) {
-    for (const name in values) {
-      const index = this.bindParameterIndex(":" + name);
-      this.bind(index, values[name]);
-    }
+    Object.keys(values)
+      .forEach((name) => {
+        const index = this.bindParameterIndex(":" + name);
+        this.bind(index, values[name]);
+      });
   }
 
   #cachedColCount?: number;

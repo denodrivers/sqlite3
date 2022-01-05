@@ -13,7 +13,7 @@ const ITERS = 10;
 
 const backends: Backend[] = [native, wasm];
 
-for (const backend of backends) {
+backends.forEach((backend) => {
   log("Bench", backend.name);
   level++;
 
@@ -31,24 +31,28 @@ for (const backend of backends) {
 
   let total = 0;
   let min!: number, max!: number;
-  for (let iter = 0; iter < ITERS; iter++) {
-    const now = performance.now();
-    const prep = backend.prepare("insert into test (value) values (?)");
-    for (let i = 0; i < ROWS; i++) {
-      prep.execute([`iter ${iter} loop ${i}`]);
-    }
-    prep.finalize();
-    const took = performance.now() - now;
+  Array.from(
+    { length: ITERS },
+    (_, iter) => {
+      const now = performance.now();
+      const prep = backend.prepare("insert into test (value) values (?)");
+      Array.from(
+        { length: ROWS },
+        (_, i) => prep.execute([`iter ${iter} loop ${i}`]),
+      );
+      prep.finalize();
+      const took = performance.now() - now;
 
-    if (min === undefined || max === undefined) {
-      min = max = took;
-    } else {
-      min = Math.min(min, took);
-      max = Math.max(max, took);
-    }
+      if (min === undefined || max === undefined) {
+        min = max = took;
+      } else {
+        min = Math.min(min, took);
+        max = Math.max(max, took);
+      }
 
-    total += took;
-  }
+      total += took;
+    },
+  );
 
   log(
     "Result",
@@ -64,7 +68,7 @@ for (const backend of backends) {
   level++;
 
   total = 0, min = undefined as any, max = undefined as any;
-  for (let iter = 0; iter < ITERS; iter++) {
+  Array.from({ length: ITERS }, () => {
     const now = performance.now();
     backend.query("select * from test");
     const took = performance.now() - now;
@@ -77,7 +81,7 @@ for (const backend of backends) {
     }
 
     total += took;
-  }
+  });
 
   log(
     "Result",
@@ -93,4 +97,4 @@ for (const backend of backends) {
   level--;
 
   backend.close();
-}
+});

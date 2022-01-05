@@ -71,15 +71,17 @@ Deno.test("sqlite", async (t) => {
       values (?, ?, ?, ?, ?)`,
     );
 
-    for (let i = 0; i < 10; i++) {
-      stmt.execute(
-        i,
-        `hello ${i}`,
-        3.14,
-        new Uint8Array([3, 2, 1]),
-        null,
-      );
-    }
+    Array.from(
+      { length: 10 },
+      (_, i) =>
+        stmt.execute(
+          i,
+          `hello ${i}`,
+          3.14,
+          new Uint8Array([3, 2, 1]),
+          null,
+        ),
+    );
 
     stmt.finalize();
 
@@ -111,13 +113,13 @@ Deno.test("sqlite", async (t) => {
     });
 
     assertEquals(rows.length, 9);
-    for (const row of rows) {
+    rows.forEach((row) => {
       assertEquals(typeof row.integer, "number");
       assertEquals(row.text, `hello ${row.integer}`);
       assertEquals(row.double, 3.14);
       assertEquals(row.blob, new Uint8Array([3, 2, 1]));
       assertEquals(row.nullable, null);
-    }
+    });
   });
 
   await t.step("query with string param", () => {
