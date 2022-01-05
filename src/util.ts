@@ -6,7 +6,7 @@ export function encode(str: string) {
   }
 }
 
-export function cstr(str: string) {
+export function toCString(str: string) {
   return new Uint8Array([...encode(str), 0]);
 }
 
