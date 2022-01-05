@@ -40,7 +40,7 @@ import {
   sqlite3_stmt,
   sqlite3_total_changes,
 } from "./ffi.ts";
-import { cstr, encode } from "./util.ts";
+import { cstr, encode, isObject } from "./util.ts";
 import { fromFileUrl } from "../deps.ts";
 
 /** SQLite version string */
@@ -144,7 +144,7 @@ export class Database {
   execute(sql: string, ...args: unknown[]) {
     if (args.length) {
       const prep = this.prepare(sql);
-      if (typeof args[0] === "object" && args[0] !== null) {
+      if (isObject(args[0])) {
         prep.bindAllNamed(args[0] as Record<string, unknown>);
       } else {
         prep.bindAll(...args);
@@ -204,7 +204,7 @@ export class Database {
     ...args: unknown[]
   ): T[] {
     const stmt = this.prepare(sql);
-    if (typeof args[0] === "object" && args[0] !== null) {
+    if (isObject(args[0])) {
       stmt.bindAllNamed(args[0] as Record<string, unknown>);
     } else {
       stmt.bindAll(...args);
@@ -259,7 +259,7 @@ export class Database {
     ...args: unknown[]
   ) {
     const stmt = this.prepare(sql);
-    if (typeof args[0] === "object" && args[0] !== null) {
+    if (isObject(args[0])) {
       stmt.bindAllNamed(args[0] as Record<string, unknown>);
     } else {
       stmt.bindAll(...args);
