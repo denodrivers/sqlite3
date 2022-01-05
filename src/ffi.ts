@@ -6,7 +6,7 @@ import {
   SQLITE3_OPEN_READWRITE,
   SQLITE3_ROW,
 } from "./constants.ts";
-import { cstr } from "./util.ts";
+import { toCString } from "./util.ts";
 
 const symbols = <Record<string, Deno.ForeignFunction>> {
   sqlite3_open_v2: {

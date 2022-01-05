@@ -143,14 +143,14 @@ export class Database {
   execute(sql: string, args: Record<string, unknown>): void;
   execute(sql: string, ...args: unknown[]) {
     if (args.length) {
-      const prep = this.prepare(sql);
+      const stmt = this.prepare(sql);
       if (isObject(args[0])) {
-        prep.bindAllNamed(args[0] as Record<string, unknown>);
+        stmt.bindAllNamed(args[0] as Record<string, unknown>);
       } else {
-        prep.bindAll(...args);
+        stmt.bindAll(...args);
       }
-      prep.step();
-      prep.finalize();
+      stmt.step();
+      stmt.finalize();
     } else sqlite3_exec(this.#handle, sql);
   }
 

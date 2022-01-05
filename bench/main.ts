@@ -35,12 +35,12 @@ backends.forEach((backend) => {
     { length: ITERS },
     (_, iter) => {
       const now = performance.now();
-      const prep = backend.prepare("insert into test (value) values (?)");
+      const stmt = backend.prepare("insert into test (value) values (?)");
       Array.from(
         { length: ROWS },
-        (_, i) => prep.execute([`iter ${iter} loop ${i}`]),
+        (_, i) => stmt.execute([`iter ${iter} loop ${i}`]),
       );
-      prep.finalize();
+      stmt.finalize();
       const took = performance.now() - now;
 
       if (min === undefined || max === undefined) {
