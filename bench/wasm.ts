@@ -10,10 +10,10 @@ export default <Backend> {
   name: "sqlite_wasm",
   execute: (sql, params) => void db.query(sql, params as any),
   prepare: (sql) => {
-    const prep = db.prepareQuery(sql);
+    const stmt = db.prepareQuery(sql);
     return {
-      execute: (params) => prep.execute(params as any),
-      finalize: () => prep.finalize(),
+      execute: (params) => stmt.execute(params as any),
+      finalize: () => stmt.finalize(),
     };
   },
   query: (sql) => db.query(sql),

@@ -11,10 +11,10 @@ export default <Backend> {
     db.execute(sql, ...params);
   },
   prepare: (sql) => {
-    const prep = db.prepare(sql);
+    const stmt = db.prepare(sql);
     return {
-      execute: (params) => prep.execute(...params),
-      finalize: () => prep.finalize(),
+      execute: (params) => stmt.execute(...params),
+      finalize: () => stmt.finalize(),
     };
   },
   query: (sql) => db.queryArray(sql),

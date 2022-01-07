@@ -6,7 +6,7 @@ import {
   SQLITE3_OPEN_READWRITE,
   SQLITE3_ROW,
 } from "./constants.ts";
-import { cstr } from "./util.ts";
+import { toCString } from "./util.ts";
 
 const symbols = <Record<string, Deno.ForeignFunction>> {
   sqlite3_open_v2: {
@@ -373,7 +373,7 @@ export function sqlite3_open_v2(
   path: string,
   flags: number = SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE,
 ): sqlite3 {
-  const pathPtr = cstr(path);
+  const pathPtr = toCString(path);
   const outDB = new BigUint64Array(1);
 
   const result = lib.symbols.sqlite3_open_v2(
@@ -398,7 +398,7 @@ export function sqlite3_prepare_v3(
   sql: string,
   flags = 0,
 ): sqlite3_stmt {
-  const sqlPtr = cstr(sql);
+  const sqlPtr = toCString(sql);
   const outStmt = new BigUint64Array(1);
   const outTail = new Uint8Array(8);
 
@@ -600,7 +600,7 @@ export function sqlite3_exec(
   db: sqlite3,
   sql: string,
 ) {
-  const sqlPtr = cstr(sql);
+  const sqlPtr = toCString(sql);
   const outPtr = new BigUint64Array(8);
 
   const result = lib.symbols.sqlite3_exec(
@@ -633,7 +633,7 @@ export function sqlite3_bind_parameter_index(
   stmt: sqlite3_stmt,
   name: string,
 ) {
-  const namePtr = cstr(name);
+  const namePtr = toCString(name);
   const index = lib.symbols.sqlite3_bind_parameter_index(
     stmt,
     namePtr,

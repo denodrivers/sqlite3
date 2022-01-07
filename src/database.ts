@@ -40,7 +40,7 @@ import {
   sqlite3_stmt,
   sqlite3_total_changes,
 } from "./ffi.ts";
-import { cstr, encode } from "./util.ts";
+import { encode, isObject } from "./util.ts";
 import { fromFileUrl } from "../deps.ts";
 
 /** SQLite version string */
@@ -143,14 +143,14 @@ export class Database {
   execute(sql: string, args: Record<string, unknown>): void;
   execute(sql: string, ...args: unknown[]) {
     if (args.length) {
-      const prep = this.prepare(sql);
-      if (typeof args[0] === "object" && args[0] !== null) {
-        prep.bindAllNamed(args[0] as Record<string, unknown>);
+      const stmt = this.prepare(sql);
+      if (isObject(args[0])) {
+        stmt.bindAllNamed(args[0] as Record<string, unknown>);
       } else {
-        prep.bindAll(...args);
+        stmt.bindAll(...args);
       }
-      prep.step();
-      prep.finalize();
+      stmt.step();
+      stmt.finalize();
     } else sqlite3_exec(this.#handle, sql);
   }
 
@@ -204,7 +204,7 @@ export class Database {
     ...args: unknown[]
   ): T[] {
     const stmt = this.prepare(sql);
-    if (typeof args[0] === "object" && args[0] !== null) {
+    if (isObject(args[0])) {
       stmt.bindAllNamed(args[0] as Record<string, unknown>);
     } else {
       stmt.bindAll(...args);
@@ -259,7 +259,7 @@ export class Database {
     ...args: unknown[]
   ) {
     const stmt = this.prepare(sql);
-    if (typeof args[0] === "object" && args[0] !== null) {
+    if (isObject(args[0])) {
       stmt.bindAllNamed(args[0] as Record<string, unknown>);
     } else {
       stmt.bindAll(...args);
@@ -386,15 +386,6 @@ export class PreparedStatement {
       throw new Error(`Couldn't find index for '${name}'`);
     }
     return index;
-  }
-
-  #cstrCache = new Map<string, Uint8Array>();
-
-  #cstr(str: string) {
-    if (this.#cstrCache.has(str)) return this.#cstrCache.get(str)!;
-    const val = cstr(str);
-    this.#cstrCache.set(str, val);
-    return val;
   }
 
   /**
@@ -627,7 +618,6 @@ export class PreparedStatement {
       this.#bufferRefs.clear();
       this.#colTypeCache.clear();
       this.#colNameCache.clear();
-      this.#cstrCache.clear();
       this.#cachedColCount = undefined;
     }
   }
