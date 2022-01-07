@@ -31,19 +31,6 @@ for (const backend of backends) {
 
   let total = 0;
   let min!: number, max!: number;
-<<<<<<< HEAD
-  Array.from(
-    { length: ITERS },
-    (_, iter) => {
-      const now = performance.now();
-      const stmt = backend.prepare("insert into test (value) values (?)");
-      Array.from(
-        { length: ROWS },
-        (_, i) => stmt.execute([`iter ${iter} loop ${i}`]),
-      );
-      stmt.finalize();
-      const took = performance.now() - now;
-=======
   for (let iter = 0; iter < ITERS; iter++) {
     const now = performance.now();
     const prep = backend.prepare("insert into test (value) values (?)");
@@ -52,7 +39,6 @@ for (const backend of backends) {
     }
     prep.finalize();
     const took = performance.now() - now;
->>>>>>> parent of 08e2089 (change: use array methods, for simplicity)
 
     if (min === undefined || max === undefined) {
       min = max = took;
