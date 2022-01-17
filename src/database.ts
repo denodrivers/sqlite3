@@ -34,7 +34,7 @@ import {
   sqlite3_finalize,
   sqlite3_libversion,
   sqlite3_open_v2,
-  sqlite3_prepare_v3,
+  sqlite3_prepare_v2,
   sqlite3_reset,
   sqlite3_step,
   sqlite3_stmt,
@@ -171,7 +171,7 @@ export class Database {
    * times and then `finalize` it.
    */
   prepare(sql: string) {
-    return new PreparedStatement(this, sqlite3_prepare_v3(this.#handle, sql));
+    return new PreparedStatement(this, sqlite3_prepare_v2(this.#handle, sql));
   }
 
   /**
