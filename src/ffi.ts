@@ -39,12 +39,11 @@ const symbols = <Record<string, Deno.ForeignFunction>> {
     result: "i32",
   },
 
-  sqlite3_prepare_v3: {
+  sqlite3_prepare_v2: {
     parameters: [
       "pointer", /* sqlite3 *db */
       "pointer", /* const char *sql */
       "i32", /* int nByte */
-      "u32", /* prepFlags */
       "pointer", /* sqlite3_stmt **ppStmt */
       "pointer", /* const char **pzTail */
     ],
@@ -393,20 +392,18 @@ export function sqlite3_close_v2(handle: sqlite3) {
   lib.symbols.sqlite3_close_v2(handle);
 }
 
-export function sqlite3_prepare_v3(
+export function sqlite3_prepare_v2(
   db: sqlite3,
   sql: string,
-  flags = 0,
 ): sqlite3_stmt {
   const sqlPtr = toCString(sql);
   const outStmt = new BigUint64Array(1);
   const outTail = new Uint8Array(8);
 
-  const result = lib.symbols.sqlite3_prepare_v3(
+  const result = lib.symbols.sqlite3_prepare_v2(
     db,
     sqlPtr,
     sql.length,
-    flags,
     outStmt,
     outTail,
   ) as number;
