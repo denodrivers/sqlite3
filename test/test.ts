@@ -42,9 +42,9 @@ Deno.test("sqlite", async (t) => {
   await t.step("create table", () => {
     db.execute(`
       create table test (
-        integer integer not null,
+        integer integer,
         text text not null,
-        double double not null,
+        double double,
         blob blob not null,
         nullable integer
       )
@@ -184,6 +184,24 @@ Deno.test("sqlite", async (t) => {
       "bigint3",
     )[0];
     assertEquals(int, value);
+  });
+
+  await t.step("nan value", () => {
+    db.execute(
+      `insert into test (integer, text, double, blob, nullable)
+    values (?, ?, ?, ?, ?)`,
+      NaN,
+      "nan",
+      NaN,
+      new Uint8Array(0),
+      null,
+    );
+    const [int, double] = db.queryArray<[number, number]>(
+      "select integer, double from test where text = ?",
+      "nan",
+    )[0];
+    assertEquals(int, null);
+    assertEquals(double, null);
   });
 
   await t.step("drop table", () => {
