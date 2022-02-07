@@ -42,9 +42,9 @@ Deno.test("sqlite", async (t) => {
   await t.step("create table", () => {
     db.execute(`
       create table test (
-        integer integer not null,
+        integer integer,
         text text not null,
-        double double not null,
+        double double,
         blob blob not null,
         nullable integer
       )
