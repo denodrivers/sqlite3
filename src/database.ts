@@ -407,7 +407,9 @@ export class PreparedStatement {
 
     switch (typeof value) {
       case "number":
-        if (Number.isSafeInteger(value)) {
+        if (isNaN(value)) {
+          this.bind(index, null);
+        } else if (Number.isSafeInteger(value)) {
           if (value < 2 ** 32 / 2 && value > -(2 ** 32 / 2)) {
             sqlite3_bind_int(
               this.db.unsafeRawHandle,
