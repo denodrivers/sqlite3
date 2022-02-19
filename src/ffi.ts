@@ -8,7 +8,7 @@ import {
 } from "./constants.ts";
 import { toCString } from "./util.ts";
 
-const symbols = <Record<string, Deno.ForeignFunction>> {
+const symbols = {
   sqlite3_open_v2: {
     parameters: [
       "pointer", /* const char *path */
@@ -299,7 +299,50 @@ const symbols = <Record<string, Deno.ForeignFunction>> {
     parameters: ["i32" /** int errcode */],
     result: "pointer",
   },
-};
+
+  sqlite3_blob_open: {
+    parameters: [
+      "pointer", /* sqlite3 *db */
+      "pointer", /* const char *zDb */
+      "pointer", /* const char *zTable */
+      "pointer", /* const char *zColumn */
+      "i64", /* sqlite3_int64 iRow */
+      "i32", /* int flags */
+      "pointer", /* sqlite3_blob **ppBlob */
+    ],
+    result: "i32",
+  },
+
+  sqlite3_blob_read: {
+    parameters: [
+      "pointer", /* sqlite3_blob *blob */
+      "pointer", /* void *Z */
+      "i32", /* int N */
+      "i32", /* int iOffset */
+    ],
+    result: "i32",
+  },
+
+  sqlite3_blob_write: {
+    parameters: [
+      "pointer", /* sqlite3_blob *blob */
+      "pointer", /* const void *z */
+      "i32", /* int n */
+      "i32", /* int iOffset */
+    ],
+    result: "i32",
+  },
+
+  sqlite3_blob_bytes: {
+    parameters: ["pointer" /* sqlite3_blob *blob */],
+    result: "i32",
+  },
+
+  sqlite3_blob_close: {
+    parameters: ["pointer" /* sqlite3_blob *blob */],
+    result: "i32",
+  },
+} as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>;
 
@@ -379,7 +422,7 @@ export function sqlite3_open_v2(
     pathPtr,
     outDB,
     flags,
-    new Deno.UnsafePointer(0n),
+    null,
   ) as number;
 
   const handle = new Deno.UnsafePointer(outDB[0]);
@@ -439,7 +482,7 @@ export function sqlite3_bind_text(
     index,
     value,
     value.length,
-    new Deno.UnsafePointer(0n),
+    null,
   ) as number;
 
   unwrap_error(db, result);
@@ -508,7 +551,7 @@ export function sqlite3_bind_blob(
     index,
     value,
     value.length,
-    new Deno.UnsafePointer(0n),
+    null,
   ) as number;
   unwrap_error(db, result);
 }
@@ -534,8 +577,8 @@ export function sqlite3_column_value(
 export function sqlite3_column_blob(
   stmt: sqlite3_stmt,
   col: number,
-): sqlite3_blob {
-  return lib.symbols.sqlite3_column_blob(stmt, col) as sqlite3_blob;
+): Deno.UnsafePointer {
+  return lib.symbols.sqlite3_column_blob(stmt, col);
 }
 
 export function sqlite3_column_bytes(stmt: sqlite3_stmt, col: number) {
@@ -603,8 +646,8 @@ export function sqlite3_exec(
   const result = lib.symbols.sqlite3_exec(
     db,
     sqlPtr,
-    new Deno.UnsafePointer(0n),
-    new Deno.UnsafePointer(0n),
+    null,
+    null,
     outPtr,
   );
 
@@ -660,4 +703,68 @@ export function sqlite3_changes(db: sqlite3) {
 
 export function sqlite3_total_changes(db: sqlite3) {
   return lib.symbols.sqlite3_total_changes(db) as number;
+}
+
+export function sqlite3_blob_open(
+  db: sqlite3,
+  dbName: string,
+  tableName: string,
+  columnName: string,
+  rowId: number,
+  flags: number,
+): sqlite3_blob {
+  const dbNamePtr = toCString(dbName);
+  const tableNamePtr = toCString(tableName);
+  const columnNamePtr = toCString(columnName);
+  const outBlob = new BigUint64Array(1);
+  const result = lib.symbols.sqlite3_blob_open(
+    db,
+    dbNamePtr,
+    tableNamePtr,
+    columnNamePtr,
+    rowId,
+    flags,
+    outBlob,
+  ) as number;
+  unwrap_error(db, result);
+  return new Deno.UnsafePointer(outBlob[0]);
+}
+
+export function sqlite3_blob_read(
+  blob: sqlite3_blob,
+  buffer: Uint8Array,
+  offset: number,
+  n: number,
+) {
+  const result = lib.symbols.sqlite3_blob_read(
+    blob,
+    buffer,
+    offset,
+    n,
+  ) as number;
+  unwrap_error(blob, result);
+}
+
+export function sqlite3_blob_write(
+  blob: sqlite3_blob,
+  buffer: Uint8Array,
+  offset: number,
+  n: number,
+) {
+  const result = lib.symbols.sqlite3_blob_write(
+    blob,
+    buffer,
+    offset,
+    n,
+  ) as number;
+  unwrap_error(blob, result);
+}
+
+export function sqlite3_blob_bytes(blob: sqlite3_blob) {
+  return lib.symbols.sqlite3_blob_bytes(blob) as number;
+}
+
+export function sqlite3_blob_close(blob: sqlite3_blob) {
+  const result = lib.symbols.sqlite3_blob_close(blob) as number;
+  unwrap_error(blob, result);
 }
