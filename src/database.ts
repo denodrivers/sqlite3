@@ -38,14 +38,20 @@ import {
   sqlite3_column_name,
   sqlite3_column_text,
   sqlite3_column_type,
+  sqlite3_complete,
   sqlite3_exec,
+  sqlite3_expanded_sql,
   sqlite3_finalize,
+  sqlite3_get_autocommit,
+  sqlite3_last_insert_rowid,
   sqlite3_libversion,
   sqlite3_open_v2,
   sqlite3_prepare_v2,
   sqlite3_reset,
+  sqlite3_sql,
   sqlite3_step,
   sqlite3_stmt,
+  sqlite3_stmt_readonly,
   sqlite3_total_changes,
 } from "./ffi.ts";
 import { encode, isObject } from "./util.ts";
@@ -53,6 +59,14 @@ import { fromFileUrl } from "../deps.ts";
 
 /** SQLite version string */
 export const SQLITE_VERSION = sqlite3_libversion();
+
+/**
+ * @param statement SQL statement string
+ * @returns Whether the statement is complete
+ */
+export function isComplete(statement: string) {
+  return sqlite3_complete(statement);
+}
 
 /** Various options that can be configured when opening Database connection. */
 export interface DatabaseOpenOptions {
@@ -103,6 +117,16 @@ export class Database {
     return sqlite3_total_changes(this.#handle);
   }
 
+  /** Gets last inserted Row ID */
+  get lastInsertRowId(): number {
+    return sqlite3_last_insert_rowid(this.#handle);
+  }
+
+  /** Whether autocommit is enabled. Enabled by default, cab be disabled using BEGIN statement. */
+  get autocommit(): boolean {
+    return sqlite3_get_autocommit(this.#handle);
+  }
+
   constructor(path: string | URL, options: DatabaseOpenOptions = {}) {
     this.#path = path instanceof URL ? fromFileUrl(path) : path;
     let flags = 0;
@@ -134,10 +158,16 @@ export class Database {
    * ```ts
    * // Create table
    * db.execute("create table users (id integer not null, username varchar(20) not null)");
+   *
    * // Inserts
    * db.execute("insert into users (id, username) values(?, ?)", id, username);
+   *
+   * // Or run SQL safely using Template Strings!
+   * db.execute`insert into users (id, username) values(${id}, ${username})`;
+   *
    * // Insert with named parameters
    * db.execute("insert into users (id, username) values(:id, :username)", { id, username });
+   *
    * // Pragma statements
    * db.execute("pragma journal_mode = WAL");
    * db.execute("pragma synchronous = normal");
@@ -147,11 +177,13 @@ export class Database {
    * Under the hood, it uses `sqlite3_exec` if no parameters are given to bind
    * with the SQL statement, a prepared statement otherwise.
    */
+  execute(strings: TemplateStringsArray, ...args: unknown[]): void;
   execute(sql: string, ...args: unknown[]): void;
   execute(sql: string, args: Record<string, unknown>): void;
-  execute(sql: string, ...args: unknown[]) {
+  execute(sql: string | TemplateStringsArray, ...args: unknown[]) {
+    const sqlStr = typeof sql === "string" ? sql : sql.join("?");
     if (args.length) {
-      const stmt = this.prepare(sql);
+      const stmt = this.prepare(sqlStr);
       if (isObject(args[0])) {
         stmt.bindAllNamed(args[0] as Record<string, unknown>);
       } else {
@@ -159,7 +191,7 @@ export class Database {
       }
       stmt.step();
       stmt.finalize();
-    } else sqlite3_exec(this.#handle, sql);
+    } else sqlite3_exec(this.#handle, sqlStr);
   }
 
   /**
@@ -168,9 +200,11 @@ export class Database {
    * Example:
    * ```ts
    * const stmt = db.prepare("insert into users (id, username) values (?, ?)");
+   *
    * for (const user of usersToInsert) {
    *   stmt.execute(id, user);
    * }
+   *
    * stmt.finalize();
    * ```
    *
@@ -179,7 +213,8 @@ export class Database {
    * times and then `finalize` it.
    */
   prepare(sql: string) {
-    return new PreparedStatement(this, sqlite3_prepare_v2(this.#handle, sql));
+    const handle = sqlite3_prepare_v2(this.#handle, sql);
+    return new PreparedStatement(this, handle);
   }
 
   /**
@@ -191,8 +226,13 @@ export class Database {
    * Example:
    * ```ts
    * const users = db.queryArray<[number, string]>("select id, username from users");
+   *
    * // Using bind parameters
    * const [user] = db.queryArray<[number, string]>("select id, username from users where email = ?", email);
+   *
+   * // Using template strings
+   * const [user] = db.queryArray<[number, string]>`select id, username from users where email = ${email}`;
+   *
    * // Using named bind parameters
    * const [user] = db.queryArray<[number, string]>("select id, username from users where email = :email", { email });
    * ```
@@ -202,16 +242,20 @@ export class Database {
    *
    * @returns Array of rows (where rows are containing array of columns).
    */
+  queryArray<T extends unknown[] = any[]>(
+    strings: TemplateStringsArray,
+    ...args: unknown[]
+  ): T[];
   queryArray<T extends unknown[] = any[]>(sql: string, ...args: unknown[]): T[];
   queryArray<T extends unknown[] = any[]>(
     sql: string,
     args: Record<string, unknown>,
   ): T[];
   queryArray<T extends unknown[] = any[]>(
-    sql: string,
+    sql: string | TemplateStringsArray,
     ...args: unknown[]
   ): T[] {
-    const stmt = this.prepare(sql);
+    const stmt = this.prepare(typeof sql === "string" ? sql : sql.join("?"));
     if (isObject(args[0])) {
       stmt.bindAllNamed(args[0] as Record<string, unknown>);
     } else {
@@ -237,11 +281,19 @@ export class Database {
    *   id: number,
    *   username: string,
    * }>("select id, username from users");
+   *
    * // Using bind parameters
    * const [user] = db.queryObject<{
    *   id: number,
    *   username: string,
    * }>("select id, username from users where email = ?", email);
+   *
+   * // Using template strings
+   * const [user] = db.queryObject<{
+   *  id: number,
+   *  username: string,
+   * }>`select id, username from users where email = ${email}`;
+   *
    * // Using named bind parameters
    * const [user] = db.queryObject<{
    *   id: number,
@@ -255,6 +307,10 @@ export class Database {
    * @returns Array of rows, where rows are objects mapping column names to values.
    */
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
+    strings: TemplateStringsArray,
+    ...args: unknown[]
+  ): T[];
+  queryObject<T extends Record<string, unknown> = Record<string, any>>(
     sql: string,
     ...args: unknown[]
   ): T[];
@@ -263,10 +319,10 @@ export class Database {
     args: Record<string, unknown>,
   ): T[];
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
-    sql: string,
+    sql: string | TemplateStringsArray,
     ...args: unknown[]
   ) {
-    const stmt = this.prepare(sql);
+    const stmt = this.prepare(typeof sql === "string" ? sql : sql.join("?"));
     if (isObject(args[0])) {
       stmt.bindAllNamed(args[0] as Record<string, unknown>);
     } else {
@@ -391,6 +447,21 @@ export class PreparedStatement {
   /** Current row */
   get row(): Row {
     return this.#row;
+  }
+
+  /** The SQL string that we passed when creating statement */
+  get sql(): string {
+    return sqlite3_sql(this.#handle)!;
+  }
+
+  /** SQL string including bindings */
+  get expandedSql(): string {
+    return sqlite3_expanded_sql(this.#handle)!;
+  }
+
+  /** Whether this statement doesn't make any direct changes to the DB */
+  get readonly(): boolean {
+    return sqlite3_stmt_readonly(this.#handle);
   }
 
   constructor(db: Database, handle: sqlite3_stmt) {

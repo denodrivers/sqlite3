@@ -366,6 +366,36 @@ const symbols = {
     parameters: ["pointer" /* sqlite3_blob *blob */],
     result: "i32",
   },
+
+  sqlite3_sql: {
+    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    result: "pointer",
+  },
+
+  sqlite3_expanded_sql: {
+    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    result: "pointer",
+  },
+
+  sqlite3_stmt_readonly: {
+    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    result: "i32",
+  },
+
+  sqlite3_complete: {
+    parameters: ["pointer" /* const char *sql */],
+    result: "i32",
+  },
+
+  sqlite3_last_insert_rowid: {
+    parameters: ["pointer" /* sqlite3 *db */],
+    result: "i64",
+  },
+
+  sqlite3_get_autocommit: {
+    parameters: ["pointer" /* sqlite3 *db */],
+    result: "i32",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>;
@@ -821,4 +851,35 @@ export function sqlite3_blob_bytes(blob: sqlite3_blob) {
 export function sqlite3_blob_close(blob: sqlite3_blob) {
   const result = lib.symbols.sqlite3_blob_close(blob) as number;
   unwrap_error(blob, result);
+}
+
+export function sqlite3_sql(stmt: sqlite3_stmt) {
+  const ptr = lib.symbols.sqlite3_sql(stmt);
+  if (ptr.value === 0n) return null;
+  else return new Deno.UnsafePointerView(ptr).getCString();
+}
+
+export function sqlite3_expanded_sql(stmt: sqlite3_stmt) {
+  const ptr = lib.symbols.sqlite3_expanded_sql(stmt);
+  if (ptr.value === 0n) return null;
+  const str = new Deno.UnsafePointerView(ptr).getCString();
+  sqlite3_free(ptr);
+  return str;
+}
+
+export function sqlite3_stmt_readonly(stmt: sqlite3_stmt) {
+  return Boolean(lib.symbols.sqlite3_stmt_readonly(stmt));
+}
+
+export function sqlite3_complete(sql: string) {
+  const sqlPtr = toCString(sql);
+  return Boolean(lib.symbols.sqlite3_complete(sqlPtr));
+}
+
+export function sqlite3_last_insert_rowid(db: sqlite3) {
+  return lib.symbols.sqlite3_last_insert_rowid(db);
+}
+
+export function sqlite3_get_autocommit(db: sqlite3) {
+  return Boolean(lib.symbols.sqlite3_get_autocommit(db));
 }
