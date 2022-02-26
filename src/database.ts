@@ -338,7 +338,12 @@ export class Database {
     return rows as T[];
   }
 
-  /** Open a Blob for incremental I/O. */
+  /**
+   * Open a Blob for incremental I/O.
+   *
+   * Make sure to close the blob after you are done with it,
+   * otherwise you will have memory leaks.
+   */
   openBlob(options: BlobOpenOptions): SQLBlob {
     options = Object.assign({
       readonly: true,
