@@ -722,7 +722,7 @@ export class PreparedStatement {
   execute(...args: BindValue[]): void;
   execute(args: Record<string, BindValue>): void;
   execute(...args: BindValue[] | [Record<string, BindValue>]): void {
-    if (args.length === 1 && typeof args[0] === "object") {
+    if (args.length === 1 && isObject(args[0])) {
       this.bindAllNamed(args[0] as Record<string, BindValue>);
     } else {
       this.bindAll(...args as BindValue[]);
