@@ -333,6 +333,30 @@ const symbols = {
     result: "i32",
   },
 
+  sqlite3_blob_read_async: {
+    name: "sqlite3_blob_read",
+    parameters: [
+      "pointer", /* sqlite3_blob *blob */
+      "pointer", /* void *Z */
+      "i32", /* int N */
+      "i32", /* int iOffset */
+    ],
+    nonblocking: true,
+    result: "i32",
+  },
+
+  sqlite3_blob_write_async: {
+    name: "sqlite3_blob_write",
+    parameters: [
+      "pointer", /* sqlite3_blob *blob */
+      "pointer", /* const void *z */
+      "i32", /* int n */
+      "i32", /* int iOffset */
+    ],
+    nonblocking: true,
+    result: "i32",
+  },
+
   sqlite3_blob_bytes: {
     parameters: ["pointer" /* sqlite3_blob *blob */],
     result: "i32",
@@ -739,8 +763,8 @@ export function sqlite3_blob_read(
   const result = lib.symbols.sqlite3_blob_read(
     blob,
     buffer,
-    offset,
     n,
+    offset,
   ) as number;
   unwrap_error(blob, result);
 }
@@ -754,9 +778,39 @@ export function sqlite3_blob_write(
   const result = lib.symbols.sqlite3_blob_write(
     blob,
     buffer,
-    offset,
     n,
+    offset,
   ) as number;
+  unwrap_error(blob, result);
+}
+
+export async function sqlite3_blob_read_async(
+  blob: sqlite3_blob,
+  buffer: Uint8Array,
+  offset: number,
+  n: number,
+) {
+  const result = await lib.symbols.sqlite3_blob_read_async(
+    blob,
+    buffer,
+    n,
+    offset,
+  );
+  unwrap_error(blob, result);
+}
+
+export async function sqlite3_blob_write_async(
+  blob: sqlite3_blob,
+  buffer: Uint8Array,
+  offset: number,
+  n: number,
+) {
+  const result = await lib.symbols.sqlite3_blob_write_async(
+    blob,
+    buffer,
+    n,
+    offset,
+  );
   unwrap_error(blob, result);
 }
 

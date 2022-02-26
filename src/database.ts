@@ -20,6 +20,14 @@ import {
   sqlite3_bind_parameter_index,
   sqlite3_bind_parameter_name,
   sqlite3_bind_text,
+  sqlite3_blob,
+  sqlite3_blob_bytes,
+  sqlite3_blob_close,
+  sqlite3_blob_open,
+  sqlite3_blob_read,
+  sqlite3_blob_read_async,
+  sqlite3_blob_write,
+  sqlite3_blob_write_async,
   sqlite3_changes,
   sqlite3_close_v2,
   sqlite3_column_blob,
@@ -270,6 +278,27 @@ export class Database {
     }
     stmt.finalize();
     return rows as T[];
+  }
+
+  openBlob(
+    db: string,
+    table: string,
+    column: string,
+    row: number,
+    flags: number,
+  ) {
+    const handle = sqlite3_blob_open(
+      this.#handle,
+      db,
+      table,
+      column,
+      row,
+      flags,
+    );
+    if (handle.value === 0n) {
+      throw new Error("null blob handle");
+    }
+    return new SQLBlob(handle);
   }
 
   /**
@@ -631,6 +660,126 @@ export class PreparedStatement {
     let row;
     while ((row = this.step())) {
       yield row;
+    }
+  }
+}
+
+/**
+ * Enumerates SQLite3 Blob opened for streamed I/O.
+ *
+ * BLOB columns still return a `Uint8Array` of the data.
+ * You can instead open this from `Database.openBlob()`.
+ *
+ * @see https://www.sqlite.org/c3ref/blob_open.html
+ */
+export class SQLBlob {
+  #handle: sqlite3_blob;
+
+  constructor(handle: sqlite3_blob) {
+    this.#handle = handle;
+  }
+
+  get byteLength(): number {
+    return sqlite3_blob_bytes(this.#handle);
+  }
+
+  readSync(offset: number, p: Uint8Array) {
+    sqlite3_blob_read(this.#handle, p, offset, p.byteLength);
+  }
+
+  writeSync(offset: number, p: Uint8Array) {
+    sqlite3_blob_write(this.#handle, p, offset, p.byteLength);
+  }
+
+  async read(offset: number, p: Uint8Array) {
+    await sqlite3_blob_read_async(this.#handle, p, offset, p.byteLength);
+  }
+
+  async write(offset: number, p: Uint8Array) {
+    await sqlite3_blob_write_async(this.#handle, p, offset, p.byteLength);
+  }
+
+  close() {
+    sqlite3_blob_close(this.#handle);
+  }
+
+  get readable(): ReadableStream<Uint8Array> {
+    const length = this.byteLength;
+    let offset = 0;
+    return new ReadableStream({
+      type: "bytes",
+      pull: async (ctx) => {
+        try {
+          const byob = ctx.byobRequest;
+          if (byob) {
+            const toRead = Math.min(
+              length - offset,
+              byob.view!.byteLength,
+            );
+            await this.read(
+              offset,
+              (byob.view as Uint8Array).subarray(0, toRead),
+            );
+            offset += toRead;
+            byob.respond(toRead);
+          } else {
+            const toRead = Math.min(
+              length - offset,
+              ctx.desiredSize || 1024 * 16,
+            );
+            if (toRead === 0) {
+              ctx.close();
+              return;
+            }
+            const buffer = new Uint8Array(toRead);
+            await this.read(offset, buffer);
+            offset += toRead;
+            ctx.enqueue(buffer);
+          }
+        } catch (e) {
+          ctx.error(e);
+          ctx.byobRequest?.respond(0);
+        }
+      },
+    });
+  }
+
+  get writable(): WritableStream<Uint8Array> {
+    const length = this.byteLength;
+    let offset = 0;
+    return new WritableStream({
+      write: async (chunk, ctx) => {
+        if (offset + chunk.byteLength > length) {
+          ctx.error(new Error("Write exceeds blob length"));
+          return;
+        }
+        await this.write(offset, chunk);
+        offset += chunk.byteLength;
+      },
+    });
+  }
+
+  *[Symbol.iterator]() {
+    const length = this.byteLength;
+    let offset = 0;
+    while (offset < length) {
+      const toRead = Math.min(length - offset, 1024 * 16);
+      const buffer = new Uint8Array(toRead);
+      this.readSync(offset, buffer);
+      offset += toRead;
+      yield buffer;
+    }
+  }
+
+  async *[Symbol.asyncIterator]() {
+    const length = this.byteLength;
+    let offset = 0;
+    while (offset < length) {
+      const toRead = Math.min(length - offset, 1024 * 16);
+      const buffer = new Uint8Array(toRead);
+      await this.read(offset, buffer);
+      offset += toRead;
+      yield buffer;
     }
   }
 }

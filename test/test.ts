@@ -204,8 +204,95 @@ Deno.test("sqlite", async (t) => {
     assertEquals(double, null);
   });
 
+  await t.step("create blob table", () => {
+    db.execute(`
+      create table blobs (
+        id integer primary key,
+        data blob not null
+      )
+    `);
+  });
+
+  await t.step("insert blob", () => {
+    const blob = new Uint8Array(1024 * 32);
+    db.execute("insert into blobs (id, data) values (?, ?)", 0, blob);
+  });
+
+  await t.step("sql blob", async (t) => {
+    const [row] = db.queryArray<[number]>(
+      "select id from blobs where id = ?",
+      0,
+    )[0];
+    const blob = db.openBlob("main", "blobs", "data", row, 1);
+
+    await t.step("byte legnth", () => {
+      assertEquals(blob.byteLength, 1024 * 32);
+    });
+
+    await t.step("read from blob", () => {
+      const data = new Uint8Array(blob.byteLength);
+      blob.readSync(0, data);
+      assertEquals(data, new Uint8Array(1024 * 32));
+    });
+
+    await t.step("write to blob", () => {
+      const data = new Uint8Array(1024 * 32).fill(0x01);
+      blob.writeSync(0, data);
+    });
+
+    await t.step("read from blob (async)", async () => {
+      const data = new Uint8Array(blob.byteLength);
+      await blob.read(0, data);
+      assertEquals(data, new Uint8Array(1024 * 32).fill(0x01));
+    });
+
+    await t.step("write to blob (async)", async () => {
+      const data = new Uint8Array(1024 * 32).fill(0x02);
+      await blob.write(0, data);
+    });
+
+    await t.step("read from blob (stream)", async () => {
+      let chunks = 0;
+      for await (const chunk of blob.readable) {
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x02));
+        chunks++;
+      }
+      assertEquals(chunks, 2);
+    });
+
+    await t.step("read from blob (iter)", () => {
+      let chunks = 0;
+      for (const chunk of blob) {
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x02));
+        chunks++;
+      }
+      assertEquals(chunks, 2);
+    });
+
+    await t.step("write to blob (stream)", async () => {
+      const writer = blob.writable.getWriter();
+      await writer.write(new Uint8Array(1024 * 16).fill(0x03));
+      await writer.write(new Uint8Array(1024 * 16).fill(0x03));
+      await writer.close();
+    });
+
+    await t.step("read from blob (async iter)", async () => {
+      let chunks = 0;
+      for await (const chunk of blob) {
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x03));
+        chunks++;
+      }
+      assertEquals(chunks, 2);
+    });
+
+    await t.step("close blob", () => {
+      blob.close();
+    });
+  });
+
   await t.step("drop table", () => {
     db.execute("drop table test");
+    db.execute("drop table blobs");
   });
 
   await t.step("close", () => {
