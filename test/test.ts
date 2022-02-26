@@ -279,11 +279,12 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("sql blob", async (t) => {
-    const [row] = db.queryArray<[number]>(
-      "select id from blobs where id = ?",
-      0,
-    )[0];
-    const blob = db.openBlob("main", "blobs", "data", row, 1);
+    const blob = db.openBlob({
+      table: "blobs",
+      column: "data",
+      row: db.lastInsertRowId,
+      readonly: false,
+    });
 
     await t.step("byte legnth", () => {
       assertEquals(blob.byteLength, 1024 * 32);

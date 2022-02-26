@@ -63,6 +63,19 @@ export interface DatabaseOpenOptions {
   memory?: boolean;
 }
 
+export interface BlobOpenOptions {
+  /** Whether to open Blob in readonly mode. True by default. */
+  readonly?: boolean;
+  /** Database to open Blob from, "main" by default. */
+  db?: string;
+  /** Table the Blob is in */
+  table: string;
+  /** Column name of the Blob Field */
+  column: string;
+  /** Row ID of which column to select */
+  row: number;
+}
+
 /**
  * Represents a SQLite3 database connection.
  *
@@ -325,20 +338,19 @@ export class Database {
     return rows as T[];
   }
 
-  openBlob(
-    db: string,
-    table: string,
-    column: string,
-    row: number,
-    flags: number,
-  ): SQLBlob {
+  /** Open a Blob for incremental I/O. */
+  openBlob(options: BlobOpenOptions): SQLBlob {
+    options = Object.assign({
+      readonly: true,
+      db: "main",
+    }, options);
     const handle = sqlite3_blob_open(
       this.#handle,
-      db,
-      table,
-      column,
-      row,
-      flags,
+      options.db!,
+      options.table,
+      options.column,
+      options.row,
+      options.readonly === false ? 1 : 0,
     );
     if (handle.value === 0n) {
       throw new Error("null blob handle");
