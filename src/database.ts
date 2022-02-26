@@ -45,7 +45,7 @@ export const SQLITE_SOURCEID = sqlite3_sourceid();
 
 /**
  * Whether the given SQL statement is complete.
- * 
+ *
  * @param statement SQL statement string
  */
 export function isComplete(statement: string): boolean {
@@ -85,13 +85,13 @@ export interface BlobOpenOptions {
  * ```ts
  * // Open a database from file, creates if doesn't exist.
  * const db = new Database("myfile.db");
- * 
+ *
  * // Open an in-memory database.
  * const db = new Database(":memory:");
- * 
+ *
  * // Open a read-only database.
  * const db = new Database("myfile.db", { readonly: true });
- * 
+ *
  * // Or open using File URL
  * const db = new Database(new URL("./myfile.db", import.meta.url));
  * ```
