@@ -1,7 +1,24 @@
-import { Database, SQLITE_VERSION } from "../mod.ts";
-import { assertEquals, assertThrows } from "./deps.ts";
+import {
+  Database,
+  isComplete,
+  SQLITE_SOURCEID,
+  SQLITE_VERSION,
+} from "../mod.ts";
+import { assert, assertEquals, assertThrows } from "./deps.ts";
 
 Deno.test("sqlite", async (t) => {
+  await t.step("sourceid", () => {
+    assert(SQLITE_SOURCEID.length > 0);
+  });
+
+  await t.step("is complete", () => {
+    assert(!isComplete(""));
+    assert(!isComplete("select sqlite_version()"));
+
+    assert(isComplete("select x from y;"));
+    assert(isComplete("select sqlite_version();"));
+  });
+
   const DB_URL = new URL("./test.db", import.meta.url);
 
   // Remove any existing test.db.
@@ -39,16 +56,27 @@ Deno.test("sqlite", async (t) => {
     assertEquals(version, SQLITE_VERSION);
   });
 
+  await t.step("select version with tag", () => {
+    const [version] = db.queryArray`select sqlite_version()`[0];
+    assertEquals(version, SQLITE_VERSION);
+  });
+
+  await t.step("autocommit", () => {
+    assertEquals(db.autocommit, true);
+  });
+
+  await t.step("last insert row id", () => {
+    assertEquals(db.lastInsertRowId, 0);
+  });
+
   await t.step("create table", () => {
-    db.execute(`
-      create table test (
-        integer integer,
-        text text not null,
-        double double,
-        blob blob not null,
-        nullable integer
-      )
-    `);
+    db.execute`create table test (
+      integer integer,
+      text text not null,
+      double double,
+      blob blob not null,
+      nullable integer
+    )`;
   });
 
   await t.step("insert one", () => {
@@ -65,10 +93,32 @@ Deno.test("sqlite", async (t) => {
     assertEquals(db.totalChanges, 1);
   });
 
+  await t.step("delete inserted row", () => {
+    db.execute("delete from test where integer = 0");
+  });
+
+  await t.step("insert one", () => {
+    db.execute`insert into test (integer, text, double, blob, nullable)
+      values (${0}, ${"hello world"}, ${3.14}, ${new Uint8Array([
+      1,
+      2,
+      3,
+    ])}, ${null})`;
+  });
+
+  await t.step("last insert row id (after insert)", () => {
+    assertEquals(db.lastInsertRowId, 1);
+  });
+
   await t.step("prepared insert", () => {
-    const stmt = db.prepare(
+    const SQL = `insert into test (integer, text, double, blob, nullable)
+    values (?, ?, ?, ?, ?)`;
+    const stmt = db.prepare(SQL);
+    assertEquals(stmt.sql, SQL);
+    assertEquals(
+      stmt.expandedSql,
       `insert into test (integer, text, double, blob, nullable)
-      values (?, ?, ?, ?, ?)`,
+    values (NULL, NULL, NULL, NULL, NULL)`,
     );
 
     for (let i = 0; i < 10; i++) {
@@ -83,14 +133,13 @@ Deno.test("sqlite", async (t) => {
 
     stmt.finalize();
 
-    assertEquals(db.totalChanges, 11);
+    assertEquals(db.totalChanges, 13);
   });
 
   await t.step("query array", () => {
-    const row = db.queryArray<[number, string, number, Uint8Array, null]>(
-      "select * from test where integer = ?",
-      0,
-    )[0];
+    const row =
+      db.queryArray<[number, string, number, Uint8Array, null]>
+        `select * from test where integer = 0`[0];
     assertEquals(row[0], 0);
     assertEquals(row[1], "hello world");
     assertEquals(row[2], 3.14);
@@ -125,6 +174,17 @@ Deno.test("sqlite", async (t) => {
       "select * from test where text = ?",
       "hello world",
     )[0];
+    assertEquals(row[0], 0);
+    assertEquals(row[1], "hello world");
+    assertEquals(row[2], 3.14);
+    assertEquals(row[3], new Uint8Array([1, 2, 3]));
+    assertEquals(row[4], null);
+  });
+
+  await t.step("query with string param (template string)", () => {
+    const row =
+      db.queryArray<[number, string, number, Uint8Array, null]>
+        `select * from test where text = ${"hello world"}`[0];
     assertEquals(row[0], 0);
     assertEquals(row[1], "hello world");
     assertEquals(row[2], 3.14);
@@ -204,8 +264,96 @@ Deno.test("sqlite", async (t) => {
     assertEquals(double, null);
   });
 
+  await t.step("create blob table", () => {
+    db.execute(`
+      create table blobs (
+        id integer primary key,
+        data blob not null
+      )
+    `);
+  });
+
+  await t.step("insert blob", () => {
+    const blob = new Uint8Array(1024 * 32);
+    db.execute("insert into blobs (id, data) values (?, ?)", 0, blob);
+  });
+
+  await t.step("sql blob", async (t) => {
+    const blob = db.openBlob({
+      table: "blobs",
+      column: "data",
+      row: db.lastInsertRowId,
+      readonly: false,
+    });
+
+    await t.step("byte legnth", () => {
+      assertEquals(blob.byteLength, 1024 * 32);
+    });
+
+    await t.step("read from blob", () => {
+      const data = new Uint8Array(blob.byteLength);
+      blob.readSync(0, data);
+      assertEquals(data, new Uint8Array(1024 * 32));
+    });
+
+    await t.step("write to blob", () => {
+      const data = new Uint8Array(1024 * 32).fill(0x01);
+      blob.writeSync(0, data);
+    });
+
+    await t.step("read from blob (async)", async () => {
+      const data = new Uint8Array(blob.byteLength);
+      await blob.read(0, data);
+      assertEquals(data, new Uint8Array(1024 * 32).fill(0x01));
+    });
+
+    await t.step("write to blob (async)", async () => {
+      const data = new Uint8Array(1024 * 32).fill(0x02);
+      await blob.write(0, data);
+    });
+
+    await t.step("read from blob (stream)", async () => {
+      let chunks = 0;
+      for await (const chunk of blob.readable) {
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x02));
+        chunks++;
+      }
+      assertEquals(chunks, 2);
+    });
+
+    await t.step("read from blob (iter)", () => {
+      let chunks = 0;
+      for (const chunk of blob) {
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x02));
+        chunks++;
+      }
+      assertEquals(chunks, 2);
+    });
+
+    await t.step("write to blob (stream)", async () => {
+      const writer = blob.writable.getWriter();
+      await writer.write(new Uint8Array(1024 * 16).fill(0x03));
+      await writer.write(new Uint8Array(1024 * 16).fill(0x03));
+      await writer.close();
+    });
+
+    await t.step("read from blob (async iter)", async () => {
+      let chunks = 0;
+      for await (const chunk of blob) {
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x03));
+        chunks++;
+      }
+      assertEquals(chunks, 2);
+    });
+
+    await t.step("close blob", () => {
+      blob.close();
+    });
+  });
+
   await t.step("drop table", () => {
     db.execute("drop table test");
+    db.execute("drop table blobs");
   });
 
   await t.step("close", () => {

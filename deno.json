@@ -4,6 +4,11 @@
       "exclude": [
         "camelcase",
         "no-explicit-any"
+      ],
+      "include": [
+        "explicit-function-return-type",
+        "eqeqeq",
+        "explicit-module-boundary-types"
       ]
     }
   }
