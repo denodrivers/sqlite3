@@ -6,7 +6,9 @@
         "no-explicit-any"
       ],
       "include": [
-        "explicit-function-return-type"
+        "explicit-function-return-type",
+        "eqeqeq",
+        "explicit-module-boundary-types"
       ]
     }
   }

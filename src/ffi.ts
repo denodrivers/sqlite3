@@ -459,8 +459,9 @@ export function sqlite3_errstr(result: number): string {
 export function unwrap_error(
   db: sqlite3,
   result: number,
-  valid: number[] = [SQLITE3_OK],
+  valid?: number[],
 ): void {
+  valid = valid ?? [SQLITE3_OK];
   if (!valid.includes(result)) {
     let msg;
     try {
@@ -475,10 +476,8 @@ export function unwrap_error(
   }
 }
 
-export function sqlite3_open_v2(
-  path: string,
-  flags: number = SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE,
-): sqlite3 {
+export function sqlite3_open_v2(path: string, flags?: number): sqlite3 {
+  flags = flags ?? SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE;
   const pathPtr = toCString(path);
   const outDB = new BigUint64Array(1);
 
