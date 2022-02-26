@@ -4,7 +4,7 @@ import { Backend } from "./backend.ts";
 
 let level = 0;
 
-function log(type: string, msg: string) {
+function log(type: string, msg: string): void {
   console.log(`${"  ".repeat(level)}%c${type} %c${msg}`, "color: #0DBC79", "");
 }
 
