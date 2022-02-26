@@ -75,13 +75,14 @@ export type BindValue =
 
 /** SQLite version string */
 export const SQLITE_VERSION = sqlite3_libversion();
+/** SQLite source ID string */
 export const SQLITE_SOURCEID = sqlite3_sourceid();
 
 /**
  * @param statement SQL statement string
  * @returns Whether the statement is complete
  */
-export function isComplete(statement: string) {
+export function isComplete(statement: string): boolean {
   return sqlite3_complete(statement);
 }
 
@@ -232,7 +233,7 @@ export class Database {
    * @returns A `PreparedStatement` object, on which you can call `execute` multiple
    * times and then `finalize` it.
    */
-  prepare(sql: string) {
+  prepare(sql: string): PreparedStatement {
     const handle = sqlite3_prepare_v2(this.#handle, sql);
     return new PreparedStatement(this, handle);
   }
@@ -344,7 +345,7 @@ export class Database {
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
     sql: string | TemplateStringsArray,
     ...args: BindValue[] | [Record<string, BindValue>]
-  ) {
+  ): T[] {
     const stmt = this.prepare(typeof sql === "string" ? sql : sql.join("?"));
     if (isObject(args[0])) {
       stmt.bindAllNamed(args[0] as Record<string, BindValue>);
@@ -365,7 +366,7 @@ export class Database {
     column: string,
     row: number,
     flags: number,
-  ) {
+  ): SQLBlob {
     const handle = sqlite3_blob_open(
       this.#handle,
       db,
@@ -385,7 +386,7 @@ export class Database {
    *
    * Calling this method more than once is no-op.
    */
-  close() {
+  close(): void {
     sqlite3_close_v2(this.#handle);
   }
 }
@@ -428,7 +429,7 @@ export class Row {
   }
 
   /** Returns the row as array containing columns' values. */
-  asArray<T extends unknown[] = any[]>() {
+  asArray<T extends unknown[] = any[]>(): T {
     const columnCount = this.#stmt.columnCount;
     const array = new Array(columnCount);
     for (let i = 0; i < columnCount; i++) {
@@ -493,17 +494,17 @@ export class PreparedStatement {
   }
 
   /** Binding parameter count in the prepared statement. */
-  get bindParameterCount() {
+  get bindParameterCount(): number {
     return sqlite3_bind_parameter_count(this.#handle);
   }
 
   /** Get name of a binding parameter by its index. */
-  bindParameterName(index: number) {
+  bindParameterName(index: number): string {
     return sqlite3_bind_parameter_name(this.#handle, index);
   }
 
   /** Get index of a binding parameter by its name. */
-  bindParameterIndex(name: string) {
+  bindParameterIndex(name: string): number {
     const index = sqlite3_bind_parameter_index(this.#handle, name);
     if (index === 0) {
       throw new Error(`Couldn't find index for '${name}'`);
@@ -523,7 +524,7 @@ export class PreparedStatement {
   #bufferRefs = new Set<Uint8Array>();
 
   /** Bind a parameter for the prepared query either by index or name. */
-  bind(param: number | string, value: BindValue) {
+  bind(param: number | string, value: BindValue): void {
     const index = typeof param === "number"
       ? param
       : this.bindParameterIndex(param);
@@ -783,23 +784,23 @@ export class SQLBlob {
     return sqlite3_blob_bytes(this.#handle);
   }
 
-  readSync(offset: number, p: Uint8Array) {
+  readSync(offset: number, p: Uint8Array): void {
     sqlite3_blob_read(this.#handle, p, offset, p.byteLength);
   }
 
-  writeSync(offset: number, p: Uint8Array) {
+  writeSync(offset: number, p: Uint8Array): void {
     sqlite3_blob_write(this.#handle, p, offset, p.byteLength);
   }
 
-  async read(offset: number, p: Uint8Array) {
+  async read(offset: number, p: Uint8Array): Promise<void> {
     await sqlite3_blob_read_async(this.#handle, p, offset, p.byteLength);
   }
 
-  async write(offset: number, p: Uint8Array) {
+  async write(offset: number, p: Uint8Array): Promise<void> {
     await sqlite3_blob_write_async(this.#handle, p, offset, p.byteLength);
   }
 
-  close() {
+  close(): void {
     sqlite3_blob_close(this.#handle);
   }
 
@@ -859,7 +860,7 @@ export class SQLBlob {
     });
   }
 
-  *[Symbol.iterator]() {
+  *[Symbol.iterator](): IterableIterator<Uint8Array> {
     const length = this.byteLength;
     let offset = 0;
     while (offset < length) {
@@ -871,7 +872,7 @@ export class SQLBlob {
     }
   }
 
-  async *[Symbol.asyncIterator]() {
+  async *[Symbol.asyncIterator](): AsyncIterableIterator<Uint8Array> {
     const length = this.byteLength;
     let offset = 0;
     while (offset < length) {

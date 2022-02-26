@@ -4,6 +4,9 @@
       "exclude": [
         "camelcase",
         "no-explicit-any"
+      ],
+      "include": [
+        "explicit-function-return-type"
       ]
     }
   }
