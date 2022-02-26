@@ -49,6 +49,7 @@ import {
   sqlite3_open_v2,
   sqlite3_prepare_v2,
   sqlite3_reset,
+  sqlite3_sourceid,
   sqlite3_sql,
   sqlite3_step,
   sqlite3_stmt,
@@ -74,6 +75,7 @@ export type BindValue =
 
 /** SQLite version string */
 export const SQLITE_VERSION = sqlite3_libversion();
+export const SQLITE_SOURCEID = sqlite3_sourceid();
 
 /**
  * @param statement SQL statement string

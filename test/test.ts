@@ -1,7 +1,16 @@
-import { Database, isComplete, SQLITE_VERSION } from "../mod.ts";
+import {
+  Database,
+  isComplete,
+  SQLITE_SOURCEID,
+  SQLITE_VERSION,
+} from "../mod.ts";
 import { assert, assertEquals, assertThrows } from "./deps.ts";
 
 Deno.test("sqlite", async (t) => {
+  await t.step("sourceid", () => {
+    assert(SQLITE_SOURCEID.length > 0);
+  });
+
   await t.step("is complete", () => {
     assert(!isComplete(""));
     assert(!isComplete("select sqlite_version()"));
