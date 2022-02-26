@@ -44,8 +44,9 @@ export const SQLITE_VERSION = sqlite3_libversion();
 export const SQLITE_SOURCEID = sqlite3_sourceid();
 
 /**
+ * Whether the given SQL statement is complete.
+ *
  * @param statement SQL statement string
- * @returns Whether the statement is complete
  */
 export function isComplete(statement: string): boolean {
   return sqlite3_complete(statement);
@@ -63,6 +64,7 @@ export interface DatabaseOpenOptions {
   memory?: boolean;
 }
 
+/** Various options that can be configured when opening a Blob via `Database#openBlob`. */
 export interface BlobOpenOptions {
   /** Whether to open Blob in readonly mode. True by default. */
   readonly?: boolean;
@@ -83,10 +85,15 @@ export interface BlobOpenOptions {
  * ```ts
  * // Open a database from file, creates if doesn't exist.
  * const db = new Database("myfile.db");
+ *
  * // Open an in-memory database.
  * const db = new Database(":memory:");
+ *
  * // Open a read-only database.
  * const db = new Database("myfile.db", { readonly: true });
+ *
+ * // Or open using File URL
+ * const db = new Database(new URL("./myfile.db", import.meta.url));
  * ```
  */
 export class Database {
