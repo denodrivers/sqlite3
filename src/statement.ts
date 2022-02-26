@@ -94,7 +94,7 @@ export class Row {
   }
 
   [Symbol.for("Deno.customInspect")](): string {
-    return `SQLite3.Row { columns: ${this.columns} }`;
+    return `SQLite3.Row { ${this.columns.join(", ")} }`;
   }
 }
 
