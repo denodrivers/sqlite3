@@ -29,6 +29,7 @@ import {
   sqlite3_blob_write,
   sqlite3_blob_write_async,
   sqlite3_changes,
+  sqlite3_clear_bindings,
   sqlite3_close_v2,
   sqlite3_column_blob,
   sqlite3_column_bytes,
@@ -56,6 +57,20 @@ import {
 } from "./ffi.ts";
 import { encode, isObject } from "./util.ts";
 import { fromFileUrl } from "../deps.ts";
+
+/** Types that can be possibly deserialized from SQLite Column */
+export type ColumnValue = string | number | bigint | Uint8Array | null;
+/** Types that can be possibly serialized as SQLite bind values */
+export type BindValue =
+  | number
+  | string
+  | symbol
+  | bigint
+  | boolean
+  | null
+  | undefined
+  | Date
+  | Uint8Array;
 
 /** SQLite version string */
 export const SQLITE_VERSION = sqlite3_libversion();
@@ -177,17 +192,20 @@ export class Database {
    * Under the hood, it uses `sqlite3_exec` if no parameters are given to bind
    * with the SQL statement, a prepared statement otherwise.
    */
-  execute(strings: TemplateStringsArray, ...args: unknown[]): void;
-  execute(sql: string, ...args: unknown[]): void;
-  execute(sql: string, args: Record<string, unknown>): void;
-  execute(sql: string | TemplateStringsArray, ...args: unknown[]) {
+  execute(strings: TemplateStringsArray, ...args: BindValue[]): void;
+  execute(sql: string, ...args: BindValue[]): void;
+  execute(sql: string, args: Record<string, BindValue>): void;
+  execute(
+    sql: string | TemplateStringsArray,
+    ...args: BindValue[] | [Record<string, BindValue>]
+  ): void {
     const sqlStr = typeof sql === "string" ? sql : sql.join("?");
     if (args.length) {
       const stmt = this.prepare(sqlStr);
       if (isObject(args[0])) {
-        stmt.bindAllNamed(args[0] as Record<string, unknown>);
+        stmt.bindAllNamed(args[0] as Record<string, BindValue>);
       } else {
-        stmt.bindAll(...args);
+        stmt.bindAll(...args as BindValue[]);
       }
       stmt.step();
       stmt.finalize();
@@ -244,22 +262,25 @@ export class Database {
    */
   queryArray<T extends unknown[] = any[]>(
     strings: TemplateStringsArray,
-    ...args: unknown[]
+    ...args: BindValue[]
   ): T[];
-  queryArray<T extends unknown[] = any[]>(sql: string, ...args: unknown[]): T[];
   queryArray<T extends unknown[] = any[]>(
     sql: string,
-    args: Record<string, unknown>,
+    ...args: BindValue[]
+  ): T[];
+  queryArray<T extends unknown[] = any[]>(
+    sql: string,
+    args: Record<string, BindValue>,
   ): T[];
   queryArray<T extends unknown[] = any[]>(
     sql: string | TemplateStringsArray,
-    ...args: unknown[]
+    ...args: BindValue[] | [Record<string, BindValue>]
   ): T[] {
     const stmt = this.prepare(typeof sql === "string" ? sql : sql.join("?"));
     if (isObject(args[0])) {
-      stmt.bindAllNamed(args[0] as Record<string, unknown>);
+      stmt.bindAllNamed(args[0] as Record<string, BindValue>);
     } else {
-      stmt.bindAll(...args);
+      stmt.bindAll(...args as BindValue[]);
     }
     const rows = [];
     for (const row of stmt) {
@@ -308,25 +329,25 @@ export class Database {
    */
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
     strings: TemplateStringsArray,
-    ...args: unknown[]
+    ...args: BindValue[]
   ): T[];
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
     sql: string,
-    ...args: unknown[]
+    ...args: BindValue[]
   ): T[];
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
     sql: string,
-    args: Record<string, unknown>,
+    args: Record<string, BindValue>,
   ): T[];
   queryObject<T extends Record<string, unknown> = Record<string, any>>(
     sql: string | TemplateStringsArray,
-    ...args: unknown[]
+    ...args: BindValue[] | [Record<string, BindValue>]
   ) {
     const stmt = this.prepare(typeof sql === "string" ? sql : sql.join("?"));
     if (isObject(args[0])) {
-      stmt.bindAllNamed(args[0] as Record<string, unknown>);
+      stmt.bindAllNamed(args[0] as Record<string, BindValue>);
     } else {
-      stmt.bindAll(...args);
+      stmt.bindAll(...args as BindValue[]);
     }
     const rows = [];
     for (const row of stmt) {
@@ -500,7 +521,7 @@ export class PreparedStatement {
   #bufferRefs = new Set<Uint8Array>();
 
   /** Bind a parameter for the prepared query either by index or name. */
-  bind(param: number | string, value: unknown) {
+  bind(param: number | string, value: BindValue) {
     const index = typeof param === "number"
       ? param
       : this.bindParameterIndex(param);
@@ -603,13 +624,13 @@ export class PreparedStatement {
   /**
    * Binds all parameters to the prepared statement. This is a shortcut for calling `bind()` for each parameter.
    */
-  bindAll(...values: unknown[]) {
+  bindAll(...values: BindValue[]): void {
     for (let i = 0; i < values.length; i++) {
       this.bind(i + 1, values[i]);
     }
   }
 
-  bindAllNamed(values: Record<string, unknown>) {
+  bindAllNamed(values: Record<string, BindValue>): void {
     for (const name in values) {
       const index = this.bindParameterIndex(":" + name);
       this.bind(index, values[name]);
@@ -619,7 +640,7 @@ export class PreparedStatement {
   #cachedColCount?: number;
 
   /** Column count in current row. */
-  get columnCount() {
+  get columnCount(): number {
     if (this.#cachedColCount !== undefined) return this.#cachedColCount;
     return (this.#cachedColCount = sqlite3_column_count(this.#handle));
   }
@@ -637,7 +658,7 @@ export class PreparedStatement {
   #colNameCache = new Map<number, string>();
 
   /** Return the name of the column at given index in current row. */
-  columnName(index: number) {
+  columnName(index: number): string {
     if (this.#colNameCache.has(index)) return this.#colNameCache.get(index)!;
     const name = sqlite3_column_name(this.#handle, index);
     this.#colNameCache.set(index, name);
@@ -645,38 +666,35 @@ export class PreparedStatement {
   }
 
   /** Return value of a column at given index in current row. */
-  column(index: number) {
+  column<T extends ColumnValue = ColumnValue>(index: number): T {
     switch (this.columnType(index)) {
-      case SqliteType.NULL:
-        return null;
-
       case SqliteType.INTEGER: {
         const value = sqlite3_column_int64(this.#handle, index);
         const num = Number(value);
         if (Number.isSafeInteger(num)) {
-          return num;
+          return num as T;
         } else {
-          return value;
+          return value as T;
         }
       }
 
       case SqliteType.FLOAT:
-        return sqlite3_column_double(this.#handle, index);
+        return sqlite3_column_double(this.#handle, index) as T;
 
       case SqliteType.TEXT:
-        return sqlite3_column_text(this.#handle, index);
+        return sqlite3_column_text(this.#handle, index) as T;
 
       case SqliteType.BLOB: {
         const blob = sqlite3_column_blob(this.#handle, index);
-        if (blob.value === 0n) return null;
+        if (blob.value === 0n) return null as T;
         const length = sqlite3_column_bytes(this.#handle, index);
         const data = new Uint8Array(length);
         new Deno.UnsafePointerView(blob).copyInto(data);
-        return data;
+        return data as T;
       }
 
       default:
-        return null;
+        return null as T;
     }
   }
 
@@ -686,24 +704,33 @@ export class PreparedStatement {
    * @returns Row if available, undefined if done. Do note that Row object is shared for each Prepared
    * statement. So if you call step again the Row object will work for next row instead.
    */
-  step() {
+  step(): Row | undefined {
     if (sqlite3_step(this.#db.unsafeRawHandle, this.#handle) === SQLITE3_ROW) {
       return this.row;
     }
   }
 
   /** Resets the prepared statement to its initial state. */
-  reset() {
+  reset(): void {
     sqlite3_reset(this.#db.unsafeRawHandle, this.#handle);
   }
 
   /** Adds another step to prepared statement to be executed. Don't forget to call `finalize`. */
-  execute(...args: unknown[]): void;
-  execute(args: Record<string, unknown>): void;
-  execute(...args: unknown[]): void {
-    this.bindAll(...args);
+  execute(...args: BindValue[]): void;
+  execute(args: Record<string, BindValue>): void;
+  execute(...args: BindValue[] | [Record<string, BindValue>]): void {
+    if (args.length === 1 && typeof args[0] === "object") {
+      this.bindAllNamed(args[0] as Record<string, BindValue>);
+    } else {
+      this.bindAll(...args as BindValue[]);
+    }
     this.step();
     this.reset();
+  }
+
+  /** Clears any previously set binding parameters to NULL */
+  clearBindings(): void {
+    sqlite3_clear_bindings(this.#db.unsafeRawHandle, this.#handle);
   }
 
   /**
@@ -713,7 +740,7 @@ export class PreparedStatement {
    * And clears all references to the buffers as they're no longer
    * needed, allowing V8 to GC them.
    */
-  finalize() {
+  finalize(): void {
     try {
       sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
     } finally {
@@ -727,7 +754,7 @@ export class PreparedStatement {
   /**
    * Returns an iterator for rows.
    */
-  *[Symbol.iterator]() {
+  *[Symbol.iterator](): IterableIterator<Row> {
     let row;
     while ((row = this.step())) {
       yield row;

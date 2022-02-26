@@ -396,6 +396,11 @@ const symbols = {
     parameters: ["pointer" /* sqlite3 *db */],
     result: "i32",
   },
+
+  sqlite3_clear_bindings: {
+    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    result: "i32",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>;
@@ -882,4 +887,9 @@ export function sqlite3_last_insert_rowid(db: sqlite3) {
 
 export function sqlite3_get_autocommit(db: sqlite3) {
   return Boolean(lib.symbols.sqlite3_get_autocommit(db));
+}
+
+export function sqlite3_clear_bindings(db: sqlite3, stmt: sqlite3_stmt) {
+  const result = lib.symbols.sqlite3_clear_bindings(stmt) as number;
+  unwrap_error(db, result);
 }
