@@ -1,4 +1,4 @@
-export function encode(str: string) {
+export function encode(str: string): Uint8Array {
   try {
     return (Deno as any).core.encode(str);
   } catch (_e) {
@@ -6,7 +6,7 @@ export function encode(str: string) {
   }
 }
 
-export function toCString(str: string) {
+export function toCString(str: string): Uint8Array {
   return new Uint8Array([...encode(str), 0]);
 }
 
