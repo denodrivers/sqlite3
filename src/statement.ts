@@ -357,6 +357,7 @@ export class PreparedStatement {
    */
   step(): Row | undefined {
     if (sqlite3_step(this.#db.unsafeRawHandle, this.#handle) === SQLITE3_ROW) {
+      this.#colTypeCache.clear();
       return this.row;
     }
   }
