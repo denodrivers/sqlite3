@@ -1,14 +1,14 @@
 # deno_sqlite
 
 [![Tags](https://img.shields.io/github/release/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/releases)
-[![Doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https/deno.land/x/sqlite3@0.4.1/mod.ts)
+[![Doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https/deno.land/x/sqlite3@0.4.2/mod.ts)
 [![Checks](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml/badge.svg)](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/blob/master/LICENSE)
 
 Fast, native bindings to SQLite3 C API, using Deno FFI.
 
 ```ts
-import { Database } from "https://deno.land/x/sqlite3@0.4.1/mod.ts";
+import { Database } from "https://deno.land/x/sqlite3@0.4.2/mod.ts";
 
 const db = new Database("test.db");
 
@@ -21,7 +21,7 @@ db.close();
 ## Documentation
 
 Check out the documentation
-[here](https://doc.deno.land/https://deno.land/x/sqlite3@0.4.1/mod.ts).
+[here](https://doc.deno.land/https://deno.land/x/sqlite3@0.4.2/mod.ts).
 
 ## Native Library
 
