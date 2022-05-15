@@ -1,13 +1,7 @@
-export function encode(str: string): Uint8Array {
-  try {
-    return (Deno as any).core.encode(str);
-  } catch (_e) {
-    return new TextEncoder().encode(str);
-  }
-}
+export const encoder = new TextEncoder();
 
 export function toCString(str: string): Uint8Array {
-  return new Uint8Array([...encode(str), 0]);
+  return new Uint8Array([...encoder.encode(str), 0]);
 }
 
 export function isObject(value: unknown): boolean {
