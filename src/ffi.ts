@@ -415,14 +415,12 @@ if (envSqlitePath !== undefined) {
   lib = Deno.dlopen(envSqlitePath, symbols);
 } else {
   try {
-    lib = Deno.dlopen(
-      Deno.build.os === "windows"
-        ? "sqlite3"
-        : Deno.build.os === "darwin"
-        ? "libsqlite3.dylib"
-        : "libsqlite3.so",
-      symbols,
-    );
+    const filename = {
+      windows: "sqlite3",
+      darwin: "libsqlite3.dylib",
+      linux: "libsqlite3.so",
+    }[Deno.build.os];
+    lib = Deno.dlopen(filename, symbols);
   } catch (e) {
     if (e instanceof Deno.errors.PermissionDenied) {
       throw e;
