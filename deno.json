@@ -1,4 +1,7 @@
 {
+  "tasks": {
+    "test": "deno test --unstable -A test/test.ts"
+  },
   "lint": {
     "rules": {
       "exclude": [

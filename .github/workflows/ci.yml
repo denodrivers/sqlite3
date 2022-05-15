@@ -52,4 +52,4 @@ jobs:
           deno-version: 'v1.x'
 
       - name: Run Tests
-        run: deno test --unstable -A test/test.ts
+        run: deno task test
