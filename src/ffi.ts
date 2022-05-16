@@ -410,30 +410,23 @@ const symbols = {
 
 let lib: Deno.DynamicLibrary<typeof symbols>;
 
-const envSqlitePath = Deno.env.get("DENO_SQLITE_PATH");
-if (envSqlitePath !== undefined) {
-  lib = Deno.dlopen(envSqlitePath, symbols);
-} else {
-  try {
-    lib = Deno.dlopen(
-      Deno.build.os === "windows"
-        ? "sqlite3"
-        : Deno.build.os === "darwin"
-        ? "libsqlite3.dylib"
-        : "libsqlite3.so",
-      symbols,
-    );
-  } catch (e) {
-    if (e instanceof Deno.errors.PermissionDenied) {
-      throw e;
-    }
-
-    const error = new Error(
-      "Native SQLite3 library not found, try installing SQLite3. If you have an existing installation, either add it to path or set the `DENO_SQLITE_PATH` environment variable.",
-    );
-    error.cause = e;
-    throw error;
+try {
+  const filename = Deno.env.get("DENO_SQLITE_PATH") || {
+    windows: "sqlite3",
+    darwin: "libsqlite3.dylib",
+    linux: "libsqlite3.so",
+  }[Deno.build.os];
+  lib = Deno.dlopen(filename, symbols);
+} catch (e) {
+  if (e instanceof Deno.errors.PermissionDenied) {
+    throw e;
   }
+
+  const error = new Error(
+    "Native SQLite3 library not found, try installing SQLite3. If you have an existing installation, either add it to path or set the `DENO_SQLITE_PATH` environment variable.",
+  );
+  error.cause = e;
+  throw error;
 }
 
 export type sqlite3 = Deno.UnsafePointer;

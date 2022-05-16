@@ -19,7 +19,7 @@ jobs:
           deno-version: 'v1.x'
 
       - name: Check Formatting
-        run: deno fmt --check -c deno.json
+        run: deno fmt --check
 
   lint:
     runs-on: ubuntu-latest
@@ -33,7 +33,7 @@ jobs:
           deno-version: 'v1.x'
 
       - name: Lint
-        run: deno lint -c deno.json
+        run: deno lint
 
   test:
     strategy:
@@ -52,4 +52,4 @@ jobs:
           deno-version: 'v1.x'
 
       - name: Run Tests
-        run: deno test --unstable -A test/test.ts
+        run: deno task test

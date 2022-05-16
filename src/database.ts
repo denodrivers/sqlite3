@@ -136,17 +136,17 @@ export class Database {
     if (options.flags !== undefined) {
       flags = options.flags;
     } else {
-      if (options.memory === true) {
+      if (options.memory) {
         flags |= SQLITE3_OPEN_MEMORY;
       }
 
-      if (options.readonly === true) {
+      if (options.readonly ?? false) {
         flags |= SQLITE3_OPEN_READONLY;
       } else {
         flags |= SQLITE3_OPEN_READWRITE;
       }
 
-      if (options.create !== false) {
+      if (options.create ?? true) {
         flags |= SQLITE3_OPEN_CREATE;
       }
     }

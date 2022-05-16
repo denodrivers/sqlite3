@@ -33,7 +33,7 @@ import {
   sqlite3_stmt,
   sqlite3_stmt_readonly,
 } from "./ffi.ts";
-import { encode, isObject } from "./util.ts";
+import { encoder, isObject } from "./util.ts";
 
 /**
  * SQLite 3 value types.
@@ -239,7 +239,7 @@ export class PreparedStatement {
       case "string": {
         // Bind parameters do not need C string,
         // because we specify it's length.
-        const buffer = encode(value);
+        const buffer = encoder.encode(value);
         this.#bufferRefs.add(buffer);
         sqlite3_bind_text(
           this.db.unsafeRawHandle,
