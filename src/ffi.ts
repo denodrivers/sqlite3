@@ -135,7 +135,7 @@ const symbols = {
     parameters: [
       "pointer", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
-      "pointer", /* sqlite3_int64 iValue */
+      "i64", /* sqlite3_int64 iValue */
     ],
     result: "i32",
   },
@@ -226,7 +226,7 @@ const symbols = {
       "pointer", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
-    result: "pointer",
+    result: "i64",
   },
 
   sqlite3_column_text: {
@@ -408,7 +408,7 @@ const symbols = {
   },
 } as const;
 
-let lib: Deno.DynamicLibrary<typeof symbols>;
+let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
 
 try {
   const filename = Deno.env.get("DENO_SQLITE_PATH") || {
@@ -416,7 +416,7 @@ try {
     darwin: "libsqlite3.dylib",
     linux: "libsqlite3.so",
   }[Deno.build.os];
-  lib = Deno.dlopen(filename, symbols);
+  lib = Deno.dlopen(filename, symbols).symbols;
 } catch (e) {
   if (e instanceof Deno.errors.PermissionDenied) {
     throw e;
@@ -429,23 +429,23 @@ try {
   throw error;
 }
 
-export type sqlite3 = Deno.UnsafePointer;
-export type sqlite3_stmt = Deno.UnsafePointer;
-export type sqlite3_value = Deno.UnsafePointer;
-export type sqlite3_blob = Deno.UnsafePointer;
+export type sqlite3 = bigint;
+export type sqlite3_stmt = bigint;
+export type sqlite3_value = bigint;
+export type sqlite3_blob = bigint;
 
 export function sqlite3_libversion(): string {
-  const ptr = lib.symbols.sqlite3_libversion() as Deno.UnsafePointer;
+  const ptr = lib.sqlite3_libversion();
   return new Deno.UnsafePointerView(ptr).getCString();
 }
 
 export function sqlite3_errmsg(handle: sqlite3): string {
-  const ptr = lib.symbols.sqlite3_errmsg(handle) as Deno.UnsafePointer;
+  const ptr = lib.sqlite3_errmsg(handle);
   return new Deno.UnsafePointerView(ptr).getCString();
 }
 
 export function sqlite3_errstr(result: number): string {
-  const ptr = lib.symbols.sqlite3_errstr(result) as Deno.UnsafePointer;
+  const ptr = lib.sqlite3_errstr(result);
   return new Deno.UnsafePointerView(ptr).getCString();
 }
 
@@ -474,21 +474,18 @@ export function sqlite3_open_v2(path: string, flags?: number): sqlite3 {
   const pathPtr = toCString(path);
   const outDB = new BigUint64Array(1);
 
-  const result = lib.symbols.sqlite3_open_v2(
+  const result = lib.sqlite3_open_v2(
     pathPtr,
     outDB,
     flags,
     null,
   ) as number;
-
-  const handle = new Deno.UnsafePointer(outDB[0]);
-  unwrap_error(handle, result);
-
-  return handle;
+  unwrap_error(outDB[0], result);
+  return outDB[0];
 }
 
 export function sqlite3_close_v2(handle: sqlite3): void {
-  lib.symbols.sqlite3_close_v2(handle);
+  lib.sqlite3_close_v2(handle);
 }
 
 export function sqlite3_prepare_v2(
@@ -499,7 +496,7 @@ export function sqlite3_prepare_v2(
   const outStmt = new BigUint64Array(1);
   const outTail = new Uint8Array(8);
 
-  const result = lib.symbols.sqlite3_prepare_v2(
+  const result = lib.sqlite3_prepare_v2(
     db,
     sqlPtr,
     sql.length,
@@ -507,23 +504,22 @@ export function sqlite3_prepare_v2(
     outTail,
   ) as number;
 
-  const stmt = new Deno.UnsafePointer(outStmt[0]);
-  if (stmt.value === 0n && result === SQLITE3_OK) {
+  if (outStmt[0] === 0n && result === SQLITE3_OK) {
     throw new Error(`failed to prepare`);
   }
   unwrap_error(db, result);
 
-  return stmt;
+  return outStmt[0];
 }
 
 export function sqlite3_step(db: sqlite3, stmt: sqlite3_stmt): number {
-  const result = lib.symbols.sqlite3_step(stmt);
+  const result = lib.sqlite3_step(stmt);
   unwrap_error(db, result, [SQLITE3_ROW, SQLITE3_DONE]);
   return result;
 }
 
 export function sqlite3_finalize(db: sqlite3, stmt: sqlite3_stmt): void {
-  const result = lib.symbols.sqlite3_finalize(stmt) as number;
+  const result = lib.sqlite3_finalize(stmt) as number;
   unwrap_error(db, result);
 }
 
@@ -533,7 +529,7 @@ export function sqlite3_bind_text(
   index: number,
   value: Uint8Array,
 ): void {
-  const result = lib.symbols.sqlite3_bind_text(
+  const result = lib.sqlite3_bind_text(
     stmt,
     index,
     value,
@@ -548,7 +544,7 @@ export function sqlite3_bind_null(
   stmt: sqlite3_stmt,
   index: number,
 ): void {
-  const result = lib.symbols.sqlite3_bind_null(stmt, index) as number;
+  const result = lib.sqlite3_bind_null(stmt, index) as number;
   unwrap_error(db, result);
 }
 
@@ -558,7 +554,7 @@ export function sqlite3_bind_int(
   index: number,
   value: number,
 ): void {
-  const result = lib.symbols.sqlite3_bind_int(stmt, index, value) as number;
+  const result = lib.sqlite3_bind_int(stmt, index, value) as number;
   unwrap_error(db, result);
 }
 
@@ -568,15 +564,10 @@ export function sqlite3_bind_int64(
   index: number,
   value: bigint,
 ): void {
-  const uint = new BigUint64Array(1);
-  const int = new BigInt64Array(uint.buffer);
-  int[0] = value;
-
-  const result = lib.symbols.sqlite3_bind_int64(
+  const result = lib.sqlite3_bind_int64(
     stmt,
     index,
-    // workaround for passing bigint
-    new Deno.UnsafePointer(uint[0]),
+    value,
   ) as number;
   unwrap_error(db, result);
 }
@@ -587,7 +578,7 @@ export function sqlite3_bind_double(
   index: number,
   value: number,
 ): void {
-  const result = lib.symbols.sqlite3_bind_double(
+  const result = lib.sqlite3_bind_double(
     stmt,
     index,
     value,
@@ -601,10 +592,10 @@ export function sqlite3_bind_blob(
   index: number,
   value: Uint8Array,
 ): void {
-  const result = lib.symbols.sqlite3_bind_blob(
+  const result = lib.sqlite3_bind_blob(
     stmt,
     index,
-    value,
+    value.length === 0 ? new Uint8Array([0]) : value,
     value.length,
     null,
   ) as number;
@@ -617,7 +608,7 @@ export function sqlite3_bind_value(
   index: number,
   value: sqlite3_value,
 ): void {
-  const result = lib.symbols.sqlite3_bind_value(stmt, index, value) as number;
+  const result = lib.sqlite3_bind_value(stmt, index, value) as number;
   unwrap_error(db, result);
 }
 
@@ -625,45 +616,45 @@ export function sqlite3_column_value(
   stmt: sqlite3_stmt,
   col: number,
 ): sqlite3_value {
-  const ptr = lib.symbols.sqlite3_column_value(stmt, col) as Deno.UnsafePointer;
+  const ptr = lib.sqlite3_column_value(stmt, col);
   return ptr;
 }
 
 export function sqlite3_column_blob(
   stmt: sqlite3_stmt,
   col: number,
-): Deno.UnsafePointer {
-  return lib.symbols.sqlite3_column_blob(stmt, col);
+): bigint {
+  return lib.sqlite3_column_blob(stmt, col);
 }
 
 export function sqlite3_column_bytes(stmt: sqlite3_stmt, col: number): number {
-  return lib.symbols.sqlite3_column_bytes(stmt, col);
+  return lib.sqlite3_column_bytes(stmt, col);
 }
 
 export function sqlite3_column_bytes16(
   stmt: sqlite3_stmt,
   col: number,
 ): number {
-  return lib.symbols.sqlite3_column_bytes16(
+  return lib.sqlite3_column_bytes16(
     stmt,
     col,
   );
 }
 
 export function sqlite3_column_count(stmt: sqlite3_stmt): number {
-  return lib.symbols.sqlite3_column_count(stmt);
+  return lib.sqlite3_column_count(stmt);
 }
 
 export function sqlite3_column_type(stmt: sqlite3_stmt, col: number): number {
-  return lib.symbols.sqlite3_column_type(stmt, col);
+  return lib.sqlite3_column_type(stmt, col);
 }
 
 export function sqlite3_column_text(
   stmt: sqlite3_stmt,
   col: number,
 ): string | null {
-  const ptr = lib.symbols.sqlite3_column_text(stmt, col) as Deno.UnsafePointer;
-  if (ptr.value === 0n) return null;
+  const ptr = lib.sqlite3_column_text(stmt, col);
+  if (ptr === 0n) return null;
   return new Deno.UnsafePointerView(ptr).getCString();
 }
 
@@ -671,33 +662,28 @@ export function sqlite3_column_text16(
   stmt: sqlite3_stmt,
   col: number,
 ): string | null {
-  const ptr = lib.symbols.sqlite3_column_text16(
+  const ptr = lib.sqlite3_column_text16(
     stmt,
     col,
-  ) as Deno.UnsafePointer;
-  if (ptr.value === 0n) return null;
+  );
+  if (ptr === 0n) return null;
   return new Deno.UnsafePointerView(ptr).getCString();
 }
 
 export function sqlite3_column_int(stmt: sqlite3_stmt, col: number): number {
-  return lib.symbols.sqlite3_column_int(stmt, col) as number;
+  return lib.sqlite3_column_int(stmt, col) as number;
 }
 
 export function sqlite3_column_int64(stmt: sqlite3_stmt, col: number): bigint {
-  // workaround for returning bigint
-  const int = new BigInt64Array(1);
-  const uint = new BigUint64Array(int.buffer);
-  uint[0] =
-    (lib.symbols.sqlite3_column_int64(stmt, col) as Deno.UnsafePointer).value;
-  return int[0];
+  return lib.sqlite3_column_int64(stmt, col);
 }
 
 export function sqlite3_column_double(stmt: sqlite3_stmt, col: number): number {
-  return lib.symbols.sqlite3_column_double(stmt, col) as number;
+  return lib.sqlite3_column_double(stmt, col) as number;
 }
 
-export function sqlite3_free(ptr: Deno.UnsafePointer): void {
-  lib.symbols.sqlite3_free(ptr);
+export function sqlite3_free(ptr: bigint): void {
+  lib.sqlite3_free(ptr);
 }
 
 export function sqlite3_exec(
@@ -707,7 +693,7 @@ export function sqlite3_exec(
   const sqlPtr = toCString(sql);
   const outPtr = new BigUint64Array(8);
 
-  const result = lib.symbols.sqlite3_exec(
+  const result = lib.sqlite3_exec(
     db,
     sqlPtr,
     null,
@@ -715,22 +701,20 @@ export function sqlite3_exec(
     outPtr,
   );
 
-  const ptr = new Deno.UnsafePointer(outPtr[0]);
-
   if (result !== SQLITE3_OK) {
-    const msg = new Deno.UnsafePointerView(ptr).getCString();
-    sqlite3_free(ptr);
+    const msg = new Deno.UnsafePointerView(outPtr[0]).getCString();
+    sqlite3_free(outPtr[0]);
     throw new Error(`(${result}) ${msg}`);
   }
 }
 
 export function sqlite3_reset(db: sqlite3, stmt: sqlite3_stmt): void {
-  const result = lib.symbols.sqlite3_reset(stmt) as number;
+  const result = lib.sqlite3_reset(stmt) as number;
   unwrap_error(db, result);
 }
 
 export function sqlite3_bind_parameter_count(stmt: sqlite3_stmt): number {
-  return lib.symbols.sqlite3_bind_parameter_count(stmt) as number;
+  return lib.sqlite3_bind_parameter_count(stmt) as number;
 }
 
 export function sqlite3_bind_parameter_index(
@@ -738,7 +722,7 @@ export function sqlite3_bind_parameter_index(
   name: string,
 ): number {
   const namePtr = toCString(name);
-  const index = lib.symbols.sqlite3_bind_parameter_index(
+  const index = lib.sqlite3_bind_parameter_index(
     stmt,
     namePtr,
   ) as number;
@@ -749,24 +733,24 @@ export function sqlite3_bind_parameter_name(
   stmt: sqlite3_stmt,
   index: number,
 ): string {
-  const name = lib.symbols.sqlite3_bind_parameter_name(
+  const name = lib.sqlite3_bind_parameter_name(
     stmt,
     index,
-  ) as Deno.UnsafePointer;
+  );
   return new Deno.UnsafePointerView(name).getCString();
 }
 
 export function sqlite3_column_name(stmt: sqlite3_stmt, col: number): string {
-  const name = lib.symbols.sqlite3_column_name(stmt, col) as Deno.UnsafePointer;
+  const name = lib.sqlite3_column_name(stmt, col);
   return new Deno.UnsafePointerView(name).getCString();
 }
 
 export function sqlite3_changes(db: sqlite3): number {
-  return lib.symbols.sqlite3_changes(db);
+  return lib.sqlite3_changes(db);
 }
 
 export function sqlite3_total_changes(db: sqlite3): number {
-  return lib.symbols.sqlite3_total_changes(db);
+  return lib.sqlite3_total_changes(db);
 }
 
 export function sqlite3_blob_open(
@@ -781,7 +765,7 @@ export function sqlite3_blob_open(
   const tableNamePtr = toCString(tableName);
   const columnNamePtr = toCString(columnName);
   const outBlob = new BigUint64Array(1);
-  const result = lib.symbols.sqlite3_blob_open(
+  const result = lib.sqlite3_blob_open(
     db,
     dbNamePtr,
     tableNamePtr,
@@ -791,7 +775,7 @@ export function sqlite3_blob_open(
     outBlob,
   ) as number;
   unwrap_error(db, result);
-  return new Deno.UnsafePointer(outBlob[0]);
+  return outBlob[0];
 }
 
 export function sqlite3_blob_read(
@@ -800,7 +784,7 @@ export function sqlite3_blob_read(
   offset: number,
   n: number,
 ): void {
-  const result = lib.symbols.sqlite3_blob_read(
+  const result = lib.sqlite3_blob_read(
     blob,
     buffer,
     n,
@@ -815,7 +799,7 @@ export function sqlite3_blob_write(
   offset: number,
   n: number,
 ): void {
-  const result = lib.symbols.sqlite3_blob_write(
+  const result = lib.sqlite3_blob_write(
     blob,
     buffer,
     n,
@@ -830,7 +814,7 @@ export async function sqlite3_blob_read_async(
   offset: number,
   n: number,
 ): Promise<void> {
-  const result = await lib.symbols.sqlite3_blob_read_async(
+  const result = await lib.sqlite3_blob_read_async(
     blob,
     buffer,
     n,
@@ -845,7 +829,7 @@ export async function sqlite3_blob_write_async(
   offset: number,
   n: number,
 ): Promise<void> {
-  const result = await lib.symbols.sqlite3_blob_write_async(
+  const result = await lib.sqlite3_blob_write_async(
     blob,
     buffer,
     n,
@@ -855,51 +839,51 @@ export async function sqlite3_blob_write_async(
 }
 
 export function sqlite3_blob_bytes(blob: sqlite3_blob): number {
-  return lib.symbols.sqlite3_blob_bytes(blob) as number;
+  return lib.sqlite3_blob_bytes(blob) as number;
 }
 
 export function sqlite3_blob_close(blob: sqlite3_blob): void {
-  const result = lib.symbols.sqlite3_blob_close(blob) as number;
+  const result = lib.sqlite3_blob_close(blob) as number;
   unwrap_error(blob, result);
 }
 
 export function sqlite3_sql(stmt: sqlite3_stmt): string | null {
-  const ptr = lib.symbols.sqlite3_sql(stmt);
-  if (ptr.value === 0n) return null;
+  const ptr = lib.sqlite3_sql(stmt);
+  if (ptr === 0n) return null;
   else return new Deno.UnsafePointerView(ptr).getCString();
 }
 
 export function sqlite3_expanded_sql(stmt: sqlite3_stmt): string | null {
-  const ptr = lib.symbols.sqlite3_expanded_sql(stmt);
-  if (ptr.value === 0n) return null;
+  const ptr = lib.sqlite3_expanded_sql(stmt);
+  if (ptr === 0n) return null;
   const str = new Deno.UnsafePointerView(ptr).getCString();
   sqlite3_free(ptr);
   return str;
 }
 
 export function sqlite3_stmt_readonly(stmt: sqlite3_stmt): boolean {
-  return Boolean(lib.symbols.sqlite3_stmt_readonly(stmt));
+  return Boolean(lib.sqlite3_stmt_readonly(stmt));
 }
 
 export function sqlite3_complete(sql: string): boolean {
   const sqlPtr = toCString(sql);
-  return Boolean(lib.symbols.sqlite3_complete(sqlPtr));
+  return Boolean(lib.sqlite3_complete(sqlPtr));
 }
 
 export function sqlite3_last_insert_rowid(db: sqlite3): number {
-  return lib.symbols.sqlite3_last_insert_rowid(db);
+  return Number(lib.sqlite3_last_insert_rowid(db));
 }
 
 export function sqlite3_get_autocommit(db: sqlite3): boolean {
-  return Boolean(lib.symbols.sqlite3_get_autocommit(db));
+  return Boolean(lib.sqlite3_get_autocommit(db));
 }
 
 export function sqlite3_clear_bindings(db: sqlite3, stmt: sqlite3_stmt): void {
-  const result = lib.symbols.sqlite3_clear_bindings(stmt) as number;
+  const result = lib.sqlite3_clear_bindings(stmt) as number;
   unwrap_error(db, result);
 }
 
 export function sqlite3_sourceid(): string {
-  const ptr = lib.symbols.sqlite3_sourceid();
+  const ptr = lib.sqlite3_sourceid();
   return new Deno.UnsafePointerView(ptr).getCString();
 }
