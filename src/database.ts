@@ -106,7 +106,7 @@ export class Database {
   }
 
   /** Unsafe Raw (pointer) to the sqlite object */
-  get unsafeRawHandle(): Deno.UnsafePointer {
+  get unsafeRawHandle(): bigint {
     return this.#handle;
   }
 
@@ -364,7 +364,7 @@ export class Database {
       options.row,
       options.readonly === false ? 1 : 0,
     );
-    if (handle.value === 0n) {
+    if (handle === 0n) {
       throw new Error("null blob handle");
     }
     return new SQLBlob(handle);

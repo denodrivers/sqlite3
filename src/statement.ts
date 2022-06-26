@@ -337,7 +337,7 @@ export class PreparedStatement {
 
       case SqliteType.BLOB: {
         const blob = sqlite3_column_blob(this.#handle, index);
-        if (blob.value === 0n) return null as T;
+        if (blob === 0n) return null as T;
         const length = sqlite3_column_bytes(this.#handle, index);
         const data = new Uint8Array(length);
         new Deno.UnsafePointerView(blob).copyInto(data);
