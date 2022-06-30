@@ -190,7 +190,7 @@ const symbols = {
     parameters: [
       "pointer", /* sqlite3 *db */
       "pointer", /* const char *sql */
-      "pointer", /* sqlite3_callback callback */
+      "function", /* sqlite3_callback callback */
       "pointer", /* void *pArg */
       "pointer", /* char **errmsg */
     ],
@@ -686,9 +686,28 @@ export function sqlite3_free(ptr: bigint): void {
   lib.sqlite3_free(ptr);
 }
 
+export type SqliteCallback = (
+  funcArg: bigint,
+  columns: number,
+  p1: bigint,
+  p2: bigint,
+) => number;
+
+export function createSqliteCallback(cb: SqliteCallback): Deno.UnsafeCallback {
+  return new Deno.UnsafeCallback(
+    {
+      parameters: ["pointer", "i32", "pointer", "pointer"],
+      result: "i32",
+    } as const,
+    cb,
+  );
+}
+
 export function sqlite3_exec(
   db: sqlite3,
   sql: string,
+  func?: bigint,
+  funcArg?: bigint,
 ): void {
   const sqlPtr = toCString(sql);
   const outPtr = new BigUint64Array(8);
@@ -696,8 +715,8 @@ export function sqlite3_exec(
   const result = lib.sqlite3_exec(
     db,
     sqlPtr,
-    null,
-    null,
+    func ?? 0n,
+    funcArg ?? 0n,
     outPtr,
   );
 

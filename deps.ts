@@ -1,1 +1,1 @@
-export { fromFileUrl } from "https://deno.land/std@0.139.0/path/mod.ts";
+export { fromFileUrl } from "https://deno.land/std@0.145.0/path/mod.ts";
