@@ -7,7 +7,11 @@
 
 Fast, native bindings to SQLite3 C API, using Deno FFI.
 
+# Quick example
+
+
 ```ts
+// main.ts
 import { Database } from "https://deno.land/x/sqlite3@0.4.3/mod.ts";
 
 const db = new Database("test.db");
@@ -16,6 +20,13 @@ const [version] = db.queryArray("select sqlite_version()")[0];
 console.log(version);
 
 db.close();
+```
+
+Run deno using "--unstable -A" flags:
+
+
+```bash
+deno run --unstable -A main.ts
 ```
 
 ## Documentation
