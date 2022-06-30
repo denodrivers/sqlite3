@@ -7,7 +7,7 @@
 
 Fast, native bindings to SQLite3 C API, using Deno FFI.
 
-# Quick example
+## Quick example
 
 
 ```ts
