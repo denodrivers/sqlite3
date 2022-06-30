@@ -411,11 +411,16 @@ const symbols = {
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
 
 try {
-  const filename = Deno.env.get("DENO_SQLITE_PATH") || {
+  const sqlite3_env_path = Deno.env.get("DENO_SQLITE_PATH");
+  let filename = {
     windows: "sqlite3",
     darwin: "libsqlite3.dylib",
     linux: "libsqlite3.so",
   }[Deno.build.os];
+  if (typeof (sqlite3_env_path) === "string") {
+    const slash_type = Deno.build.os === "windows" ? "\\" : "/";
+    filename = sqlite3_env_path + slash_type + filename;
+  }
   lib = Deno.dlopen(filename, symbols).symbols;
 } catch (e) {
   if (e instanceof Deno.errors.PermissionDenied) {
