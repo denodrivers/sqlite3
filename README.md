@@ -25,7 +25,7 @@ db.close();
 Run deno using "--unstable -A" flags:
 
 
-```bash
+```not-ts
 deno run --unstable -A main.ts
 ```
 
