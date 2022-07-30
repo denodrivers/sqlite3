@@ -1,4 +1,5 @@
 import {
+  SQLITE3_DONE,
   SQLITE3_ROW,
   SQLITE_BLOB,
   SQLITE_FLOAT,
@@ -16,12 +17,14 @@ import {
   sqlite3_bind_parameter_index,
   sqlite3_bind_parameter_name,
   sqlite3_bind_text,
+  sqlite3_changes,
   sqlite3_clear_bindings,
   sqlite3_column_blob,
   sqlite3_column_bytes,
   sqlite3_column_count,
+  sqlite3_column_decltype,
   sqlite3_column_double,
-  sqlite3_column_int64,
+  sqlite3_column_int,
   sqlite3_column_name,
   sqlite3_column_text,
   sqlite3_column_type,
@@ -288,21 +291,20 @@ export class PreparedStatement {
     }
   }
 
-  #cachedColCount?: number;
-
   /** Column count in current row. */
   get columnCount(): number {
     if (this.#cachedColCount !== undefined) return this.#cachedColCount;
     return (this.#cachedColCount = sqlite3_column_count(this.#handle));
   }
 
-  #colTypeCache = new Map<number, SqliteType>();
+  #colTypeCache = {};
 
   /** Return the data type of the column at given index in current row. */
   columnType(index: number): SqliteType {
-    if (this.#colTypeCache.has(index)) return this.#colTypeCache.get(index)!;
+    const cachedTy = this.#colTypeCache[index];
+    if (cachedTy !== undefined) return cachedTy;
     const type = sqlite3_column_type(this.#handle, index);
-    this.#colTypeCache.set(index, type);
+    this.#colTypeCache[index] = type;
     return type;
   }
 
@@ -319,15 +321,8 @@ export class PreparedStatement {
   /** Return value of a column at given index in current row. */
   column<T extends ColumnValue = ColumnValue>(index: number): T {
     switch (this.columnType(index)) {
-      case SqliteType.INTEGER: {
-        const value = sqlite3_column_int64(this.#handle, index);
-        const num = Number(value);
-        if (Number.isSafeInteger(num)) {
-          return num as T;
-        } else {
-          return value as T;
-        }
-      }
+      case SqliteType.INTEGER:
+        return sqlite3_column_int(this.#handle, index) as T;
 
       case SqliteType.FLOAT:
         return sqlite3_column_double(this.#handle, index) as T;
@@ -357,7 +352,7 @@ export class PreparedStatement {
    */
   step(): Row | undefined {
     if (sqlite3_step(this.#db.unsafeRawHandle, this.#handle) === SQLITE3_ROW) {
-      this.#colTypeCache.clear();
+      this.#colTypeCache = {};
       return this.row;
     }
   }
@@ -365,6 +360,77 @@ export class PreparedStatement {
   /** Resets the prepared statement to its initial state. */
   reset(): void {
     sqlite3_reset(this.#db.unsafeRawHandle, this.#handle);
+  }
+
+  #cachedColCount: number | undefined = 0;
+  #prepareColumnObject<T>(): () => T {
+    this.#cachedColCount = sqlite3_column_count(this.#handle);
+    const columnNameKeys = [];
+    for (let i = 0; i < this.#cachedColCount; i++) {
+      const name = sqlite3_column_name(this.#handle, i);
+      columnNameKeys.push(name);
+    }
+    const fn = new Function(
+      ...[
+        "sqlite3_column_int",
+        "sqlite3_column_double",
+        "sqlite3_column_text",
+        "sqlite3_column_blob",
+      ],
+      `return function() { return {${
+        columnNameKeys.map((n, i) =>
+          `${n}: ${this.#decltypeGet(i)}(${this.#handle}, ${i})`
+        ).join(
+          ",\n",
+        )
+      }}}`,
+    );
+    return fn(
+      sqlite3_column_int,
+      sqlite3_column_double,
+      sqlite3_column_text,
+      sqlite3_column_blob,
+    );
+  }
+
+  #decltypeGet(index: number): string {
+    const t = sqlite3_column_decltype(this.#handle, index)!;
+    switch (t[0]) {
+      case "I":
+        return "sqlite3_column_int";
+      case "F":
+      case "D":
+        return "sqlite3_column_float";
+      case "T":
+      case "V":
+        return "sqlite3_column_text";
+      case "B":
+        return "sqlite3_column_blob";
+      default:
+        throw "unknown type";
+    }
+  }
+
+  all<T extends Record<string, unknown> = Record<string, any>>(): T[] | number {
+    const db = this.#db.unsafeRawHandle;
+    sqlite3_reset(db, this.#handle);
+    const row = sqlite3_step(db, this.#handle);
+    if (row === SQLITE3_ROW) {
+      const fn = this.#prepareColumnObject<T>();
+      if (this.#cachedColCount === 0) {
+        return sqlite3_changes(db);
+      }
+      const rows = [fn()];
+      while (true) {
+        const row = sqlite3_step(db, this.#handle);
+        if (row === SQLITE3_ROW) {
+          rows.push(fn());
+        } else if (row === SQLITE3_DONE) {
+          return rows as T[];
+        }
+      }
+    }
+    return 0;
   }
 
   /** Adds another step to prepared statement to be executed. Don't forget to call `finalize`. */
@@ -397,7 +463,7 @@ export class PreparedStatement {
       sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
     } finally {
       this.#bufferRefs.clear();
-      this.#colTypeCache.clear();
+      this.#colTypeCache = {};
       this.#colNameCache.clear();
       this.#cachedColCount = undefined;
     }
