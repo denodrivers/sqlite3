@@ -1,3 +1,4 @@
+// deno-lint-ignore-file explicit-module-boundary-types
 import {
   SQLITE3_DONE,
   SQLITE3_MISUSE,
@@ -14,34 +15,34 @@ const symbols = {
       "pointer", /* const char *path */
       "pointer", /* sqlite3 **db */
       "i32", /* int flags */
-      "pointer", /* const char *zVfs */
+      "u64", /* const char *zVfs */
     ],
     result: "i32",
   },
 
   sqlite3_close_v2: {
-    parameters: ["pointer" /* sqlite3 *db */],
+    parameters: ["u64" /* sqlite3 *db */],
     result: "i32",
   },
 
   sqlite3_errmsg: {
-    parameters: ["pointer" /* sqlite3 *db */],
-    result: "pointer", /* const char * */
+    parameters: ["u64" /* sqlite3 *db */],
+    result: "u64", /* const char * */
   },
 
   sqlite3_changes: {
-    parameters: ["pointer" /* sqlite3 *db */],
+    parameters: ["u64" /* sqlite3 *db */],
     result: "i32",
   },
 
   sqlite3_total_changes: {
-    parameters: ["pointer" /* sqlite3 *db */],
+    parameters: ["u64" /* sqlite3 *db */],
     result: "i32",
   },
 
   sqlite3_prepare_v2: {
     parameters: [
-      "pointer", /* sqlite3 *db */
+      "u64", /* sqlite3 *db */
       "pointer", /* const char *sql */
       "i32", /* int nByte */
       "pointer", /* sqlite3_stmt **ppStmt */
@@ -52,32 +53,32 @@ const symbols = {
 
   sqlite3_libversion: {
     parameters: [],
-    result: "pointer",
+    result: "u64",
   },
 
   sqlite3_step: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
     result: "i32",
   },
 
   sqlite3_reset: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
     result: "i32",
   },
 
   sqlite3_finalize: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
     result: "i32",
   },
 
   sqlite3_bind_parameter_count: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
     result: "i32",
   },
 
   sqlite3_bind_parameter_index: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "pointer", /* const char *zName */
     ],
     result: "i32",
@@ -85,37 +86,37 @@ const symbols = {
 
   sqlite3_bind_parameter_name: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
     ],
-    result: "pointer",
+    result: "u64",
   },
 
   sqlite3_bind_blob: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
       "pointer", /* const void *zData */
       "i32", /* int nData */
-      "pointer", /* void (*xDel)(void*) */
+      "u64", /* void (*xDel)(void*) */
     ],
     result: "i32",
   },
 
   sqlite3_bind_blob64: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
-      "pointer", /* const void *zData */
+      "u64", /* const void *zData */
       "u64", /* sqlite3_uint64 nData */
-      "pointer", /* void (*xDel)(void*) */
+      "u64", /* void (*xDel)(void*) */
     ],
     result: "i32",
   },
 
   sqlite3_bind_double: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
       "f64", /* double rValue */
     ],
@@ -124,7 +125,7 @@ const symbols = {
 
   sqlite3_bind_int: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
       "i32", /* int iValue */
     ],
@@ -133,7 +134,7 @@ const symbols = {
 
   sqlite3_bind_int64: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
       "i64", /* sqlite3_int64 iValue */
     ],
@@ -142,7 +143,7 @@ const symbols = {
 
   sqlite3_bind_null: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
     ],
     result: "i32",
@@ -150,27 +151,27 @@ const symbols = {
 
   sqlite3_bind_text: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
       "pointer", /* const char *zData */
       "i32", /* int nData */
-      "pointer", /* void (*xDel)(void*) */
+      "u64", /* void (*xDel)(void*) */
     ],
     result: "i32",
   },
 
   sqlite3_bind_value: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
-      "pointer", /* sqlite3_value *pValue */
+      "u64", /* sqlite3_value *pValue */
     ],
     result: "i32",
   },
 
   sqlite3_bind_zeroblob: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
       "i32", /* int n */
     ],
@@ -179,7 +180,7 @@ const symbols = {
 
   sqlite3_bind_zeroblob64: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int i */
       "i64", /* sqlite3_uint64 n */
     ],
@@ -188,10 +189,10 @@ const symbols = {
 
   sqlite3_exec: {
     parameters: [
-      "pointer", /* sqlite3 *db */
+      "u64", /* sqlite3 *db */
       "pointer", /* const char *sql */
       "function", /* sqlite3_callback callback */
-      "pointer", /* void *pArg */
+      "u64", /* void *pArg */
       "pointer", /* char **errmsg */
     ],
     result: "i32",
@@ -199,15 +200,15 @@ const symbols = {
 
   sqlite3_column_blob: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
-    result: "pointer",
+    result: "u64",
   },
 
   sqlite3_column_double: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
     result: "f64",
@@ -215,7 +216,7 @@ const symbols = {
 
   sqlite3_column_int: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
     result: "i32",
@@ -223,7 +224,7 @@ const symbols = {
 
   sqlite3_column_int64: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
     result: "i64",
@@ -231,23 +232,23 @@ const symbols = {
 
   sqlite3_column_text: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
-    result: "pointer",
+    result: "u64",
   },
 
   sqlite3_column_text16: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
-    result: "pointer",
+    result: "u64",
   },
 
   sqlite3_column_type: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
     result: "i32",
@@ -255,15 +256,15 @@ const symbols = {
 
   sqlite3_column_value: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
-    result: "pointer",
+    result: "u64",
   },
 
   sqlite3_column_bytes: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
     result: "i32",
@@ -271,38 +272,38 @@ const symbols = {
 
   sqlite3_column_bytes16: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
     result: "i32",
   },
 
   sqlite3_column_count: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
     result: "i32",
   },
 
   sqlite3_column_name: {
     parameters: [
-      "pointer", /* sqlite3_stmt *pStmt */
+      "u64", /* sqlite3_stmt *pStmt */
       "i32", /* int iCol */
     ],
-    result: "pointer",
+    result: "u64",
   },
 
   sqlite3_free: {
-    parameters: ["pointer" /** void* ptr */],
+    parameters: ["u64" /** void* ptr */],
     result: "void",
   },
 
   sqlite3_errstr: {
     parameters: ["i32" /** int errcode */],
-    result: "pointer",
+    result: "u64",
   },
 
   sqlite3_blob_open: {
     parameters: [
-      "pointer", /* sqlite3 *db */
+      "u64", /* sqlite3 *db */
       "pointer", /* const char *zDb */
       "pointer", /* const char *zTable */
       "pointer", /* const char *zColumn */
@@ -315,7 +316,7 @@ const symbols = {
 
   sqlite3_blob_read: {
     parameters: [
-      "pointer", /* sqlite3_blob *blob */
+      "u64", /* sqlite3_blob *blob */
       "pointer", /* void *Z */
       "i32", /* int N */
       "i32", /* int iOffset */
@@ -325,7 +326,7 @@ const symbols = {
 
   sqlite3_blob_write: {
     parameters: [
-      "pointer", /* sqlite3_blob *blob */
+      "u64", /* sqlite3_blob *blob */
       "pointer", /* const void *z */
       "i32", /* int n */
       "i32", /* int iOffset */
@@ -336,7 +337,7 @@ const symbols = {
   sqlite3_blob_read_async: {
     name: "sqlite3_blob_read",
     parameters: [
-      "pointer", /* sqlite3_blob *blob */
+      "u64", /* sqlite3_blob *blob */
       "pointer", /* void *Z */
       "i32", /* int N */
       "i32", /* int iOffset */
@@ -348,7 +349,7 @@ const symbols = {
   sqlite3_blob_write_async: {
     name: "sqlite3_blob_write",
     parameters: [
-      "pointer", /* sqlite3_blob *blob */
+      "u64", /* sqlite3_blob *blob */
       "pointer", /* const void *z */
       "i32", /* int n */
       "i32", /* int iOffset */
@@ -358,27 +359,27 @@ const symbols = {
   },
 
   sqlite3_blob_bytes: {
-    parameters: ["pointer" /* sqlite3_blob *blob */],
+    parameters: ["u64" /* sqlite3_blob *blob */],
     result: "i32",
   },
 
   sqlite3_blob_close: {
-    parameters: ["pointer" /* sqlite3_blob *blob */],
+    parameters: ["u64" /* sqlite3_blob *blob */],
     result: "i32",
   },
 
   sqlite3_sql: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
-    result: "pointer",
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
+    result: "u64",
   },
 
   sqlite3_expanded_sql: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
-    result: "pointer",
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
+    result: "u64",
   },
 
   sqlite3_stmt_readonly: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
     result: "i32",
   },
 
@@ -388,23 +389,23 @@ const symbols = {
   },
 
   sqlite3_last_insert_rowid: {
-    parameters: ["pointer" /* sqlite3 *db */],
+    parameters: ["u64" /* sqlite3 *db */],
     result: "i64",
   },
 
   sqlite3_get_autocommit: {
-    parameters: ["pointer" /* sqlite3 *db */],
+    parameters: ["u64" /* sqlite3 *db */],
     result: "i32",
   },
 
   sqlite3_clear_bindings: {
-    parameters: ["pointer" /* sqlite3_stmt *pStmt */],
+    parameters: ["u64" /* sqlite3_stmt *pStmt */],
     result: "i32",
   },
 
   sqlite3_sourceid: {
     parameters: [],
-    result: "pointer",
+    result: "u64",
   },
 } as const;
 
@@ -429,24 +430,32 @@ try {
   throw error;
 }
 
-export type sqlite3 = bigint;
-export type sqlite3_stmt = bigint;
-export type sqlite3_value = bigint;
-export type sqlite3_blob = bigint;
+export type sqlite3 = Deno.PointerValue;
+export type sqlite3_stmt = Deno.PointerValue;
+export type sqlite3_value = Deno.PointerValue;
+export type sqlite3_blob = Deno.PointerValue;
+
+const { op_ffi_cstr_read } = (Deno as any).core.ops;
+
+function isNull(v: Deno.PointerValue): boolean {
+  return v === 0 || v === 0n;
+}
 
 export function sqlite3_libversion(): string {
   const ptr = lib.sqlite3_libversion();
-  return new Deno.UnsafePointerView(ptr).getCString();
+  return op_ffi_cstr_read(ptr);
 }
 
 export function sqlite3_errmsg(handle: sqlite3): string {
   const ptr = lib.sqlite3_errmsg(handle);
-  return new Deno.UnsafePointerView(ptr).getCString();
+  if (isNull(ptr)) return "";
+  return op_ffi_cstr_read(ptr);
 }
 
 export function sqlite3_errstr(result: number): string {
   const ptr = lib.sqlite3_errstr(result);
-  return new Deno.UnsafePointerView(ptr).getCString();
+  if (isNull(ptr)) return "";
+  return op_ffi_cstr_read(ptr);
 }
 
 export function unwrap_error(
@@ -472,16 +481,18 @@ export function unwrap_error(
 export function sqlite3_open_v2(path: string, flags?: number): sqlite3 {
   flags = flags ?? SQLITE3_OPEN_CREATE | SQLITE3_OPEN_READWRITE;
   const pathPtr = toCString(path);
-  const outDB = new BigUint64Array(1);
+  const outDB = new Uint32Array(2);
 
   const result = lib.sqlite3_open_v2(
     pathPtr,
     outDB,
     flags,
-    null,
+    0,
   ) as number;
-  unwrap_error(outDB[0], result);
-  return outDB[0];
+
+  const ptr = outDB[0] + 2 ** 32 * outDB[1];
+  unwrap_error(ptr, result);
+  return ptr;
 }
 
 export function sqlite3_close_v2(handle: sqlite3): void {
@@ -493,7 +504,7 @@ export function sqlite3_prepare_v2(
   sql: string,
 ): sqlite3_stmt {
   const sqlPtr = toCString(sql);
-  const outStmt = new BigUint64Array(1);
+  const outStmt = new Uint32Array(2);
   const outTail = new Uint8Array(8);
 
   const result = lib.sqlite3_prepare_v2(
@@ -504,12 +515,14 @@ export function sqlite3_prepare_v2(
     outTail,
   ) as number;
 
-  if (outStmt[0] === 0n && result === SQLITE3_OK) {
+  const outStmtPtr = outStmt[0] + 2 ** 32 * outStmt[1];
+
+  if (isNull(outStmtPtr) && result === SQLITE3_OK) {
     throw new Error(`failed to prepare`);
   }
   unwrap_error(db, result);
 
-  return outStmt[0];
+  return outStmtPtr;
 }
 
 export function sqlite3_step(db: sqlite3, stmt: sqlite3_stmt): number {
@@ -534,7 +547,7 @@ export function sqlite3_bind_text(
     index,
     value,
     value.byteLength,
-    null,
+    0,
   );
   unwrap_error(db, result);
 }
@@ -595,9 +608,9 @@ export function sqlite3_bind_blob(
   const result = lib.sqlite3_bind_blob(
     stmt,
     index,
-    value.length === 0 ? new Uint8Array([0]) : value,
+    value,
     value.length,
-    null,
+    0,
   ) as number;
   unwrap_error(db, result);
 }
@@ -623,7 +636,7 @@ export function sqlite3_column_value(
 export function sqlite3_column_blob(
   stmt: sqlite3_stmt,
   col: number,
-): bigint {
+): Deno.PointerValue {
   return lib.sqlite3_column_blob(stmt, col);
 }
 
@@ -654,8 +667,8 @@ export function sqlite3_column_text(
   col: number,
 ): string | null {
   const ptr = lib.sqlite3_column_text(stmt, col);
-  if (ptr === 0n) return null;
-  return new Deno.UnsafePointerView(ptr).getCString();
+  if (isNull(ptr)) return null;
+  return op_ffi_cstr_read(ptr);
 }
 
 export function sqlite3_column_text16(
@@ -666,8 +679,8 @@ export function sqlite3_column_text16(
     stmt,
     col,
   );
-  if (ptr === 0n) return null;
-  return new Deno.UnsafePointerView(ptr).getCString();
+  if (isNull(ptr)) return null;
+  return op_ffi_cstr_read(ptr);
 }
 
 export function sqlite3_column_int(stmt: sqlite3_stmt, col: number): number {
@@ -675,28 +688,29 @@ export function sqlite3_column_int(stmt: sqlite3_stmt, col: number): number {
 }
 
 export function sqlite3_column_int64(stmt: sqlite3_stmt, col: number): bigint {
-  return lib.sqlite3_column_int64(stmt, col);
+  return BigInt(lib.sqlite3_column_int64(stmt, col));
 }
 
 export function sqlite3_column_double(stmt: sqlite3_stmt, col: number): number {
   return lib.sqlite3_column_double(stmt, col) as number;
 }
 
-export function sqlite3_free(ptr: bigint): void {
+export function sqlite3_free(ptr: Deno.PointerValue): void {
   lib.sqlite3_free(ptr);
 }
 
 export type SqliteCallback = (
-  funcArg: bigint,
+  funcArg: Deno.PointerValue,
   columns: number,
-  p1: bigint,
-  p2: bigint,
+  p1: Deno.PointerValue,
+  p2: Deno.PointerValue,
 ) => number;
 
-export function createSqliteCallback(cb: SqliteCallback): Deno.UnsafeCallback {
+// deno-lint-ignore explicit-function-return-type
+export function createSqliteCallback(cb: SqliteCallback) {
   return new Deno.UnsafeCallback(
     {
-      parameters: ["pointer", "i32", "pointer", "pointer"],
+      parameters: ["u64", "i32", "u64", "u64"],
       result: "i32",
     } as const,
     cb,
@@ -710,7 +724,7 @@ export function sqlite3_exec(
   funcArg?: bigint,
 ): void {
   const sqlPtr = toCString(sql);
-  const outPtr = new BigUint64Array(8);
+  const outPtr = new Uint32Array(8);
 
   const result = lib.sqlite3_exec(
     db,
@@ -721,7 +735,8 @@ export function sqlite3_exec(
   );
 
   if (result !== SQLITE3_OK) {
-    const msg = new Deno.UnsafePointerView(outPtr[0]).getCString();
+    const ptr = outPtr[0] + 2 ** 32 * outPtr[1];
+    const msg = op_ffi_cstr_read(ptr);
     sqlite3_free(outPtr[0]);
     throw new Error(`(${result}) ${msg}`);
   }
@@ -756,12 +771,12 @@ export function sqlite3_bind_parameter_name(
     stmt,
     index,
   );
-  return new Deno.UnsafePointerView(name).getCString();
+  return op_ffi_cstr_read(name);
 }
 
 export function sqlite3_column_name(stmt: sqlite3_stmt, col: number): string {
   const name = lib.sqlite3_column_name(stmt, col);
-  return new Deno.UnsafePointerView(name).getCString();
+  return op_ffi_cstr_read(name);
 }
 
 export function sqlite3_changes(db: sqlite3): number {
@@ -868,14 +883,14 @@ export function sqlite3_blob_close(blob: sqlite3_blob): void {
 
 export function sqlite3_sql(stmt: sqlite3_stmt): string | null {
   const ptr = lib.sqlite3_sql(stmt);
-  if (ptr === 0n) return null;
-  else return new Deno.UnsafePointerView(ptr).getCString();
+  if (isNull(ptr)) return null;
+  else return op_ffi_cstr_read(ptr);
 }
 
 export function sqlite3_expanded_sql(stmt: sqlite3_stmt): string | null {
   const ptr = lib.sqlite3_expanded_sql(stmt);
-  if (ptr === 0n) return null;
-  const str = new Deno.UnsafePointerView(ptr).getCString();
+  if (isNull(ptr)) return null;
+  const str = op_ffi_cstr_read(ptr);
   sqlite3_free(ptr);
   return str;
 }
@@ -904,5 +919,7 @@ export function sqlite3_clear_bindings(db: sqlite3, stmt: sqlite3_stmt): void {
 
 export function sqlite3_sourceid(): string {
   const ptr = lib.sqlite3_sourceid();
-  return new Deno.UnsafePointerView(ptr).getCString();
+  return op_ffi_cstr_read(ptr);
 }
+
+export { lib };

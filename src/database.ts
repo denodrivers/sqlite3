@@ -106,7 +106,7 @@ export class Database {
   }
 
   /** Unsafe Raw (pointer) to the sqlite object */
-  get unsafeRawHandle(): bigint {
+  get unsafeRawHandle(): Deno.PointerValue {
     return this.#handle;
   }
 

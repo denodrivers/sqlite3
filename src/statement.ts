@@ -52,9 +52,48 @@ export enum SqliteType {
  */
 export class Row {
   #stmt: PreparedStatement;
+  #cachedColumnFx?: CallableFunction;
 
   constructor(stmt: PreparedStatement) {
     this.#stmt = stmt;
+  }
+
+  _prepareColumnFx(): void {
+    let gen = `return [`;
+    for (let i = 0; i < this.#stmt.columnCount; i++) {
+      const ty = this.#stmt.columnType(i);
+      switch (ty) {
+        case SQLITE_INTEGER:
+          gen += "sqlite3_column_int64(" + this.#stmt.unsafeRawHandle + ", " +
+            i + "), ";
+          break;
+        case SQLITE_FLOAT:
+          gen += "sqlite3_column_double(" + this.#stmt.unsafeRawHandle + ", " +
+            i + "), ";
+          break;
+        case SQLITE_TEXT:
+          gen += "sqlite3_column_text(" + this.#stmt.unsafeRawHandle + ", " +
+            i + "), ";
+          break;
+        case SQLITE_BLOB:
+          gen += "sqlite3_column_blob(" + this.#stmt.unsafeRawHandle + ", " +
+            i + "), ";
+          break;
+        case SQLITE_NULL:
+          gen += "null, ";
+          break;
+        default:
+          throw new Error(`Unsupported column type: ${ty}`);
+      }
+    }
+    gen += "]";
+    this.#cachedColumnFx = new Function(
+      "sqlite3_column_int64",
+      "sqlite3_column_double",
+      "sqlite3_column_text",
+      "sqlite3_column_blob",
+      gen,
+    );
   }
 
   /** Number of columns in the row. */
@@ -74,12 +113,19 @@ export class Row {
 
   /** Returns the row as array containing columns' values. */
   asArray<T extends unknown[] = any[]>(): T {
-    const columnCount = this.#stmt.columnCount;
-    const array = new Array(columnCount);
-    for (let i = 0; i < columnCount; i++) {
-      array[i] = this.#stmt.column(i);
-    }
-    return array as T;
+    if (!this.#cachedColumnFx) this._prepareColumnFx();
+    return this.#cachedColumnFx!(
+      sqlite3_column_int64,
+      sqlite3_column_double,
+      sqlite3_column_text,
+      sqlite3_column_blob,
+    );
+    // const columnCount = this.#stmt.columnCount;
+    // const array = new Array(columnCount);
+    // for (let i = 0; i < columnCount; i++) {
+    //   array[i] = this.#stmt.column(i);
+    // }
+    // return array as T;
   }
 
   /** Returns the row as object with column names mapping to values. */
@@ -296,13 +342,13 @@ export class PreparedStatement {
     return (this.#cachedColCount = sqlite3_column_count(this.#handle));
   }
 
-  #colTypeCache = new Map<number, SqliteType>();
+  #colTypeCache: Record<number, number> = {};
 
   /** Return the data type of the column at given index in current row. */
   columnType(index: number): SqliteType {
-    if (this.#colTypeCache.has(index)) return this.#colTypeCache.get(index)!;
+    if (index in this.#colTypeCache) return this.#colTypeCache[index];
     const type = sqlite3_column_type(this.#handle, index);
-    this.#colTypeCache.set(index, type);
+    this.#colTypeCache[index] = type;
     return type;
   }
 
@@ -340,7 +386,7 @@ export class PreparedStatement {
         if (blob === 0n) return null as T;
         const length = sqlite3_column_bytes(this.#handle, index);
         const data = new Uint8Array(length);
-        new Deno.UnsafePointerView(blob).copyInto(data);
+        new Deno.UnsafePointerView(BigInt(blob)).copyInto(data);
         return data as T;
       }
 
@@ -357,7 +403,7 @@ export class PreparedStatement {
    */
   step(): Row | undefined {
     if (sqlite3_step(this.#db.unsafeRawHandle, this.#handle) === SQLITE3_ROW) {
-      this.#colTypeCache.clear();
+      this.#colTypeCache = {};
       return this.row;
     }
   }
@@ -397,9 +443,10 @@ export class PreparedStatement {
       sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
     } finally {
       this.#bufferRefs.clear();
-      this.#colTypeCache.clear();
+      this.#colTypeCache = {};
       this.#colNameCache.clear();
       this.#cachedColCount = undefined;
+      this.#row = new Row(this);
     }
   }
 
