@@ -52,9 +52,48 @@ export enum SqliteType {
  */
 export class Row {
   #stmt: PreparedStatement;
+  #cachedColumnFx?: CallableFunction;
 
   constructor(stmt: PreparedStatement) {
     this.#stmt = stmt;
+  }
+
+  _prepareColumnFx(): void {
+    let gen = `return [`;
+    for (let i = 0; i < this.#stmt.columnCount; i++) {
+      const ty = this.#stmt.columnType(i);
+      switch (ty) {
+        case SQLITE_INTEGER:
+          gen += "sqlite3_column_int64(" + this.#stmt.unsafeRawHandle + ", " +
+            i + "), ";
+          break;
+        case SQLITE_FLOAT:
+          gen += "sqlite3_column_double(" + this.#stmt.unsafeRawHandle + ", " +
+            i + "), ";
+          break;
+        case SQLITE_TEXT:
+          gen += "sqlite3_column_text(" + this.#stmt.unsafeRawHandle + ", " +
+            i + "), ";
+          break;
+        case SQLITE_BLOB:
+          gen += "sqlite3_column_blob(" + this.#stmt.unsafeRawHandle + ", " +
+            i + "), ";
+          break;
+        case SQLITE_NULL:
+          gen += "null, ";
+          break;
+        default:
+          throw new Error(`Unsupported column type: ${ty}`);
+      }
+    }
+    gen += "]";
+    this.#cachedColumnFx = new Function(
+      "sqlite3_column_int64",
+      "sqlite3_column_double",
+      "sqlite3_column_text",
+      "sqlite3_column_blob",
+      gen,
+    );
   }
 
   /** Number of columns in the row. */
@@ -74,12 +113,19 @@ export class Row {
 
   /** Returns the row as array containing columns' values. */
   asArray<T extends unknown[] = any[]>(): T {
-    const columnCount = this.#stmt.columnCount;
-    const array = new Array(columnCount);
-    for (let i = 0; i < columnCount; i++) {
-      array[i] = this.#stmt.column(i);
-    }
-    return array as T;
+    if (!this.#cachedColumnFx) this._prepareColumnFx();
+    return this.#cachedColumnFx!(
+      sqlite3_column_int64,
+      sqlite3_column_double,
+      sqlite3_column_text,
+      sqlite3_column_blob,
+    );
+    // const columnCount = this.#stmt.columnCount;
+    // const array = new Array(columnCount);
+    // for (let i = 0; i < columnCount; i++) {
+    //   array[i] = this.#stmt.column(i);
+    // }
+    // return array as T;
   }
 
   /** Returns the row as object with column names mapping to values. */
