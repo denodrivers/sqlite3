@@ -1,7 +1,7 @@
 import { bench, run } from "mitata";
 import { Database } from "bun:sqlite";
 
-const db = Database.open("./northwind.sqlite");
+const db = Database.open("./bench/northwind.sqlite");
 
 {
   const sql = db.prepare(`SELECT * FROM "Order"`);

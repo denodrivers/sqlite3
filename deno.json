@@ -1,7 +1,9 @@
 {
   "tasks": {
     "test": "deno test --unstable -A test/test.ts",
-    "bench": "deno bench --unstable -A bench/main.ts"
+    "bench": "deno run -A --unstable bench/deno.js",
+    "bench-node": "node bench/node.mjs",
+    "bench-bun": "bun run bench/bun.js"
   },
   "lint": {
     "rules": {

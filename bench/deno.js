@@ -1,7 +1,7 @@
-import { Database } from "./rewrite/database.ts";
-import { bench, run } from "./node_modules/mitata/src/cli.mjs";
+import { Database } from "../rewrite/database.ts";
+import { bench, run } from "../node_modules/mitata/src/cli.mjs";
 
-const db = new Database("./northwind.sqlite");
+const db = new Database("./bench/northwind.sqlite");
 
 {
   const sql = db.prepare(`SELECT * FROM "Order"`);
