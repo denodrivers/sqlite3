@@ -8,6 +8,9 @@ const db = Database.open("./bench/northwind.sqlite");
   bench('SELECT * FROM "Order"', () => {
     sql.all();
   });
+  bench('SELECT * FROM "Order"', () => {
+    sql.values();
+  });
 }
 
 {
@@ -15,12 +18,18 @@ const db = Database.open("./bench/northwind.sqlite");
   bench('SELECT * FROM "Product"', () => {
     sql.all();
   });
+  bench('SELECT * FROM "Order"', () => {
+    sql.values();
+  });
 }
 
 {
   const sql = db.prepare(`SELECT * FROM "OrderDetail"`);
   bench('SELECT * FROM "OrderDetail"', () => {
     sql.all();
+  });
+  bench('SELECT * FROM "Order"', () => {
+    sql.values();
   });
 }
 

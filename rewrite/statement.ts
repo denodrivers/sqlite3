@@ -100,7 +100,7 @@ export class Statement {
     return result as T;
   }
 
-  raw<T extends Array<unknown>>(): T[] {
+  values<T extends Array<unknown>>(): T[] {
     this.#begin();
     const columnCount = sqlite3_column_count(this.#handle);
     const result: T[] = [];
