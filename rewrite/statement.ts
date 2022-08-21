@@ -52,7 +52,7 @@ export class Statement {
     }
   }
 
-  getColumn(i: number): any {
+  #getColumn(i: number): any {
     switch (sqlite3_column_type(this.#handle, i)) {
       case SQLITE_TEXT: {
         const ptr = sqlite3_column_text(this.#handle, i);
@@ -81,31 +81,32 @@ export class Statement {
     }
   }
 
-  getRowArray<T extends Array<unknown>>(): T {
+  #getRowArray<T extends Array<unknown>>(columnCount: number): T {
     const result: any[] = [];
-    const columnCount = sqlite3_column_count(this.#handle);
     for (let i = 0; i < columnCount; i++) {
-      result.push(this.getColumn(i));
+      result.push(this.#getColumn(i));
     }
     return result as T;
   }
 
-  getRowObject<T extends Record<string, unknown>>(): T {
+  #getRowObject<T extends Record<string, unknown>>(
+    columnCount: number,
+    columnNames: string[],
+  ): T {
     const result: Record<string, unknown> = {};
-    const columnCount = sqlite3_column_count(this.#handle);
     for (let i = 0; i < columnCount; i++) {
-      const name = readCstr(sqlite3_column_name(this.#handle, i));
-      result[name] = this.getColumn(i);
+      result[columnNames[i]] = this.#getColumn(i);
     }
     return result as T;
   }
 
   raw<T extends Array<unknown>>(): T[] {
     this.#begin();
+    const columnCount = sqlite3_column_count(this.#handle);
     const result: T[] = [];
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
-      result.push(this.getRowArray<T>());
+      result.push(this.#getRowArray<T>(columnCount));
       status = sqlite3_step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
@@ -116,10 +117,15 @@ export class Statement {
 
   all<T extends Record<string, unknown>>(): T[] {
     this.#begin();
+    const columnCount = sqlite3_column_count(this.#handle);
+    const columnNames = new Array(columnCount);
+    for (let i = 0; i < columnCount; i++) {
+      columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
+    }
     const result: T[] = [];
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
-      result.push(this.getRowObject<T>());
+      result.push(this.#getRowObject<T>(columnCount, columnNames));
       status = sqlite3_step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
