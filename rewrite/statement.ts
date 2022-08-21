@@ -71,8 +71,10 @@ export class Statement {
       case SQLITE_BLOB: {
         const ptr = sqlite3_column_blob(this.#handle, i);
         const bytes = sqlite3_column_bytes(this.#handle, i);
-        return new Deno.UnsafePointerView(BigInt(ptr)).getArrayBuffer(bytes)
-          .slice(0);
+        return new Uint8Array(
+          new Deno.UnsafePointerView(BigInt(ptr)).getArrayBuffer(bytes)
+            .slice(0),
+        );
       }
 
       default: {
@@ -81,32 +83,24 @@ export class Statement {
     }
   }
 
-  #getRowArray<T extends Array<unknown>>(columnCount: number): T {
-    const result: any[] = [];
-    for (let i = 0; i < columnCount; i++) {
-      result.push(this.#getColumn(i));
-    }
-    return result as T;
-  }
-
-  #getRowObject<T extends Record<string, unknown>>(
-    columnCount: number,
-    columnNames: string[],
-  ): T {
-    const result: Record<string, unknown> = {};
-    for (let i = 0; i < columnCount; i++) {
-      result[columnNames[i]] = this.#getColumn(i);
-    }
-    return result as T;
-  }
-
   raw<T extends Array<unknown>>(): T[] {
     this.#begin();
     const columnCount = sqlite3_column_count(this.#handle);
     const result: T[] = [];
+    const getRowArray = new Function(
+      "getColumn",
+      `
+      return function() {
+        return [${
+        Array.from({ length: columnCount }).map((_, i) => `getColumn(${i})`)
+          .join(", ")
+      }];
+      };
+      `,
+    )(this.#getColumn.bind(this));
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
-      result.push(this.#getRowArray<T>(columnCount));
+      result.push(getRowArray());
       status = sqlite3_step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
