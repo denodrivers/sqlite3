@@ -171,6 +171,71 @@ const symbols = {
     ],
     result: "u64",
   },
+
+  sqlite3_bind_parameter_index: {
+    parameters: [
+      "u64", // sqlite3_stmt *pStmt
+      "pointer", // const char *zName
+    ],
+    result: "i32",
+  },
+
+  sqlite3_bind_text: {
+    parameters: [
+      "u64", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+      "pointer", // const char *zData
+      "i32", // int nData
+      "u64", // void (*xDel)(void*)
+    ],
+    result: "i32",
+  },
+
+  sqlite3_bind_blob: {
+    parameters: [
+      "u64", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+      "pointer", // const void *zData
+      "i32", // int nData
+      "u64", // void (*xDel)(void*)
+    ],
+    result: "i32",
+  },
+
+  sqlite3_bind_double: {
+    parameters: [
+      "u64", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+      "f64", // double rValue
+    ],
+    result: "i32",
+  },
+
+  sqlite3_bind_int: {
+    parameters: [
+      "u64", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+      "i32", // int iValue
+    ],
+    result: "i32",
+  },
+
+  sqlite3_bind_int64: {
+    parameters: [
+      "u64", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+      "i64", // i64 iValue
+    ],
+    result: "i32",
+  },
+
+  sqlite3_bind_null: {
+    parameters: [
+      "u64", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+    ],
+    result: "i32",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
