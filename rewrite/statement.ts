@@ -24,6 +24,7 @@ const {
   sqlite3_column_blob,
   sqlite3_column_bytes,
   sqlite3_column_name,
+  sqlite3_expanded_sql,
 } = ffi;
 
 export class Statement {
@@ -41,6 +42,25 @@ export class Statement {
       ),
     );
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+  }
+
+  #colNameCache: Record<number, string> = {};
+
+  /** Return the name of the column at given index in current row. */
+  columnName(index: number): string {
+    const cached = this.#colNameCache[index];
+    if (cached !== undefined) return cached;
+    return (this.#colNameCache[index] = readCstr(
+      readCstr(sqlite3_column_name(this.#handle, index)),
+    ));
+  }
+
+  #cachedColCount?: number;
+
+  /** Column count in current row. */
+  get columnCount(): number {
+    if (this.#cachedColCount !== undefined) return this.#cachedColCount;
+    return (this.#cachedColCount = sqlite3_column_count(this.#handle));
   }
 
   #begin(params?: any[] | Record<string, any>): void {
@@ -172,5 +192,10 @@ export class Statement {
 
   finalize(): void {
     unwrap(sqlite3_finalize(this.#handle));
+  }
+
+  // https://www.sqlite.org/capi3ref.html#sqlite3_expanded_sql
+  toString(): string {
+    return readCstr(sqlite3_expanded_sql(this.#handle));
   }
 }
