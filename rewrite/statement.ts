@@ -102,6 +102,17 @@ export class Statement {
     return result as T;
   }
 
+  run(): undefined {
+    this.#begin();
+    const status = sqlite3_step(this.#handle);
+    if (status === SQLITE3_ROW || status === SQLITE3_DONE) {
+      return undefined;
+    } else {
+      sqlite3_reset(this.#handle);
+      // TODO: error
+    }
+  }
+
   values<T extends Array<unknown>>(): T[] {
     this.#begin();
     const columnCount = sqlite3_column_count(this.#handle);

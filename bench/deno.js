@@ -11,6 +11,9 @@ const db = new Database("./bench/northwind.sqlite");
   bench('SELECT * FROM "Order"', () => {
     sql.values();
   });
+  bench('SELECT * FROM "Order" run', () => {
+    sql.run();
+  });
 }
 
 {
@@ -21,6 +24,9 @@ const db = new Database("./bench/northwind.sqlite");
   bench('SELECT * FROM "Order"', () => {
     sql.values();
   });
+  bench('SELECT * FROM "Order" run', () => {
+    sql.run();
+  });
 }
 
 {
@@ -30,6 +36,9 @@ const db = new Database("./bench/northwind.sqlite");
   });
   bench('SELECT * FROM "Order"', () => {
     sql.values();
+  });
+  bench('SELECT * FROM "Order" run', () => {
+    sql.run();
   });
 }
 
