@@ -123,9 +123,21 @@ export class Statement {
       columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
     }
     const result: T[] = [];
+    const getRowObject = new Function(
+      "getColumn",
+      `
+      return function() {
+        return {
+          ${
+        columnNames.map((name, i) => `"${name}": getColumn(${i})`).join(",\n")
+      }
+        };
+      };
+      `,
+    )(this.#getColumn.bind(this));
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
-      result.push(this.#getRowObject<T>(columnCount, columnNames));
+      result.push(getRowObject());
       status = sqlite3_step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
