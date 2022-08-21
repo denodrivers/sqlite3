@@ -296,13 +296,13 @@ export class PreparedStatement {
     return (this.#cachedColCount = sqlite3_column_count(this.#handle));
   }
 
-  #colTypeCache = new Map<number, SqliteType>();
+  #colTypeCache: Record<number, number> = {};
 
   /** Return the data type of the column at given index in current row. */
   columnType(index: number): SqliteType {
-    if (this.#colTypeCache.has(index)) return this.#colTypeCache.get(index)!;
+    if (index in this.#colTypeCache) return this.#colTypeCache[index];
     const type = sqlite3_column_type(this.#handle, index);
-    this.#colTypeCache.set(index, type);
+    this.#colTypeCache[index] = type;
     return type;
   }
 
@@ -340,7 +340,7 @@ export class PreparedStatement {
         if (blob === 0n) return null as T;
         const length = sqlite3_column_bytes(this.#handle, index);
         const data = new Uint8Array(length);
-        new Deno.UnsafePointerView(blob).copyInto(data);
+        new Deno.UnsafePointerView(BigInt(blob)).copyInto(data);
         return data as T;
       }
 
@@ -357,7 +357,7 @@ export class PreparedStatement {
    */
   step(): Row | undefined {
     if (sqlite3_step(this.#db.unsafeRawHandle, this.#handle) === SQLITE3_ROW) {
-      this.#colTypeCache.clear();
+      this.#colTypeCache = {};
       return this.row;
     }
   }
@@ -397,9 +397,10 @@ export class PreparedStatement {
       sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
     } finally {
       this.#bufferRefs.clear();
-      this.#colTypeCache.clear();
+      this.#colTypeCache = {};
       this.#colNameCache.clear();
       this.#cachedColCount = undefined;
+      this.#row = new Row(this);
     }
   }
 

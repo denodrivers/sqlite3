@@ -6,6 +6,8 @@ const ROWS = 10;
 
 const backends: Backend[] = [native, wasm];
 
+Deno.bench("nop", () => {});
+
 for (const backend of backends) {
   backend.execute("pragma journal_mode = WAL", []);
   backend.execute("pragma synchronous = normal", []);
