@@ -117,7 +117,104 @@ export class Database {
     }
   }
 
+  run(sql: string): void {
+    this.exec(sql);
+  }
+
+  transaction(fn): any {
+    // Based on https://github.com/WiseLibs/better-sqlite3/blob/master/lib/methods/transaction.js
+    const controller = getController(this);
+
+    // Each version of the transaction function has these same properties
+    const properties = {
+      default: { value: wrapTransaction(fn, this, controller.default) },
+      deferred: { value: wrapTransaction(fn, this, controller.deferred) },
+      immediate: { value: wrapTransaction(fn, this, controller.immediate) },
+      exclusive: { value: wrapTransaction(fn, this, controller.exclusive) },
+      database: { value: this, enumerable: true },
+    };
+
+    Object.defineProperties(properties.default.value, properties);
+    Object.defineProperties(properties.deferred.value, properties);
+    Object.defineProperties(properties.immediate.value, properties);
+    Object.defineProperties(properties.exclusive.value, properties);
+
+    // Return the default version of the transaction function
+    return properties.default.value;
+  }
+
   close(): void {
     unwrap(sqlite3_close_v2(this.#handle));
   }
 }
+
+const controllers = new WeakMap();
+
+// Return the database's cached transaction controller, or create a new one
+const getController = (db: Database) => {
+  let controller = controllers.get(db);
+  if (!controller) {
+    const shared = {
+      commit: db.prepare("COMMIT"),
+      rollback: db.prepare("ROLLBACK"),
+      savepoint: db.prepare("SAVEPOINT `\t_bs3.\t`"),
+      release: db.prepare("RELEASE `\t_bs3.\t`"),
+      rollbackTo: db.prepare("ROLLBACK TO `\t_bs3.\t`"),
+    };
+
+    controllers.set(
+      db,
+      controller = {
+        default: Object.assign(
+          { begin: db.prepare("BEGIN") },
+          shared,
+        ),
+        deferred: Object.assign(
+          { begin: db.prepare("BEGIN DEFERRED") },
+          shared,
+        ),
+        immediate: Object.assign(
+          { begin: db.prepare("BEGIN IMMEDIATE") },
+          shared,
+        ),
+        exclusive: Object.assign(
+          { begin: db.prepare("BEGIN EXCLUSIVE") },
+          shared,
+        ),
+      },
+    );
+  }
+  return controller;
+};
+
+// Return a new transaction function by wrapping the given function
+const wrapTransaction = (
+  fn: any,
+  db: Database,
+  { begin, commit, rollback, savepoint, release, rollbackTo }: any,
+) =>
+  function sqliteTransaction(): Statement {
+    const { apply } = Function.prototype;
+    let before, after, undo;
+    if (!db.autocommit) {
+      before = savepoint;
+      after = release;
+      undo = rollbackTo;
+    } else {
+      before = begin;
+      after = commit;
+      undo = rollback;
+    }
+    before.run();
+    try {
+      const result = apply.call(fn, this, arguments);
+      after.run();
+      return result;
+    } catch (ex) {
+      if (!db.autocommit) {
+        undo.run();
+        if (undo !== rollback) after.run();
+      }
+      throw ex;
+    }
+  };
