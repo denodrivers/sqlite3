@@ -4,6 +4,12 @@ import { bench, run } from "https://esm.sh/mitata";
 const db = new Database("./bench/northwind.sqlite");
 
 {
+  bench("serialize", () => {
+    db.serialize();
+  });
+}
+
+{
   const sql = db.prepare(`SELECT * FROM "Order"`);
   bench('SELECT * FROM "Order"', () => {
     sql.all();

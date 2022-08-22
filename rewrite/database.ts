@@ -6,7 +6,7 @@ import {
   SQLITE3_OPEN_READONLY,
   SQLITE3_OPEN_READWRITE,
 } from "./constants.ts";
-import { readCstr, toCString, unwrap } from "./util.ts";
+import { buf, readCstr, toCString, unwrap } from "./util.ts";
 import { Statement } from "./statement.ts";
 
 /** Various options that can be configured when opening Database connection. */
@@ -30,7 +30,10 @@ const {
   sqlite3_get_autocommit,
   sqlite3_exec,
   sqlite3_free,
+  sqlite3_serialize,
 } = ffi;
+
+const main = toCString("main");
 
 export class Database {
   #path: string;
@@ -85,6 +88,18 @@ export class Database {
     unwrap(sqlite3_open_v2(toCString(this.#path), pHandle, flags, 0));
 
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+  }
+
+  serialize(name?: string): ArrayBuffer {
+    const piSize = new BigInt64Array([-1n]);
+    const piSizeBuffer = new Uint8Array(piSize.buffer);
+    const ptr = sqlite3_serialize(
+      this.#handle,
+      name ? toCString(name) : main,
+      piSizeBuffer,
+      0,
+    );
+    return buf(ptr, Number(piSize[0]));
   }
 
   prepare(sql: string): Statement {

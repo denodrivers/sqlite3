@@ -8,7 +8,7 @@ export function isObject(value: unknown): boolean {
   return typeof value === "object" && value !== null;
 }
 
-const { op_ffi_cstr_read } = (Deno as any).core.ops;
+const { op_ffi_cstr_read, op_ffi_get_buf } = (Deno as any).core.ops;
 
 export function unwrap(code: number): void {
   if (code !== 0) {
@@ -16,4 +16,4 @@ export function unwrap(code: number): void {
   }
 }
 
-export { op_ffi_cstr_read as readCstr };
+export { op_ffi_cstr_read as readCstr, op_ffi_get_buf as buf };
