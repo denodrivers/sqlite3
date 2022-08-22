@@ -253,6 +253,13 @@ const symbols = {
     ],
     result: "u64",
   },
+
+  sqlite3_bind_parameter_count: {
+    parameters: [
+      "u64", // sqlite3_stmt *pStmt
+    ],
+    result: "i32",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];

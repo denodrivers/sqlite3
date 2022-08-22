@@ -25,6 +25,10 @@ const {
   sqlite3_column_bytes,
   sqlite3_column_name,
   sqlite3_expanded_sql,
+  sqlite3_bind_parameter_count,
+  sqlite3_bind_int,
+  sqlite3_bind_text,
+  sqlite3_bind_blob,
 } = ffi;
 
 export class Statement {
@@ -42,6 +46,16 @@ export class Statement {
       ),
     );
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+
+    if (sqlite3_bind_parameter_count(this.#handle) === 0) {
+      this.all = this.#allNoArgs;
+      this.values = this.#valuesNoArgs;
+      this.run = this.#runNoArgs;
+    } else {
+      this.all = this.#allWithArgs;
+      this.values = this.#valuesWithArgs;
+      this.run = this.#runWithArgs;
+    }
   }
 
   #colNameCache: Record<number, string> = {};
@@ -122,7 +136,7 @@ export class Statement {
     return result as T;
   }
 
-  run(): undefined {
+  #runNoArgs(): undefined {
     this.#begin();
     const status = sqlite3_step(this.#handle);
     if (status === SQLITE3_ROW || status === SQLITE3_DONE) {
@@ -133,7 +147,46 @@ export class Statement {
     }
   }
 
-  values<T extends Array<unknown>>(): T[] {
+  #bind(params: any[]): void {
+    for (let i = 0; i < params.length; i++) {
+      const param = params[i];
+      switch (typeof param) {
+        case "number": {
+          unwrap(sqlite3_bind_int(this.#handle, i + 1, param));
+          break;
+        }
+        case "string": {
+          unwrap(sqlite3_bind_text(this.#handle, i + 1, toCString(param)));
+          break;
+        }
+        case "object": {
+          if (param instanceof Uint8Array) {
+            unwrap(sqlite3_bind_blob(this.#handle, i + 1, param));
+          } else {
+            throw new Error("Unsupported type");
+          }
+          break;
+        }
+        default: {
+          throw new Error("Unsupported type");
+        }
+      }
+    }
+  }
+
+  #runWithArgs(params: any[]): undefined {
+    this.#begin();
+    this.#bind(params);
+    const status = sqlite3_step(this.#handle);
+    if (status === SQLITE3_ROW || status === SQLITE3_DONE) {
+      return undefined;
+    } else {
+      sqlite3_reset(this.#handle);
+      // TODO: error
+    }
+  }
+
+  #valuesNoArgs<T extends Array<unknown>>(): T[] {
     this.#begin();
     const columnCount = sqlite3_column_count(this.#handle);
     const result: T[] = [];
@@ -159,8 +212,67 @@ export class Statement {
     return result as T[];
   }
 
-  all<T extends Record<string, unknown>>(): T[] {
+  #valuesWithArgs<T extends Array<unknown>>(params: any[]): T[] {
     this.#begin();
+    this.#bind(params);
+    const columnCount = sqlite3_column_count(this.#handle);
+    const result: T[] = [];
+    const getRowArray = new Function(
+      "getColumn",
+      `
+      return function() {
+        return [${
+        Array.from({ length: columnCount }).map((_, i) => `getColumn(${i})`)
+          .join(", ")
+      }];
+      };
+      `,
+    )(this.#getColumn.bind(this));
+    let status = sqlite3_step(this.#handle);
+    while (status === SQLITE3_ROW) {
+      result.push(getRowArray());
+      status = sqlite3_step(this.#handle);
+    }
+    if (status !== SQLITE3_DONE) {
+      unwrap(status);
+    }
+    return result as T[];
+  }
+
+  #allNoArgs<T extends Record<string, unknown>>(): T[] {
+    this.#begin();
+    const columnCount = sqlite3_column_count(this.#handle);
+    const columnNames = new Array(columnCount);
+    for (let i = 0; i < columnCount; i++) {
+      columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
+    }
+    const result: T[] = [];
+    const getRowObject = new Function(
+      "getColumn",
+      `
+      return function() {
+        return {
+          ${
+        columnNames.map((name, i) => `"${name}": getColumn(${i})`).join(",\n")
+      }
+        };
+      };
+      `,
+    )(this.#getColumn.bind(this));
+    let status = sqlite3_step(this.#handle);
+    while (status === SQLITE3_ROW) {
+      result.push(getRowObject());
+      status = sqlite3_step(this.#handle);
+    }
+    if (status !== SQLITE3_DONE) {
+      unwrap(status);
+    }
+    return result as T[];
+  }
+
+  #allWithArgs<T extends Record<string, unknown>>(params: any[]): T[] {
+    this.#begin();
+    this.#bind(params);
     const columnCount = sqlite3_column_count(this.#handle);
     const columnNames = new Array(columnCount);
     for (let i = 0; i < columnCount; i++) {
