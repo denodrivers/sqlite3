@@ -18,7 +18,7 @@ console.log(version);
 db.close();
 ```
 
-![image](https://user-images.githubusercontent.com/34997667/185864652-b861cb9c-7734-4d5e-809a-f39342ece5db.png)
+![image](https://user-images.githubusercontent.com/34997667/185867199-d6c38d20-4040-42d2-a39a-37c81dc1af24.png)
 
 [Benchmark](./bench) based on
 [just-js/02-sqlite](https://just-js.github.io/benchmarks/02-sqlite.html)
