@@ -20,6 +20,9 @@ db.close();
 
 ![image](https://user-images.githubusercontent.com/34997667/185864652-b861cb9c-7734-4d5e-809a-f39342ece5db.png)
 
+[Benchmark](./bench) based on
+[just-js/02-sqlite](https://just-js.github.io/benchmarks/02-sqlite.html)
+
 ## Documentation
 
 Check out the documentation

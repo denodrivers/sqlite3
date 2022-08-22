@@ -14,7 +14,6 @@ const {
   sqlite3_reset,
   sqlite3_step,
   sqlite3_column_int,
-  sqlite3_finalize,
 } = ffi;
 
 const pHandle = new Uint32Array(2);

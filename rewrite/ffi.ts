@@ -156,16 +156,6 @@ const symbols = {
     result: "i32",
   },
 
-  sqlite3_serialize: {
-    parameters: [
-      "u64", // sqlite3 *db
-      "pointer", // const char *sql
-      "pointer", // char **errmsg
-      "u32",
-    ],
-    result: "u64",
-  },
-
   sqlite3_column_name: {
     parameters: [
       "u64", // sqlite3_stmt *pStmt
