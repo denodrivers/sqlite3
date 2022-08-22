@@ -47,7 +47,7 @@ export const SQLITE_SOURCEID = readCstr(sqlite3_sourceid());
  * @param statement SQL statement string
  */
 export function isComplete(statement: string): boolean {
-  return sqlite3_complete(toCString(statement));
+  return Boolean(sqlite3_complete(toCString(statement)));
 }
 
 const main = toCString("main");
@@ -148,7 +148,7 @@ export class Database {
   #cachedQueriesLengths: number[] = [];
   #cachedQueriesValues: Statement[] = [];
 
-  query(sql: string): any {
+  query(sql: string): Statement {
     let index = this.#cachedQueriesLengths.indexOf(sql.length);
     while (index !== -1) {
       if (this.#cachedQueriesKeys[index] !== sql) {
@@ -260,6 +260,7 @@ const wrapTransaction = (
     }
     before.run();
     try {
+      // @ts-ignore An outer value of 'this' is shadowed by this container.
       const result = apply.call(fn, this, arguments);
       after.run();
       return result;

@@ -32,8 +32,32 @@ const {
   sqlite3_bind_double,
 } = ffi;
 
+/** Types that can be possibly serialized as SQLite bind values */
+export type BindValue =
+  | number
+  | string
+  | symbol
+  | bigint
+  | boolean
+  | null
+  | undefined
+  | Date
+  | Uint8Array;
+
 export class Statement {
   #handle: Deno.PointerValue;
+
+  run(...args: BindValue[]): void {
+    return this.#runWithArgs(...args);
+  }
+  values<T extends unknown[] = any[]>(...args: BindValue[]): T[] {
+    return this.#valuesWithArgs(...args);
+  }
+  all<T extends Record<string, unknown> = Record<string, any>>(
+    ...args: BindValue[]
+  ): T[] {
+    return this.#allWithArgs(...args);
+  }
 
   constructor(db: Database, sql: string) {
     const pHandle = new Uint32Array(2);
@@ -52,10 +76,6 @@ export class Statement {
       this.all = this.#allNoArgs;
       this.values = this.#valuesNoArgs;
       this.run = this.#runNoArgs;
-    } else {
-      this.all = this.#allWithArgs;
-      this.values = this.#valuesWithArgs;
-      this.run = this.#runWithArgs;
     }
   }
 
@@ -118,25 +138,6 @@ export class Statement {
     }
   }
 
-  #getRowArray<T extends Array<unknown>>(columnCount: number): T {
-    const result: any[] = [];
-    for (let i = 0; i < columnCount; i++) {
-      result.push(this.#getColumn(i));
-    }
-    return result as T;
-  }
-
-  #getRowObject<T extends Record<string, unknown>>(
-    columnCount: number,
-    columnNames: string[],
-  ): T {
-    const result: Record<string, unknown> = {};
-    for (let i = 0; i < columnCount; i++) {
-      result[columnNames[i]] = this.#getColumn(i);
-    }
-    return result as T;
-  }
-
   #runNoArgs(): undefined {
     this.#begin();
     const status = sqlite3_step(this.#handle);
@@ -161,7 +162,7 @@ export class Statement {
           break;
         }
         case "string": {
-          const str = Deno.core.encode(param);
+          const str = (Deno as any).core.encode(param);
           unwrap(
             sqlite3_bind_text(this.#handle, i + 1, str, str.byteLength, 0),
           );

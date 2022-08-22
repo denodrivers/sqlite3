@@ -122,9 +122,9 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("query array", () => {
-    const row = db.query<
+    const row = db.query("select * from test where integer = 0").values<
       [number, string, number, Uint8Array, null]
-    >("select * from test where integer = 0").values()[0];
+    >()[0];
 
     assertEquals(row[0], 0);
     assertEquals(row[1], "hello 0");
@@ -134,16 +134,17 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("query object", () => {
-    const rows = db.query<{
-      integer: number;
-      text: string;
-      double: number;
-      blob: Uint8Array;
-      nullable: null;
-    }>("select * from test where integer != ? and text != ?").all(
-      1,
-      "hello world",
-    );
+    const rows = db.query("select * from test where integer != ? and text != ?")
+      .all<{
+        integer: number;
+        text: string;
+        double: number;
+        blob: Uint8Array;
+        nullable: null;
+      }>(
+        1,
+        "hello world",
+      );
 
     assertEquals(rows.length, 9);
     for (const row of rows) {
@@ -156,9 +157,9 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("query with string param", () => {
-    const row = db.query<[number, string, number, Uint8Array, null]>(
+    const row = db.query(
       "select * from test where text = ?",
-    ).values("hello 0")[0];
+    ).values<[number, string, number, Uint8Array, null]>("hello 0")[0];
 
     assertEquals(row[0], 0);
     assertEquals(row[1], "hello 0");
