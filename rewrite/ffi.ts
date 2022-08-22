@@ -260,6 +260,23 @@ const symbols = {
     ],
     result: "i32",
   },
+
+  sqlite3_complete: {
+    parameters: [
+      "pointer", // const char *sql
+    ],
+    result: "i32",
+  },
+
+  sqlite3_sourceid: {
+    parameters: [],
+    result: "u64",
+  },
+
+  sqlite3_libversion: {
+    parameters: [],
+    result: "u64",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];

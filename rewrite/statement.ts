@@ -29,6 +29,7 @@ const {
   sqlite3_bind_int,
   sqlite3_bind_text,
   sqlite3_bind_blob,
+  sqlite3_bind_double,
 } = ffi;
 
 export class Statement {
@@ -152,21 +153,45 @@ export class Statement {
       const param = params[i];
       switch (typeof param) {
         case "number": {
-          unwrap(sqlite3_bind_int(this.#handle, i + 1, param));
+          if (Number.isInteger(param)) {
+            unwrap(sqlite3_bind_int(this.#handle, i + 1, param));
+          } else {
+            unwrap(sqlite3_bind_double(this.#handle, i + 1, param));
+          }
           break;
         }
         case "string": {
-          unwrap(sqlite3_bind_text(this.#handle, i + 1, toCString(param)));
+          const str = Deno.core.encode(param);
+          unwrap(
+            sqlite3_bind_text(this.#handle, i + 1, str, str.byteLength, 0),
+          );
           break;
         }
         case "object": {
-          if (param instanceof Uint8Array) {
-            unwrap(sqlite3_bind_blob(this.#handle, i + 1, param));
+          if (param === null) {
+            // pass
+          } else if (param instanceof Uint8Array) {
+            unwrap(
+              sqlite3_bind_blob(
+                this.#handle,
+                i + 1,
+                param,
+                param.byteLength,
+                0,
+              ),
+            );
           } else {
             throw new Error("Unsupported type");
           }
           break;
         }
+        case "boolean":
+          unwrap(sqlite3_bind_int(
+            this.#handle,
+            i + 1,
+            param ? 1 : 0,
+          ));
+          break;
         default: {
           throw new Error("Unsupported type");
         }
@@ -174,7 +199,7 @@ export class Statement {
     }
   }
 
-  #runWithArgs(params: any[]): undefined {
+  #runWithArgs(...params: any[]): undefined {
     this.#begin();
     this.#bind(params);
     const status = sqlite3_step(this.#handle);
@@ -212,7 +237,7 @@ export class Statement {
     return result as T[];
   }
 
-  #valuesWithArgs<T extends Array<unknown>>(params: any[]): T[] {
+  #valuesWithArgs<T extends Array<unknown>>(...params: any[]): T[] {
     this.#begin();
     this.#bind(params);
     const columnCount = sqlite3_column_count(this.#handle);
@@ -270,7 +295,7 @@ export class Statement {
     return result as T[];
   }
 
-  #allWithArgs<T extends Record<string, unknown>>(params: any[]): T[] {
+  #allWithArgs<T extends Record<string, unknown>>(...params: any[]): T[] {
     this.#begin();
     this.#bind(params);
     const columnCount = sqlite3_column_count(this.#handle);
