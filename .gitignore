@@ -10,3 +10,4 @@
 package-lock.json
 *.sqlite
 node_modules/
+bench/c_bench

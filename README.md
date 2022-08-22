@@ -5,21 +5,20 @@
 [![Checks](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml/badge.svg)](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/blob/master/LICENSE)
 
-Fast, native bindings to SQLite3 C API, using Deno FFI.
+Fastest & correct JavaScript bindings to SQLite3 C API, using Deno FFI.
 
 ```ts
 import { Database } from "https://deno.land/x/sqlite3@0.4.4/mod.ts";
 
 const db = new Database("test.db");
 
-const [version] = db.queryArray("select sqlite_version()")[0];
+const [version] = db.query("select sqlite_version()").all()[0];
 console.log(version);
 
 db.close();
 ```
 
 ![image](https://user-images.githubusercontent.com/34997667/185864652-b861cb9c-7734-4d5e-809a-f39342ece5db.png)
-
 
 ## Documentation
 

@@ -13,6 +13,8 @@ const {
   sqlite3_prepare_v2,
   sqlite3_reset,
   sqlite3_step,
+  sqlite3_column_int,
+  sqlite3_finalize,
 } = ffi;
 
 const pHandle = new Uint32Array(2);
@@ -71,6 +73,7 @@ const prepared = prepareStatement();
 function run() {
   sqlite3_reset(prepared);
   sqlite3_step(prepared);
+  sqlite3_column_int(prepared, 0);
 }
 
 bench(run);
