@@ -121,7 +121,7 @@ export class Database {
     this.exec(sql);
   }
 
-  transaction(fn): any {
+  transaction(fn: (_: Statement) => void): any {
     // Based on https://github.com/WiseLibs/better-sqlite3/blob/master/lib/methods/transaction.js
     const controller = getController(this);
 
