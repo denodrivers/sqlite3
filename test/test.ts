@@ -174,6 +174,8 @@ Deno.test("sqlite", async (t) => {
 
   await t.step("close", () => {
     db.close();
-    Deno.removeSync(DB_URL);
+    try {
+      Deno.removeSync(DB_URL);
+    } catch (_) { /** ignore, already being used */ }
   });
 });
