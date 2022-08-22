@@ -18,6 +18,9 @@ console.log(version);
 db.close();
 ```
 
+![image](https://user-images.githubusercontent.com/34997667/185864652-b861cb9c-7734-4d5e-809a-f39342ece5db.png)
+
+
 ## Documentation
 
 Check out the documentation
