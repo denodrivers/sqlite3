@@ -1,11 +1,11 @@
-import ffi from "../rewrite/ffi.ts";
-import { toCString, unwrap } from "../rewrite/util.ts";
+import ffi from "../src/ffi.ts";
+import { toCString, unwrap } from "../src/util.ts";
 import {
   SQLITE3_OPEN_CREATE,
   SQLITE3_OPEN_MEMORY,
   SQLITE3_OPEN_PRIVATECACHE,
   SQLITE3_OPEN_READWRITE,
-} from "../rewrite/constants.ts";
+} from "../src/constants.ts";
 
 const {
   sqlite3_open_v2,
