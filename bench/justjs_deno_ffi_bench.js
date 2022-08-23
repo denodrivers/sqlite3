@@ -32,7 +32,7 @@ import { nextTick } from "https://deno.land/std@0.126.0/node/_next_tick.ts";
 
 function exec(sql) {
   const _pErr = new Uint32Array(2);
-  sqlite3_exec(db, toCString(sql), 0, 0, _pErr);
+  unwrap(sqlite3_exec(db, toCString(sql), 0, 0, _pErr));
 }
 
 exec("PRAGMA auto_vacuum = none");
@@ -70,9 +70,9 @@ function prepareStatement() {
 
 const prepared = prepareStatement();
 function run() {
-  sqlite3_reset(prepared);
   sqlite3_step(prepared);
   sqlite3_column_int(prepared, 0);
+  sqlite3_reset(prepared);
 }
 
 bench(run);

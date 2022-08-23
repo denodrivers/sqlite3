@@ -1,99 +1,99 @@
 const symbols = {
   sqlite3_open_v2: {
     parameters: [
-      "pointer", // const char *filename
-      "pointer", // sqlite3 **ppDb
+      "buffer", // const char *filename
+      "buffer", // sqlite3 **ppDb
       "i32", // int flags
-      "u64", // const char *zVfs
+      "pointer", // const char *zVfs
     ],
     result: "i32",
   },
 
   sqlite3_close_v2: {
     parameters: [
-      "u64", // sqlite3 *db
+      "pointer", // sqlite3 *db
     ],
     result: "i32",
   },
 
   sqlite3_changes: {
     parameters: [
-      "u64", // sqlite3 *db
+      "pointer", // sqlite3 *db
     ],
     result: "i32",
   },
 
   sqlite3_total_changes: {
     parameters: [
-      "u64", // sqlite3 *db
+      "pointer", // sqlite3 *db
     ],
     result: "i32",
   },
 
   sqlite3_last_insert_rowid: {
     parameters: [
-      "u64", // sqlite3 *db
+      "pointer", // sqlite3 *db
     ],
     result: "i32",
   },
 
   sqlite3_get_autocommit: {
     parameters: [
-      "u64", // sqlite3 *db
+      "pointer", // sqlite3 *db
     ],
     result: "i32",
   },
 
   sqlite3_prepare_v2: {
     parameters: [
-      "u64", // sqlite3 *db
-      "pointer", // const char *zSql
+      "pointer", // sqlite3 *db
+      "buffer", // const char *zSql
       "i32", // int nByte
-      "pointer", // sqlite3_stmt **ppStmt
-      "u64", // const char **pzTail
+      "buffer", // sqlite3_stmt **ppStmt
+      "pointer", // const char **pzTail
     ],
     result: "i32",
   },
 
   sqlite3_reset: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
     ],
     result: "i32",
   },
 
   sqlite3_clear_bindings: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
     ],
     result: "i32",
   },
 
   sqlite3_step: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
     ],
     result: "i32",
   },
 
   sqlite3_column_count: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
     ],
     result: "i32",
   },
 
   sqlite3_column_type: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
-      "i32", // int iCol
+      "pointer", // sqlite3_stmt *pStmt
+      "pointer", // int iCol
     ],
     result: "i32",
   },
 
   sqlite3_column_text: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
     result: "u64",
@@ -101,18 +101,18 @@ const symbols = {
 
   sqlite3_finalize: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
     ],
     result: "i32",
   },
 
   sqlite3_exec: {
     parameters: [
-      "u64", // sqlite3 *db
-      "pointer", // const char *sql
-      "u64", // sqlite3_callback callback
-      "u64", // void *arg
-      "pointer", // char **errmsg
+      "pointer", // sqlite3 *db
+      "buffer", // const char *sql
+      "pointer", // sqlite3_callback callback
+      "pointer", // void *arg
+      "buffer", // char **errmsg
     ],
     result: "i32",
   },
@@ -126,7 +126,7 @@ const symbols = {
 
   sqlite3_column_int: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
     result: "i32",
@@ -134,7 +134,7 @@ const symbols = {
 
   sqlite3_column_double: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
     result: "f64",
@@ -142,7 +142,7 @@ const symbols = {
 
   sqlite3_column_blob: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
     result: "u64",
@@ -150,7 +150,7 @@ const symbols = {
 
   sqlite3_column_bytes: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
     result: "i32",
@@ -158,7 +158,7 @@ const symbols = {
 
   sqlite3_column_name: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
     result: "u64",
@@ -166,7 +166,7 @@ const symbols = {
 
   sqlite3_column_decltype: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
     result: "u64",
@@ -174,7 +174,7 @@ const symbols = {
 
   sqlite3_bind_parameter_index: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "pointer", // const char *zName
     ],
     result: "i32",
@@ -182,29 +182,29 @@ const symbols = {
 
   sqlite3_bind_text: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
       "pointer", // const char *zData
       "i32", // int nData
-      "u64", // void (*xDel)(void*)
+      "pointer", // void (*xDel)(void*)
     ],
     result: "i32",
   },
 
   sqlite3_bind_blob: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
       "pointer", // const void *zData
       "i32", // int nData
-      "u64", // void (*xDel)(void*)
+      "pointer", // void (*xDel)(void*)
     ],
     result: "i32",
   },
 
   sqlite3_bind_double: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
       "f64", // double rValue
     ],
@@ -213,7 +213,7 @@ const symbols = {
 
   sqlite3_bind_int: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
       "i32", // int iValue
     ],
@@ -222,7 +222,7 @@ const symbols = {
 
   sqlite3_bind_int64: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
       "i64", // i64 iValue
     ],
@@ -231,7 +231,7 @@ const symbols = {
 
   sqlite3_bind_null: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
     result: "i32",
@@ -239,14 +239,14 @@ const symbols = {
 
   sqlite3_expanded_sql: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
     ],
     result: "u64",
   },
 
   sqlite3_bind_parameter_count: {
     parameters: [
-      "u64", // sqlite3_stmt *pStmt
+      "pointer", // sqlite3_stmt *pStmt
     ],
     result: "i32",
   },
@@ -260,12 +260,12 @@ const symbols = {
 
   sqlite3_sourceid: {
     parameters: [],
-    result: "u64",
+    result: "pointer",
   },
 
   sqlite3_libversion: {
     parameters: [],
-    result: "u64",
+    result: "pointer",
   },
 } as const;
 

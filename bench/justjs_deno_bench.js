@@ -23,4 +23,4 @@ function bench(query) {
 }
 
 const query = db.prepare(sql);
-bench(() => query.run());
+bench(() => query.get());

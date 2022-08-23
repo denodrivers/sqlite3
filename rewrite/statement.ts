@@ -107,25 +107,27 @@ export class Statement {
     }
   }
 
-  #getColumn(i: number): any {
-    switch (sqlite3_column_type(this.#handle, i)) {
+  #getColumn(handle: number, i: number): any {
+    const ty = sqlite3_column_type(handle, i);
+    if (ty === SQLITE_INTEGER) return sqlite3_column_int(handle, i);
+    switch (ty) {
       case SQLITE_TEXT: {
-        const ptr = sqlite3_column_text(this.#handle, i);
+        const ptr = sqlite3_column_text(handle, i);
         if (ptr === 0) return null;
         return readCstr(ptr);
       }
 
       case SQLITE_INTEGER: {
-        return sqlite3_column_int(this.#handle, i);
+        return sqlite3_column_int(handle, i);
       }
 
       case SQLITE_FLOAT: {
-        return sqlite3_column_double(this.#handle, i);
+        return sqlite3_column_double(handle, i);
       }
 
       case SQLITE_BLOB: {
-        const ptr = sqlite3_column_blob(this.#handle, i);
-        const bytes = sqlite3_column_bytes(this.#handle, i);
+        const ptr = sqlite3_column_blob(handle, i);
+        const bytes = sqlite3_column_bytes(handle, i);
         return new Uint8Array(
           new Deno.UnsafePointerView(BigInt(ptr)).getArrayBuffer(bytes)
             .slice(0),
@@ -326,6 +328,29 @@ export class Statement {
       unwrap(status);
     }
     return result as T[];
+  }
+
+  #getFn = null;
+  
+  #arr = [];
+  #getPreArray<T>(): T[] {
+    if (this.#cachedColCount !== undefined) return this.#arr;
+    this.#cachedColCount = sqlite3_column_count(this.#handle);
+    return (this.#arr = new Array(this.#cachedColCount));
+  }
+
+  get<T extends unknown>(): T[] {
+    const handle = this.#handle;
+    const arr = this.#getPreArray<T>();
+
+    sqlite3_reset(handle);
+    sqlite3_step(handle);
+
+    for (let i = 0; i < arr.length; i++) {
+      arr[i] = this.#getColumn(handle, i);
+    }
+
+    return arr as T[];
   }
 
   finalize(): void {
