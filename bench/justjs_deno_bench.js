@@ -1,4 +1,4 @@
-import { Database } from "../rewrite/database.ts";
+import { Database } from "../mod.ts";
 import { nextTick } from "https://deno.land/std@0.126.0/node/_next_tick.ts";
 
 const db = new Database(":memory:");

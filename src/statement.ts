@@ -1,291 +1,155 @@
+import type { Database } from "./database.ts";
+import { readCstr, toCString, unwrap } from "./util.ts";
+import ffi from "./ffi.ts";
 import {
+  SQLITE3_DONE,
   SQLITE3_ROW,
   SQLITE_BLOB,
   SQLITE_FLOAT,
   SQLITE_INTEGER,
-  SQLITE_NULL,
   SQLITE_TEXT,
 } from "./constants.ts";
-import type { BindValue, ColumnValue, Database } from "./database.ts";
-import {
-  sqlite3_bind_blob,
-  sqlite3_bind_double,
-  sqlite3_bind_int,
-  sqlite3_bind_int64,
-  sqlite3_bind_parameter_count,
-  sqlite3_bind_parameter_index,
-  sqlite3_bind_parameter_name,
-  sqlite3_bind_text,
+
+const {
+  sqlite3_prepare_v2,
+  sqlite3_reset,
   sqlite3_clear_bindings,
+  sqlite3_step,
+  sqlite3_column_count,
+  sqlite3_column_type,
+  sqlite3_column_text,
+  sqlite3_finalize,
+  sqlite3_column_int,
+  sqlite3_column_double,
   sqlite3_column_blob,
   sqlite3_column_bytes,
-  sqlite3_column_count,
-  sqlite3_column_double,
-  sqlite3_column_int64,
   sqlite3_column_name,
-  sqlite3_column_text,
-  sqlite3_column_type,
   sqlite3_expanded_sql,
-  sqlite3_finalize,
-  sqlite3_reset,
+  sqlite3_bind_parameter_count,
+  sqlite3_bind_int,
+  sqlite3_bind_text,
+  sqlite3_bind_blob,
+  sqlite3_bind_double,
+  sqlite3_bind_parameter_index,
   sqlite3_sql,
-  sqlite3_step,
-  sqlite3_stmt,
   sqlite3_stmt_readonly,
-} from "./ffi.ts";
-import { encoder, isObject } from "./util.ts";
+  sqlite3_bind_parameter_name,
+} = ffi;
+
+/** Types that can be possibly serialized as SQLite bind values */
+export type BindValue =
+  | number
+  | string
+  | symbol
+  | bigint
+  | boolean
+  | null
+  | undefined
+  | Date
+  | Uint8Array;
+
+export type BindParameters = BindValue[] | Record<string, BindValue>;
+export type RestBindParameters = BindValue[] | [BindParameters];
 
 /**
- * SQLite 3 value types.
+ * Represents a prepared statement.
+ *
+ * Must be `finalize`d after use to free the statement.
  */
-export enum SqliteType {
-  NULL = SQLITE_NULL,
-  INTEGER = SQLITE_INTEGER,
-  FLOAT = SQLITE_FLOAT,
-  TEXT = SQLITE_TEXT,
-  BLOB = SQLITE_BLOB,
-}
+export class Statement {
+  #handle: Deno.PointerValue;
 
-/**
- * Represents the current Row in a Prepared Statement. Should not be created directly.
- * Use `PreparedStatement.row` or `Row` returned by `PreparedStatement.step()` instead.
- */
-export class Row {
-  #stmt: PreparedStatement;
-
-  constructor(stmt: PreparedStatement) {
-    this.#stmt = stmt;
-  }
-
-  /** Number of columns in the row. */
-  get columnCount(): number {
-    return this.#stmt.columnCount;
-  }
-
-  /** Returns the names of the columns in the row. */
-  get columns(): string[] {
-    const columnCount = this.#stmt.columnCount;
-    const cols = new Array(columnCount);
-    for (let i = 0; i < columnCount; i++) {
-      cols[i] = this.#stmt.columnName(i);
-    }
-    return cols;
-  }
-
-  /** Returns the row as array containing columns' values. */
-  asArray<T extends unknown[] = any[]>(): T {
-    const columnCount = this.#stmt.columnCount;
-    const array = new Array(columnCount);
-    for (let i = 0; i < columnCount; i++) {
-      array[i] = this.#stmt.column(i);
-    }
-    return array as T;
-  }
-
-  /** Returns the row as object with column names mapping to values. */
-  asObject<T extends Record<string, unknown> = Record<string, any>>(): T {
-    const columnCount = this.#stmt.columnCount;
-    const obj: Record<string, unknown> = {};
-    for (let i = 0; i < columnCount; i++) {
-      const name = this.#stmt.columnName(i);
-      obj[name] = this.#stmt.column(i);
-    }
-    return obj as T;
-  }
-
-  [Symbol.for("Deno.customInspect")](): string {
-    return `SQLite3.Row { ${this.columns.join(", ")} }`;
-  }
-}
-
-/**
- * Represents a prepared statement. Should only be created by `Database.prepare()`.
- */
-export class PreparedStatement {
-  #db: Database;
-  #handle: sqlite3_stmt;
-  #row = new Row(this);
-
-  /** Database associated with the Prepared Statement */
-  get db(): Database {
-    return this.#db;
-  }
-
-  /** Unsafe Raw Handle (pointer) to the sqlite_stmt object. */
-  get unsafeRawHandle(): Deno.UnsafePointer {
+  /** Unsafe Raw (pointer) to the sqlite object */
+  get unsafeHandle(): Deno.PointerValue {
     return this.#handle;
-  }
-
-  /** Current row */
-  get row(): Row {
-    return this.#row;
-  }
-
-  /** The SQL string that we passed when creating statement */
-  get sql(): string {
-    return sqlite3_sql(this.#handle)!;
   }
 
   /** SQL string including bindings */
   get expandedSql(): string {
-    return sqlite3_expanded_sql(this.#handle)!;
+    return readCstr(sqlite3_expanded_sql(this.#handle));
+  }
+
+  /** The SQL string that we passed when creating statement */
+  get sql(): string {
+    return readCstr(sqlite3_sql(this.#handle));
   }
 
   /** Whether this statement doesn't make any direct changes to the DB */
   get readonly(): boolean {
-    return sqlite3_stmt_readonly(this.#handle);
+    return sqlite3_stmt_readonly(this.#handle) !== 0;
   }
 
-  constructor(db: Database, handle: sqlite3_stmt) {
-    this.#db = db;
-    this.#handle = handle;
+  /** Simply run the query without retrieving any output there may be. */
+  run(...args: RestBindParameters): void {
+    return this.#runWithArgs(...args);
   }
 
-  /** Binding parameter count in the prepared statement. */
+  /**
+   * Run the query and return the resulting rows where rows are array of columns.
+   */
+  values<T extends unknown[] = any[]>(...args: RestBindParameters): T[] {
+    return this.#valuesWithArgs(...args);
+  }
+
+  /**
+   * Run the query and return the resulting rows where rows are objects
+   * mapping column name to their corresponding values.
+   */
+  all<T extends Record<string, unknown> = Record<string, any>>(
+    ...args: RestBindParameters
+  ): T[] {
+    return this.#allWithArgs(...args);
+  }
+
+  #bindParameterCount: number;
+
   get bindParameterCount(): number {
-    return sqlite3_bind_parameter_count(this.#handle);
+    return this.#bindParameterCount;
   }
 
-  /** Get name of a binding parameter by its index. */
-  bindParameterName(index: number): string {
-    return sqlite3_bind_parameter_name(this.#handle, index);
+  constructor(public db: Database, sql: string) {
+    const pHandle = new Uint32Array(2);
+    unwrap(
+      sqlite3_prepare_v2(
+        db.unsafeHandle,
+        toCString(sql),
+        sql.length,
+        pHandle,
+        0,
+      ),
+      db.unsafeHandle,
+    );
+    this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+
+    if (
+      (this.#bindParameterCount = sqlite3_bind_parameter_count(
+        this.#handle,
+      )) === 0
+    ) {
+      this.all = this.#allNoArgs;
+      this.values = this.#valuesNoArgs;
+      this.run = this.#runNoArgs;
+    }
   }
 
-  /** Get index of a binding parameter by its name. */
+  bindParameterName(i: number): string {
+    return readCstr(sqlite3_bind_parameter_name(this.#handle, i));
+  }
+
   bindParameterIndex(name: string): number {
-    const index = sqlite3_bind_parameter_index(this.#handle, name);
-    if (index === 0) {
-      throw new Error(`Couldn't find index for '${name}'`);
-    }
-    return index;
+    if (name[0] !== ":" && name[0] !== "@") name = ":" + name;
+    return sqlite3_bind_parameter_index(this.#handle, toCString(name));
   }
 
-  /**
-   * We need to store references to any type that involves passing pointers
-   * to avoid V8's GC deallocating them before the statement is finalized.
-   *
-   * In SQLite C API, there is a callback that we can pass for such types
-   * to deallocate only when they're not in use. But this is not possible
-   * using Deno FFI. So we will just store references to them until `finalize`
-   * is called.
-   */
-  #bufferRefs = new Set<Uint8Array>();
+  #colNameCache: Record<number, string> = {};
 
-  /** Bind a parameter for the prepared query either by index or name. */
-  bind(param: number | string, value: BindValue): void {
-    const index = typeof param === "number"
-      ? param
-      : this.bindParameterIndex(param);
-
-    switch (typeof value) {
-      case "number":
-        if (isNaN(value)) {
-          this.bind(index, null);
-        } else if (Number.isSafeInteger(value)) {
-          if (value < 2 ** 32 / 2 && value > -(2 ** 32 / 2)) {
-            sqlite3_bind_int(
-              this.db.unsafeRawHandle,
-              this.#handle,
-              index,
-              value,
-            );
-          } else {
-            sqlite3_bind_int64(
-              this.db.unsafeRawHandle,
-              this.#handle,
-              index,
-              BigInt(value),
-            );
-          }
-        } else {
-          sqlite3_bind_double(
-            this.db.unsafeRawHandle,
-            this.#handle,
-            index,
-            value,
-          );
-        }
-        break;
-
-      case "object":
-        if (value === null) {
-          // By default, SQLite sets non-binded values to null.
-          // so this call is not needed.
-          // sqlite3_bind_null(this.db.unsafeRawHandle, this.#handle, index);
-        } else if (value instanceof Uint8Array) {
-          this.#bufferRefs.add(value);
-          sqlite3_bind_blob(
-            this.db.unsafeRawHandle,
-            this.#handle,
-            index,
-            value,
-          );
-        } else if (value instanceof Date) {
-          this.bind(index, value.toISOString());
-        } else {
-          throw new TypeError("Unsupported object type");
-        }
-        break;
-
-      case "bigint":
-        sqlite3_bind_int64(
-          this.db.unsafeRawHandle,
-          this.#handle,
-          index,
-          value,
-        );
-        break;
-
-      case "string": {
-        // Bind parameters do not need C string,
-        // because we specify it's length.
-        const buffer = encoder.encode(value);
-        this.#bufferRefs.add(buffer);
-        sqlite3_bind_text(
-          this.db.unsafeRawHandle,
-          this.#handle,
-          index,
-          buffer,
-        );
-        break;
-      }
-
-      case "boolean":
-        sqlite3_bind_int(
-          this.db.unsafeRawHandle,
-          this.#handle,
-          index,
-          value ? 1 : 0,
-        );
-        break;
-
-      case "undefined":
-        this.bind(index, null);
-        break;
-
-      case "symbol":
-        this.bind(index, value.description);
-        break;
-
-      default:
-        throw new TypeError(`Unsupported type: ${typeof value}`);
-    }
-  }
-
-  /**
-   * Binds all parameters to the prepared statement. This is a shortcut for calling `bind()` for each parameter.
-   */
-  bindAll(...values: BindValue[]): void {
-    for (let i = 0; i < values.length; i++) {
-      this.bind(i + 1, values[i]);
-    }
-  }
-
-  bindAllNamed(values: Record<string, BindValue>): void {
-    for (const name in values) {
-      const index = this.bindParameterIndex(":" + name);
-      this.bind(index, values[name]);
-    }
+  /** Return the name of the column at given index in current row. */
+  columnName(index: number): string {
+    const cached = this.#colNameCache[index];
+    if (cached !== undefined) return cached;
+    return (this.#colNameCache[index] = readCstr(
+      readCstr(sqlite3_column_name(this.#handle, index)),
+    ));
   }
 
   #cachedColCount?: number;
@@ -296,121 +160,308 @@ export class PreparedStatement {
     return (this.#cachedColCount = sqlite3_column_count(this.#handle));
   }
 
-  #colTypeCache: Record<number, number> = {};
-
-  /** Return the data type of the column at given index in current row. */
-  columnType(index: number): SqliteType {
-    if (index in this.#colTypeCache) return this.#colTypeCache[index];
-    const type = sqlite3_column_type(this.#handle, index);
-    this.#colTypeCache[index] = type;
-    return type;
+  #begin(): void {
+    sqlite3_reset(this.#handle);
+    sqlite3_clear_bindings(this.#handle);
+    this.#cachedColCount = undefined;
+    this.#colNameCache = {};
   }
 
-  #colNameCache = new Map<number, string>();
-
-  /** Return the name of the column at given index in current row. */
-  columnName(index: number): string {
-    if (this.#colNameCache.has(index)) return this.#colNameCache.get(index)!;
-    const name = sqlite3_column_name(this.#handle, index);
-    this.#colNameCache.set(index, name);
-    return name;
-  }
-
-  /** Return value of a column at given index in current row. */
-  column<T extends ColumnValue = ColumnValue>(index: number): T {
-    switch (this.columnType(index)) {
-      case SqliteType.INTEGER: {
-        const value = sqlite3_column_int64(this.#handle, index);
-        const num = Number(value);
-        if (Number.isSafeInteger(num)) {
-          return num as T;
-        } else {
-          return value as T;
-        }
+  #getColumn(handle: number, i: number): any {
+    const ty = sqlite3_column_type(handle, i);
+    if (ty === SQLITE_INTEGER) return sqlite3_column_int(handle, i);
+    switch (ty) {
+      case SQLITE_TEXT: {
+        const ptr = sqlite3_column_text(handle, i);
+        if (ptr === 0) return null;
+        return readCstr(ptr);
       }
 
-      case SqliteType.FLOAT:
-        return sqlite3_column_double(this.#handle, index) as T;
-
-      case SqliteType.TEXT:
-        return sqlite3_column_text(this.#handle, index) as T;
-
-      case SqliteType.BLOB: {
-        const blob = sqlite3_column_blob(this.#handle, index);
-        if (blob === 0n) return null as T;
-        const length = sqlite3_column_bytes(this.#handle, index);
-        const data = new Uint8Array(length);
-        new Deno.UnsafePointerView(BigInt(blob)).copyInto(data);
-        return data as T;
+      case SQLITE_INTEGER: {
+        return sqlite3_column_int(handle, i);
       }
 
-      default:
-        return null as T;
+      case SQLITE_FLOAT: {
+        return sqlite3_column_double(handle, i);
+      }
+
+      case SQLITE_BLOB: {
+        const ptr = sqlite3_column_blob(handle, i);
+        const bytes = sqlite3_column_bytes(handle, i);
+        return new Uint8Array(
+          new Deno.UnsafePointerView(BigInt(ptr)).getArrayBuffer(bytes)
+            .slice(0),
+        );
+      }
+
+      default: {
+        return null;
+      }
     }
   }
 
-  /**
-   * Adds a step to the prepared statement, using current bindings.
-   *
-   * @returns Row if available, undefined if done. Do note that Row object is shared for each Prepared
-   * statement. So if you call step again the Row object will work for next row instead.
-   */
-  step(): Row | undefined {
-    if (sqlite3_step(this.#db.unsafeRawHandle, this.#handle) === SQLITE3_ROW) {
-      this.#colTypeCache = {};
-      return this.row;
-    }
-  }
-
-  /** Resets the prepared statement to its initial state. */
-  reset(): void {
-    sqlite3_reset(this.#db.unsafeRawHandle, this.#handle);
-  }
-
-  /** Adds another step to prepared statement to be executed. Don't forget to call `finalize`. */
-  execute(...args: BindValue[]): void;
-  execute(args: Record<string, BindValue>): void;
-  execute(...args: BindValue[] | [Record<string, BindValue>]): void {
-    if (args.length === 1 && isObject(args[0])) {
-      this.bindAllNamed(args[0] as Record<string, BindValue>);
+  #runNoArgs(): undefined {
+    this.#begin();
+    const status = sqlite3_step(this.#handle);
+    if (status === SQLITE3_ROW || status === SQLITE3_DONE) {
+      return undefined;
     } else {
-      this.bindAll(...args as BindValue[]);
+      unwrap(status, this.db.unsafeHandle);
     }
-    this.step();
-    this.reset();
   }
 
-  /** Clears any previously set binding parameters to NULL */
-  clearBindings(): void {
-    sqlite3_clear_bindings(this.#db.unsafeRawHandle, this.#handle);
+  #bind(i: number, param: BindValue): void {
+    switch (typeof param) {
+      case "number": {
+        if (Number.isInteger(param)) {
+          unwrap(sqlite3_bind_int(this.#handle, i + 1, param));
+        } else {
+          unwrap(sqlite3_bind_double(this.#handle, i + 1, param));
+        }
+        break;
+      }
+      case "string": {
+        const str = (Deno as any).core.encode(param);
+        unwrap(
+          sqlite3_bind_text(this.#handle, i + 1, str, str.byteLength, 0),
+        );
+        break;
+      }
+      case "object": {
+        if (param === null) {
+          // pass
+        } else if (param instanceof Uint8Array) {
+          unwrap(
+            sqlite3_bind_blob(
+              this.#handle,
+              i + 1,
+              param,
+              param.byteLength,
+              0,
+            ),
+          );
+        } else if (param instanceof Date) {
+          unwrap(
+            sqlite3_bind_text(
+              this.#handle,
+              i + 1,
+              toCString(param.toISOString()),
+              -1,
+              0,
+            ),
+          );
+        } else {
+          throw new Error(`Value of unsupported type: ${Deno.inspect(param)}`);
+        }
+        break;
+      }
+      case "boolean":
+        unwrap(sqlite3_bind_int(
+          this.#handle,
+          i + 1,
+          param ? 1 : 0,
+        ));
+        break;
+      default: {
+        throw new Error(`Value of unsupported type: ${Deno.inspect(param)}`);
+      }
+    }
   }
 
-  /**
-   * Finalize and run the prepared statement.
-   *
-   * This also frees up any resources related to the statement.
-   * And clears all references to the buffers as they're no longer
-   * needed, allowing V8 to GC them.
-   */
+  #bindAll(params: RestBindParameters | BindParameters): void {
+    if (
+      typeof params[0] === "object" && params[0] !== null &&
+      !(params[0] instanceof Uint8Array) && !(params[0] instanceof Date)
+    ) {
+      params = params[0];
+    }
+    if (Array.isArray(params)) {
+      for (let i = 0; i < params.length; i++) {
+        this.#bind(i, (params as BindValue[])[i]);
+      }
+    } else {
+      for (const [name, param] of Object.entries(params)) {
+        const i = this.bindParameterIndex(name);
+        if (i === 0) {
+          throw new Error(`No such parameter "${name}"`);
+        }
+        this.#bind(i - 1, param as BindValue);
+      }
+    }
+  }
+
+  #runWithArgs(...params: RestBindParameters): undefined {
+    this.#begin();
+    this.#bindAll(params);
+    const status = sqlite3_step(this.#handle);
+    if (status === SQLITE3_ROW || status === SQLITE3_DONE) {
+      return undefined;
+    } else {
+      unwrap(status, this.db.unsafeHandle);
+    }
+  }
+
+  #valuesNoArgs<T extends Array<unknown>>(): T[] {
+    this.#begin();
+    const columnCount = sqlite3_column_count(this.#handle);
+    const result: T[] = [];
+    const getRowArray = new Function(
+      "getColumn",
+      `
+      return function() {
+        return [${
+        Array.from({ length: columnCount }).map((_, i) =>
+          `getColumn(${this.#handle}, ${i})`
+        )
+          .join(", ")
+      }];
+      };
+      `,
+    )(this.#getColumn.bind(this));
+    let status = sqlite3_step(this.#handle);
+    while (status === SQLITE3_ROW) {
+      result.push(getRowArray());
+      status = sqlite3_step(this.#handle);
+    }
+    if (status !== SQLITE3_DONE) {
+      unwrap(status, this.db.unsafeHandle);
+    }
+    return result as T[];
+  }
+
+  #valuesWithArgs<T extends Array<unknown>>(
+    ...params: RestBindParameters
+  ): T[] {
+    this.#begin();
+    this.#bindAll(params);
+    const columnCount = sqlite3_column_count(this.#handle);
+    const result: T[] = [];
+    const getRowArray = new Function(
+      "getColumn",
+      `
+      return function() {
+        return [${
+        Array.from({ length: columnCount }).map((_, i) =>
+          `getColumn(${this.#handle}, ${i})`
+        )
+          .join(", ")
+      }];
+      };
+      `,
+    )(this.#getColumn.bind(this));
+    let status = sqlite3_step(this.#handle);
+    while (status === SQLITE3_ROW) {
+      result.push(getRowArray());
+      status = sqlite3_step(this.#handle);
+    }
+    if (status !== SQLITE3_DONE) {
+      unwrap(status, this.db.unsafeHandle);
+    }
+    return result as T[];
+  }
+
+  #allNoArgs<T extends Record<string, unknown>>(): T[] {
+    this.#begin();
+    const columnCount = sqlite3_column_count(this.#handle);
+    const columnNames = new Array(columnCount);
+    for (let i = 0; i < columnCount; i++) {
+      columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
+    }
+    const result: T[] = [];
+    const getRowObject = new Function(
+      "getColumn",
+      `
+      return function() {
+        return {
+          ${
+        columnNames.map((name, i) =>
+          `"${name}": getColumn(${this.#handle}, ${i})`
+        ).join(",\n")
+      }
+        };
+      };
+      `,
+    )(this.#getColumn.bind(this));
+    let status = sqlite3_step(this.#handle);
+    while (status === SQLITE3_ROW) {
+      result.push(getRowObject());
+      status = sqlite3_step(this.#handle);
+    }
+    if (status !== SQLITE3_DONE) {
+      unwrap(status, this.db.unsafeHandle);
+    }
+    return result as T[];
+  }
+
+  #allWithArgs<T extends Record<string, unknown>>(
+    ...params: RestBindParameters
+  ): T[] {
+    this.#begin();
+    this.#bindAll(params);
+    const columnCount = sqlite3_column_count(this.#handle);
+    const columnNames = new Array(columnCount);
+    for (let i = 0; i < columnCount; i++) {
+      columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
+    }
+    const result: T[] = [];
+    const getRowObject = new Function(
+      "getColumn",
+      `
+      return function() {
+        return {
+          ${
+        columnNames.map((name, i) =>
+          `"${name}": getColumn(${this.#handle}, ${i})`
+        ).join(",\n")
+      }
+        };
+      };
+      `,
+    )(this.#getColumn.bind(this));
+    let status = sqlite3_step(this.#handle);
+    while (status === SQLITE3_ROW) {
+      result.push(getRowObject());
+      status = sqlite3_step(this.#handle);
+    }
+    if (status !== SQLITE3_DONE) {
+      unwrap(status, this.db.unsafeHandle);
+    }
+    return result as T[];
+  }
+
+  #arr: any[] = [];
+
+  #getPreArray<T>(): T[] {
+    if (this.#cachedColCount !== undefined) return this.#arr;
+    this.#cachedColCount = sqlite3_column_count(this.#handle);
+    return (this.#arr = new Array(this.#cachedColCount));
+  }
+
+  get<T extends Array<unknown>>(): T | undefined {
+    const handle = this.#handle;
+    const arr = this.#getPreArray<T>();
+
+    sqlite3_reset(handle);
+    const status = sqlite3_step(handle);
+    if (status === SQLITE3_ROW) {
+      for (let i = 0; i < arr.length; i++) {
+        arr[i] = this.#getColumn(handle as number, i);
+      }
+
+      return arr as T;
+    } else if (status === SQLITE3_DONE) {
+      return;
+    } else {
+      unwrap(status, this.db.unsafeHandle);
+    }
+  }
+
   finalize(): void {
-    try {
-      sqlite3_finalize(this.#db.unsafeRawHandle, this.#handle);
-    } finally {
-      this.#bufferRefs.clear();
-      this.#colTypeCache = {};
-      this.#colNameCache.clear();
-      this.#cachedColCount = undefined;
-      this.#row = new Row(this);
-    }
+    unwrap(sqlite3_finalize(this.#handle));
   }
 
-  /**
-   * Returns an iterator for rows.
-   */
-  *[Symbol.iterator](): IterableIterator<Row> {
-    let row;
-    while ((row = this.step())) {
-      yield row;
-    }
+  // https://www.sqlite.org/capi3ref.html#sqlite3_expanded_sql
+  toString(): string {
+    return readCstr(sqlite3_expanded_sql(this.#handle));
   }
 }
