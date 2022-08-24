@@ -2,11 +2,6 @@ import { bench, run } from "mitata";
 import { Database } from "bun:sqlite";
 
 const db = Database.open("./bench/northwind.sqlite");
-{
-  bench("serialize", () => {
-    db.serialize();
-  });
-}
 
 {
   const sql = db.prepare(`SELECT * FROM "Order"`);

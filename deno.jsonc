@@ -1,0 +1,29 @@
+{
+  "tasks": {
+    "test": "deno test --unstable -A test/test.ts",
+    // ops/sec
+    "bench": "deno run -A --unstable bench/bench_deno.js 50 1000000",
+    "bench-ffi": "deno run -A --unstable bench/bench_deno_ffi.js 50 1000000",
+    "bench-wasm": "deno run -A --unstable bench/bench_deno_wasm.js 50 1000000",
+    "bench-node": "deno run -A --unstable bench/bench_node.js 50 1000000",
+    "bench-c": "./bench/bench 50 1000000",
+    "bench-python": "python ./bench/bench_python.py",
+    // northwind
+    "bench:northwind": "deno run -A --unstable bench/northwind/deno.js",
+    "bench-node:northwind": "node bench/northwind/node.mjs",
+    "bench-bun:northwind": "bun run bench/northwind/bun.js"
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "camelcase",
+        "no-explicit-any"
+      ],
+      "include": [
+        "explicit-function-return-type",
+        "eqeqeq",
+        "explicit-module-boundary-types"
+      ]
+    }
+  }
+}

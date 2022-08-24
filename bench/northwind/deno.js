@@ -1,13 +1,7 @@
-import { Database } from "../mod.ts";
+import { Database } from "../../mod.ts";
 import { bench, run } from "https://esm.sh/mitata";
 
 const db = new Database("./bench/northwind.sqlite");
-
-{
-  bench("serialize", () => {
-    db.serialize();
-  });
-}
 
 {
   const sql = db.prepare(`SELECT * FROM "Order"`);
