@@ -27,6 +27,7 @@ const {
   sqlite3_expanded_sql,
   sqlite3_bind_parameter_count,
   sqlite3_bind_int,
+  sqlite3_bind_int64,
   sqlite3_bind_text,
   sqlite3_bind_blob,
   sqlite3_bind_double,
@@ -222,7 +223,14 @@ export class Statement {
     switch (typeof param) {
       case "number": {
         if (Number.isInteger(param)) {
-          unwrap(sqlite3_bind_int(this.#handle, i + 1, param));
+          if (
+            Number.isSafeInteger(param) && param >= -(2 ** 31) &&
+            param < 2 ** 31
+          ) {
+            unwrap(sqlite3_bind_int(this.#handle, i + 1, param));
+          } else {
+            unwrap(sqlite3_bind_int64(this.#handle, i + 1, BigInt(param)));
+          }
         } else {
           unwrap(sqlite3_bind_double(this.#handle, i + 1, param));
         }
@@ -263,6 +271,12 @@ export class Statement {
         }
         break;
       }
+
+      case "bigint": {
+        unwrap(sqlite3_bind_int64(this.#handle, i + 1, param));
+        break;
+      }
+
       case "boolean":
         unwrap(sqlite3_bind_int(
           this.#handle,
