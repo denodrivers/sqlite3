@@ -51,9 +51,11 @@ export type BindValue =
 export type BindParameters = BindValue[] | Record<string, BindValue>;
 export type RestBindParameters = BindValue[] | [BindParameters];
 
-const statementFinalizer = new FinalizationRegistry((ptr: Deno.PointerValue) => {
-  sqlite3_finalize(ptr);
-});
+const statementFinalizer = new FinalizationRegistry(
+  (ptr: Deno.PointerValue) => {
+    sqlite3_finalize(ptr);
+  },
+);
 
 /**
  * Represents a prepared statement.
