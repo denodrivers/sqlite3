@@ -16,7 +16,7 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@main
         with:
-          deno-version: v1.x
+          deno-version: 'v1.x'
 
       - name: Check Formatting
         run: deno fmt --check
@@ -30,7 +30,7 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@main
         with:
-          deno-version: v1.x
+          deno-version: 'v1.x'
 
       - name: Lint
         run: deno lint
@@ -49,7 +49,7 @@ jobs:
       - name: Install Deno
         uses: denoland/setup-deno@main
         with:
-          deno-version: v1.xs
+          deno-version: 'v1.x'
 
       - name: Run Tests
         run: deno task test
