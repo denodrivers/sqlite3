@@ -254,14 +254,14 @@ Deno.test("sqlite", async (t) => {
       await writer.close();
     });
 
-    // await t.step("read from blob (async iter)", async () => {
-    //   let chunks = 0;
-    //   for await (const chunk of blob) {
-    //     assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x03));
-    //     chunks++;
-    //   }
-    //   assertEquals(chunks, 2);
-    // });
+    await t.step("read from blob (async iter)", async () => {
+      let chunks = 0;
+      for await (const chunk of blob) {
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x03));
+        chunks++;
+      }
+      assertEquals(chunks, 2);
+    });
 
     await t.step("close blob", () => {
       blob.close();

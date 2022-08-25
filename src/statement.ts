@@ -465,6 +465,7 @@ export class Statement {
   }
 
   finalize(): void {
+    statementFinalizer.unregister(this);
     unwrap(sqlite3_finalize(this.#handle));
   }
 
