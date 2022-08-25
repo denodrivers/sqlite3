@@ -51,11 +51,11 @@ export type BindValue =
 export type BindParameters = BindValue[] | Record<string, BindValue>;
 export type RestBindParameters = BindValue[] | [BindParameters];
 
-const statementFinalizer = new FinalizationRegistry(
-  (ptr: Deno.PointerValue) => {
-    sqlite3_finalize(ptr);
-  },
-);
+// const statementFinalizer = new FinalizationRegistry(
+//   (ptr: Deno.PointerValue) => {
+//     sqlite3_finalize(ptr);
+//   },
+// );
 
 /**
  * Represents a prepared statement.
@@ -127,7 +127,7 @@ export class Statement {
     );
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
 
-    statementFinalizer.register(this, this.#handle);
+    // statementFinalizer.register(this, this.#handle);
 
     if (
       (this.#bindParameterCount = sqlite3_bind_parameter_count(
@@ -465,7 +465,7 @@ export class Statement {
   }
 
   finalize(): void {
-    statementFinalizer.unregister(this);
+    // statementFinalizer.unregister(this);
     unwrap(sqlite3_finalize(this.#handle));
   }
 
