@@ -54,19 +54,16 @@ export type RestBindParameters = BindValue[] | [BindParameters];
 
 const statementFinalizer = new FinalizationRegistry(
   (ptr: Deno.PointerValue) => {
-    console.log("finalizing statement", ptr);
     sqlite3_finalize(ptr);
-    console.log("finalized statement");
   },
 );
 
 /**
  * Represents a prepared statement.
- *
- * Must be `finalize`d after use to free the statement.
  */
 export class Statement {
   #handle: Deno.PointerValue;
+  #finalizerToken: { handle: Deno.PointerValue };
 
   /** Unsafe Raw (pointer) to the sqlite object */
   get unsafeHandle(): Deno.PointerValue {
@@ -130,7 +127,8 @@ export class Statement {
     );
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
 
-    statementFinalizer.register(this, this.#handle);
+    this.#finalizerToken = { handle: this.#handle };
+    statementFinalizer.register(this, this.#handle, this.#finalizerToken);
 
     if (
       (this.#bindParameterCount = sqlite3_bind_parameter_count(
@@ -487,7 +485,7 @@ export class Statement {
   }
 
   finalize(): void {
-    statementFinalizer.unregister(this);
+    statementFinalizer.unregister(this.#finalizerToken);
     unwrap(sqlite3_finalize(this.#handle));
   }
 
