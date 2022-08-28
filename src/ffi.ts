@@ -370,6 +370,14 @@ const symbols = {
     ],
     result: "pointer",
   },
+
+  sqlite3_column_int64: {
+    parameters: [
+      "pointer", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+    ],
+    result: "i64",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
