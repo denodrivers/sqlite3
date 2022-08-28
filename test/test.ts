@@ -117,7 +117,7 @@ Deno.test("sqlite", async (t) => {
       );
     }
 
-    stmt.finalize();
+    // stmt.finalize();
 
     assertEquals(db.totalChanges, 12);
   });

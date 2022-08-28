@@ -183,6 +183,7 @@ export class Database {
     stmt.run(...params);
   }
 
+  /** Alias for `exec` */
   run(sql: string, ...params: RestBindParameters): void {
     this.exec(sql, ...params);
   }
