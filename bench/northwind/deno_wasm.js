@@ -1,57 +1,44 @@
-import { bench, run } from "mitata";
-import { createRequire } from "module";
+import { DB } from "https://deno.land/x/sqlite@v3.4.1/mod.ts";
+import { bench, run } from "https://esm.sh/mitata";
 
-const require = createRequire(import.meta.url);
-const db = require("better-sqlite3")("./bench/northwind.sqlite");
+const db = new DB("./bench/northwind.sqlite");
 
 {
-  const sql = db.prepare(`SELECT * FROM "Order"`);
-
+  const sql = db.prepareQuery(`SELECT * FROM "Order"`);
   bench('SELECT * FROM "Order" all', () => {
     sql.all();
   });
-
   bench('SELECT * FROM "Order" values', () => {
-    sql.raw(true);
-    sql.all();
+    sql.allEntries();
   });
-
   bench('SELECT * FROM "Order" run', () => {
-    sql.run();
+    sql.execute();
   });
 }
 
 {
-  const sql = db.prepare(`SELECT * FROM "Product"`);
-
+  const sql = db.prepareQuery(`SELECT * FROM "Product"`);
   bench('SELECT * FROM "Product" all', () => {
     sql.all();
   });
-
   bench('SELECT * FROM "Product" values', () => {
-    sql.raw(true);
-    sql.all();
+    sql.allEntries();
   });
-
   bench('SELECT * FROM "Product" run', () => {
-    sql.run();
+    sql.execute();
   });
 }
 
 {
-  const sql = db.prepare(`SELECT * FROM "OrderDetail"`);
-
+  const sql = db.prepareQuery(`SELECT * FROM "OrderDetail"`);
   bench('SELECT * FROM "OrderDetail" all', () => {
     sql.all();
   });
-
   bench('SELECT * FROM "OrderDetail" values', () => {
-    sql.raw(true);
-    sql.all();
+    sql.allEntries();
   });
-
   bench('SELECT * FROM "OrderDetail" run', () => {
-    sql.run();
+    sql.execute();
   });
 }
 

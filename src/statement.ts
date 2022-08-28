@@ -35,6 +35,7 @@ const {
   sqlite3_sql,
   sqlite3_stmt_readonly,
   sqlite3_bind_parameter_name,
+  // sqlite3_column_int,
 } = ffi;
 
 /** Types that can be possibly serialized as SQLite bind values */
@@ -178,7 +179,7 @@ export class Statement {
 
   #getColumn(handle: number, i: number): any {
     const ty = sqlite3_column_type(handle, i);
-
+    // if (ty === SQLITE_INTEGER) return sqlite3_column_int(handle, i);
     switch (ty) {
       case SQLITE_TEXT: {
         const ptr = sqlite3_column_text(handle, i);
