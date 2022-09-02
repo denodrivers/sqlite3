@@ -61,10 +61,13 @@ const statementFinalizer = new FinalizationRegistry(
 
 /**
  * Represents a prepared statement.
+ *
+ * See `Database#prepare` for more information.
  */
 export class Statement {
   #handle: Deno.PointerValue;
   #finalizerToken: { handle: Deno.PointerValue };
+  #bound = false;
 
   /** Unsafe Raw (pointer) to the sqlite object */
   get unsafeHandle(): Deno.PointerValue {
@@ -110,6 +113,7 @@ export class Statement {
 
   #bindParameterCount: number;
 
+  /** Number of parameters (to be) bound */
   get bindParameterCount(): number {
     return this.#bindParameterCount;
   }
@@ -142,10 +146,12 @@ export class Statement {
     }
   }
 
+  /** Get bind parameter name by index */
   bindParameterName(i: number): string {
     return readCstr(sqlite3_bind_parameter_name(this.#handle, i));
   }
 
+  /** Get bind parameter index by name */
   bindParameterIndex(name: string): number {
     if (name[0] !== ":" && name[0] !== "@") name = ":" + name;
     return sqlite3_bind_parameter_index(this.#handle, toCString(name));
@@ -172,7 +178,7 @@ export class Statement {
 
   #begin(): void {
     sqlite3_reset(this.#handle);
-    sqlite3_clear_bindings(this.#handle);
+    if (!this.#bound) sqlite3_clear_bindings(this.#handle);
     this.#cachedColCount = undefined;
     this.#colNameCache = {};
   }
@@ -297,7 +303,22 @@ export class Statement {
     }
   }
 
+  /**
+   * Bind parameters to the statement. This method can only be called once
+   * to set the parameters to be same throughout the statement. You cannot
+   * change the parameters after this method is called.
+   *
+   * This method is merely just for optimization to avoid binding parameters
+   * each time in prepared statement.
+   */
+  bind(...params: RestBindParameters): this {
+    this.#bindAll(params);
+    this.#bound = true;
+    return this;
+  }
+
   #bindAll(params: RestBindParameters | BindParameters): void {
+    if (this.#bound) throw new Error("Statement already bound to values");
     if (
       typeof params[0] === "object" && params[0] !== null &&
       !(params[0] instanceof Uint8Array) && !(params[0] instanceof Date)
@@ -466,6 +487,7 @@ export class Statement {
     return (this.#arr = new Array(this.#cachedColCount));
   }
 
+  /** Fetch only first row, if any. */
   get<T extends Array<unknown>>(): T | undefined {
     const handle = this.#handle;
     const arr = this.#getPreArray<T>();
@@ -485,13 +507,46 @@ export class Statement {
     }
   }
 
+  /** Free up the statement object. */
   finalize(): void {
     statementFinalizer.unregister(this.#finalizerToken);
     unwrap(sqlite3_finalize(this.#handle));
   }
 
-  // https://www.sqlite.org/capi3ref.html#sqlite3_expanded_sql
+  /** Coerces the statement to a string, which in this case is expanded SQL. */
   toString(): string {
     return readCstr(sqlite3_expanded_sql(this.#handle));
+  }
+
+  /** Iterate over resultant rows from query. */
+  *[Symbol.iterator](): IterableIterator<any> {
+    this.#begin();
+    const columnCount = sqlite3_column_count(this.#handle);
+    const columnNames = new Array(columnCount);
+    for (let i = 0; i < columnCount; i++) {
+      columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
+    }
+    const getRowObject = new Function(
+      "getColumn",
+      `
+      return function() {
+        return {
+          ${
+        columnNames.map((name, i) =>
+          `"${name}": getColumn(${this.#handle}, ${i})`
+        ).join(",\n")
+      }
+        };
+      };
+      `,
+    )(this.#getColumn.bind(this));
+    let status = sqlite3_step(this.#handle);
+    while (status === SQLITE3_ROW) {
+      yield getRowObject();
+      status = sqlite3_step(this.#handle);
+    }
+    if (status !== SQLITE3_DONE) {
+      unwrap(status, this.db.unsafeHandle);
+    }
   }
 }

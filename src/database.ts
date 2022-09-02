@@ -22,6 +22,19 @@ export interface DatabaseOpenOptions {
   memory?: boolean;
 }
 
+/** Transaction function created using `Database#transaction`. */
+export type Transaction<T> = ((v: T) => void) & {
+  /** BEGIN */
+  default: Transaction<T>;
+  /** BEGIN DEFERRED */
+  deferred: Transaction<T>;
+  /** BEGIN IMMEDIATE */
+  immediate: Transaction<T>;
+  /** BEGIN EXCLUSIVE */
+  exclusive: Transaction<T>;
+  database: Database;
+};
+
 const {
   sqlite3_open_v2,
   sqlite3_close_v2,
@@ -71,6 +84,12 @@ export function isComplete(statement: string): boolean {
 export class Database {
   #path: string;
   #handle: Deno.PointerValue;
+  #open = true;
+
+  /** Whether DB connection is open */
+  get open(): boolean {
+    return this.#open;
+  }
 
   /** Unsafe Raw (pointer) to the sqlite object */
   get unsafeHandle(): Deno.PointerValue {
@@ -102,6 +121,11 @@ export class Database {
     return sqlite3_get_autocommit(this.#handle) === 1;
   }
 
+  /** Whether DB is in mid of a transaction */
+  get inTransaction(): boolean {
+    return this.#open && !this.autocommit;
+  }
+
   constructor(path: string | URL, options: DatabaseOpenOptions = {}) {
     this.#path = path instanceof URL ? fromFileUrl(path) : path;
     let flags = 0;
@@ -129,6 +153,38 @@ export class Database {
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
   }
 
+  /**
+   * Creates a new Prepared Statement from the given SQL statement.
+   *
+   * Example:
+   * ```ts
+   * const stmt = db.prepare("SELECT * FROM mytable WHERE id = ?");
+   *
+   * for (const row of stmt.all(1)) {
+   *   console.log(row);
+   * }
+   * ```
+   *
+   * Bind parameters can be either provided as an array of values, or as an object
+   * mapping the parameter name to the value.
+   *
+   * Example:
+   * ```ts
+   * const stmt = db.prepare("SELECT * FROM mytable WHERE id = ?");
+   * const row = stmt.get(1);
+   *
+   * // or
+   *
+   * const stmt = db.prepare("SELECT * FROM mytable WHERE id = :id");
+   * const row = stmt.get({ id: 1 });
+   * ```
+   *
+   * Statements are automatically freed once GC catches them, however
+   * you can also manually free using `finalize` method.
+   *
+   * @param sql SQL statement string
+   * @returns Statement object
+   */
   prepare(sql: string): Statement {
     return new Statement(this, sql);
   }
@@ -188,37 +244,46 @@ export class Database {
     this.exec(sql, ...params);
   }
 
-  #cachedQueriesKeys: string[] = [];
-  #cachedQueriesLengths: number[] = [];
-  #cachedQueriesValues: Statement[] = [];
-
-  query(sql: string): Statement {
-    let index = this.#cachedQueriesLengths.indexOf(sql.length);
-    while (index !== -1) {
-      if (this.#cachedQueriesKeys[index] !== sql) {
-        index = this.#cachedQueriesLengths.indexOf(sql.length, index + 1);
-        continue;
-      }
-
-      return this.#cachedQueriesValues[index];
-    }
-
-    const willCache = this.#cachedQueriesKeys.length < 20;
-
-    const stmt = this.prepare(
-      sql,
-    );
-
-    if (willCache) {
-      this.#cachedQueriesKeys.push(sql);
-      this.#cachedQueriesLengths.push(sql.length);
-      this.#cachedQueriesValues.push(stmt);
-    }
-
-    return stmt;
-  }
-
-  transaction(fn: (_: Statement) => unknown): any {
+  /**
+   * Wraps a callback function in a transaction.
+   *
+   * - When function is called, the transaction is started.
+   * - When function returns, the transaction is committed.
+   * - When function throws an error, the transaction is rolled back.
+   *
+   * Example:
+   * ```ts
+   * const stmt = db.prepare("insert into users (id, username) values(?, ?)");
+   *
+   * interface User {
+   *   id: number;
+   *   username: string;
+   * }
+   *
+   * const insertUsers = db.transaction((data: User[]) => {
+   *   for (const user of data) {
+   *     stmt.run(user);
+   *   }
+   * });
+   *
+   * insertUsers([
+   *   { id: 1, username: "alice" },
+   *   { id: 2, username: "bob" },
+   * ]);
+   *
+   * // May also use `insertUsers.deferred`, `immediate`, or `exclusive`.
+   * // They corresspond to using `BEGIN DEFERRED`, `BEGIN IMMEDIATE`, and `BEGIN EXCLUSIVE`.
+   * // For eg.
+   *
+   * insertUsers.deferred([
+   *   { id: 1, username: "alice" },
+   *   { id: 2, username: "bob" },
+   * ]);
+   * ```
+   */
+  transaction<T = any>(
+    fn: (this: Transaction<T>, _: T) => unknown,
+  ): Transaction<T> {
     // Based on https://github.com/WiseLibs/better-sqlite3/blob/master/lib/methods/transaction.js
     const controller = getController(this);
 
@@ -237,7 +302,7 @@ export class Database {
     Object.defineProperties(properties.exclusive.value, properties);
 
     // Return the default version of the transaction function
-    return properties.default.value;
+    return properties.default.value as any as Transaction<T>;
   }
 
   /**
@@ -246,7 +311,9 @@ export class Database {
    * Calling this method more than once is no-op.
    */
   close(): void {
+    if (!this.#open) return;
     unwrap(sqlite3_close_v2(this.#handle));
+    this.#open = false;
   }
 
   [Symbol.for("Deno.customInspect")](): string {
@@ -299,7 +366,7 @@ const wrapTransaction = (
   db: Database,
   { begin, commit, rollback, savepoint, release, rollbackTo }: any,
 ) =>
-  function sqliteTransaction(): Statement {
+  function sqliteTransaction(): any {
     const { apply } = Function.prototype;
     let before, after, undo;
     if (!db.autocommit) {

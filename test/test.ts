@@ -53,7 +53,7 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("select version", () => {
-    const [version] = db.query("select sqlite_version()").get<[string]>()!;
+    const [version] = db.prepare("select sqlite_version()").get<[string]>()!;
     assertEquals(version, SQLITE_VERSION);
   });
 
@@ -107,15 +107,24 @@ Deno.test("sqlite", async (t) => {
     values (NULL, NULL, NULL, NULL, NULL)`,
     );
 
+    const insertMany = db.transaction((data: any[]) => {
+      for (const row of data) {
+        stmt.run(row);
+      }
+    });
+
+    const rows = [];
     for (let i = 0; i < 10; i++) {
-      stmt.run(
+      rows.push([
         i,
         `hello ${i}`,
         3.14,
         new Uint8Array([3, 2, 1]),
         null,
-      );
+      ]);
     }
+
+    insertMany.default(rows);
 
     stmt.finalize();
 
@@ -123,7 +132,7 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("query array", () => {
-    const row = db.query("select * from test where integer = 0").values<
+    const row = db.prepare("select * from test where integer = 0").values<
       [number, string, number, Uint8Array, null]
     >()[0];
 
@@ -135,7 +144,9 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("query object", () => {
-    const rows = db.query("select * from test where integer != ? and text != ?")
+    const rows = db.prepare(
+      "select * from test where integer != ? and text != ?",
+    )
       .all<{
         integer: number;
         text: string;
@@ -158,7 +169,7 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("query with string param", () => {
-    const row = db.query(
+    const row = db.prepare(
       "select * from test where text = ?",
     ).values<[number, string, number, Uint8Array, null]>("hello 0")[0];
 
@@ -170,7 +181,7 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("query with string param (named)", () => {
-    const row = db.query(
+    const row = db.prepare(
       "select * from test where text = :p1",
     ).values<[number, string, number, Uint8Array, null]>({ p1: "hello 0" })[0];
 
