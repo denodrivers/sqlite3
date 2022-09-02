@@ -378,16 +378,6 @@ const symbols = {
     ],
     result: "i64",
   },
-
-  sqlite3_serialize: {
-    parameters: [
-      "pointer", // sqlite3 *db
-      "buffer", // const char *zSql
-      "i64", // sqlite3_int64 *pN
-      "u32", // unsigned int *pFlags
-    ],
-    result: "pointer",
-  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
