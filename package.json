@@ -1,0 +1,27 @@
+{
+  "name": "sqlite3",
+  "version": "1.0.0",
+  "description": "[![Tags](https://img.shields.io/github/release/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/releases) [![Doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https/deno.land/x/sqlite3@0.4.3/mod.ts) [![Checks](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml/badge.svg)](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/blob/master/LICENSE)",
+  "main": "bunbench.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/denodrivers/sqlite3.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/denodrivers/sqlite3/issues"
+  },
+  "homepage": "https://github.com/denodrivers/sqlite3#readme",
+  "dependencies": {
+    "better-sqlite3": "^7.6.2",
+    "mitata": "^0.1.6"
+  }
+}

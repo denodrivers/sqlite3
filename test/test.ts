@@ -3,6 +3,7 @@ import {
   isComplete,
   SQLITE_SOURCEID,
   SQLITE_VERSION,
+  SqliteError,
 } from "../mod.ts";
 import { assert, assertEquals, assertThrows } from "./deps.ts";
 
@@ -27,8 +28,8 @@ Deno.test("sqlite", async (t) => {
   await t.step("open (expect error)", () => {
     assertThrows(
       () => new Database(DB_URL, { create: false }),
-      Error,
-      "(14)",
+      SqliteError,
+      "14:",
     );
   });
 
@@ -46,18 +47,13 @@ Deno.test("sqlite", async (t) => {
   if (typeof db !== "object") throw new Error("db open failed");
 
   await t.step("execute pragma", () => {
-    db.execute("pragma journal_mode = WAL");
-    db.execute("pragma synchronous = normal");
-    db.execute("pragma temp_store = memory");
+    db.exec("pragma journal_mode = WAL");
+    db.exec("pragma synchronous = normal");
+    db.exec("pragma temp_store = memory");
   });
 
   await t.step("select version", () => {
-    const [version] = db.queryArray("select sqlite_version()")[0];
-    assertEquals(version, SQLITE_VERSION);
-  });
-
-  await t.step("select version with tag", () => {
-    const [version] = db.queryArray`select sqlite_version()`[0];
+    const [version] = db.prepare("select sqlite_version()").get<[string]>()!;
     assertEquals(version, SQLITE_VERSION);
   });
 
@@ -70,17 +66,17 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("create table", () => {
-    db.execute`create table test (
+    db.exec(`create table test (
       integer integer,
       text text not null,
       double double,
       blob blob not null,
       nullable integer
-    )`;
+    )`);
   });
 
   await t.step("insert one", () => {
-    db.execute(
+    db.exec(
       `insert into test (integer, text, double, blob, nullable)
       values (?, ?, ?, ?, ?)`,
       0,
@@ -94,16 +90,7 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("delete inserted row", () => {
-    db.execute("delete from test where integer = 0");
-  });
-
-  await t.step("insert one", () => {
-    db.execute`insert into test (integer, text, double, blob, nullable)
-      values (${0}, ${"hello world"}, ${3.14}, ${new Uint8Array([
-      1,
-      2,
-      3,
-    ])}, ${null})`;
+    db.exec("delete from test where integer = 0");
   });
 
   await t.step("last insert row id (after insert)", () => {
@@ -114,50 +101,62 @@ Deno.test("sqlite", async (t) => {
     const SQL = `insert into test (integer, text, double, blob, nullable)
     values (?, ?, ?, ?, ?)`;
     const stmt = db.prepare(SQL);
-    assertEquals(stmt.sql, SQL);
     assertEquals(
-      stmt.expandedSql,
+      stmt.toString(),
       `insert into test (integer, text, double, blob, nullable)
     values (NULL, NULL, NULL, NULL, NULL)`,
     );
 
+    const insertMany = db.transaction((data: any[]) => {
+      for (const row of data) {
+        stmt.run(row);
+      }
+    });
+
+    const rows = [];
     for (let i = 0; i < 10; i++) {
-      stmt.execute(
+      rows.push([
         i,
         `hello ${i}`,
         3.14,
         new Uint8Array([3, 2, 1]),
         null,
-      );
+      ]);
     }
+
+    insertMany.default(rows);
 
     stmt.finalize();
 
-    assertEquals(db.totalChanges, 13);
+    assertEquals(db.totalChanges, 12);
   });
 
   await t.step("query array", () => {
-    const row = db.queryArray<
+    const row = db.prepare("select * from test where integer = 0").values<
       [number, string, number, Uint8Array, null]
-    >`select * from test where integer = 0`[0];
+    >()[0];
+
     assertEquals(row[0], 0);
-    assertEquals(row[1], "hello world");
+    assertEquals(row[1], "hello 0");
     assertEquals(row[2], 3.14);
-    assertEquals(row[3], new Uint8Array([1, 2, 3]));
+    assertEquals(row[3], new Uint8Array([3, 2, 1]));
     assertEquals(row[4], null);
   });
 
   await t.step("query object", () => {
-    const rows = db.queryObject<{
-      integer: number;
-      text: string;
-      double: number;
-      blob: Uint8Array;
-      nullable: null;
-    }>("select * from test where integer != :integer and text != :text", {
-      integer: 1,
-      text: "hello world",
-    });
+    const rows = db.prepare(
+      "select * from test where integer != ? and text != ?",
+    )
+      .all<{
+        integer: number;
+        text: string;
+        double: number;
+        blob: Uint8Array;
+        nullable: null;
+      }>(
+        1,
+        "hello world",
+      );
 
     assertEquals(rows.length, 9);
     for (const row of rows) {
@@ -170,31 +169,32 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("query with string param", () => {
-    const row = db.queryArray<[number, string, number, Uint8Array, null]>(
+    const row = db.prepare(
       "select * from test where text = ?",
-      "hello world",
-    )[0];
+    ).values<[number, string, number, Uint8Array, null]>("hello 0")[0];
+
     assertEquals(row[0], 0);
-    assertEquals(row[1], "hello world");
+    assertEquals(row[1], "hello 0");
     assertEquals(row[2], 3.14);
-    assertEquals(row[3], new Uint8Array([1, 2, 3]));
+    assertEquals(row[3], new Uint8Array([3, 2, 1]));
     assertEquals(row[4], null);
   });
 
-  await t.step("query with string param (template string)", () => {
-    const row = db.queryArray<
-      [number, string, number, Uint8Array, null]
-    >`select * from test where text = ${"hello world"}`[0];
+  await t.step("query with string param (named)", () => {
+    const row = db.prepare(
+      "select * from test where text = :p1",
+    ).values<[number, string, number, Uint8Array, null]>({ p1: "hello 0" })[0];
+
     assertEquals(row[0], 0);
-    assertEquals(row[1], "hello world");
+    assertEquals(row[1], "hello 0");
     assertEquals(row[2], 3.14);
-    assertEquals(row[3], new Uint8Array([1, 2, 3]));
+    assertEquals(row[3], new Uint8Array([3, 2, 1]));
     assertEquals(row[4], null);
   });
 
   await t.step("more than 32-bit int", () => {
     const value = 978307200000;
-    db.execute(
+    db.exec(
       `insert into test (integer, text, double, blob, nullable)
     values (?, ?, ?, ?, ?)`,
       value,
@@ -203,16 +203,15 @@ Deno.test("sqlite", async (t) => {
       new Uint8Array(0),
       null,
     );
-    const [int] = db.queryArray<[number]>(
+    const [int] = db.prepare(
       "select integer from test where text = ?",
-      "bigint",
-    )[0];
+    ).values<[number]>("bigint")[0];
     assertEquals(int, value);
   });
 
   await t.step("more than 32-bit signed int", () => {
     const value = -978307200000;
-    db.execute(
+    db.exec(
       `insert into test (integer, text, double, blob, nullable)
     values (?, ?, ?, ?, ?)`,
       value,
@@ -221,16 +220,15 @@ Deno.test("sqlite", async (t) => {
       new Uint8Array(0),
       null,
     );
-    const [int] = db.queryArray<[number]>(
+    const [int] = db.prepare(
       "select integer from test where text = ?",
-      "bigint2",
-    )[0];
+    ).values<[number]>("bigint2")[0];
     assertEquals(int, value);
   });
 
   await t.step("max 64-bit signed int", () => {
     const value = 0x7fffffffffffffffn;
-    db.execute(
+    db.exec(
       `insert into test (integer, text, double, blob, nullable)
     values (?, ?, ?, ?, ?)`,
       value,
@@ -239,15 +237,14 @@ Deno.test("sqlite", async (t) => {
       new Uint8Array(0),
       null,
     );
-    const [int] = db.queryArray<[number]>(
+    const [int] = db.prepare(
       "select integer from test where text = ?",
-      "bigint3",
-    )[0];
+    ).values<[bigint]>("bigint3")[0];
     assertEquals(int, value);
   });
 
   await t.step("nan value", () => {
-    db.execute(
+    db.exec(
       `insert into test (integer, text, double, blob, nullable)
     values (?, ?, ?, ?, ?)`,
       NaN,
@@ -256,16 +253,15 @@ Deno.test("sqlite", async (t) => {
       new Uint8Array(0),
       null,
     );
-    const [int, double] = db.queryArray<[number, number]>(
+    const [int, double] = db.prepare(
       "select integer, double from test where text = ?",
-      "nan",
-    )[0];
+    ).values<[number, number]>("nan")[0];
     assertEquals(int, null);
     assertEquals(double, null);
   });
 
   await t.step("create blob table", () => {
-    db.execute(`
+    db.exec(`
       create table blobs (
         id integer primary key,
         data blob not null
@@ -275,7 +271,7 @@ Deno.test("sqlite", async (t) => {
 
   await t.step("insert blob", () => {
     const blob = new Uint8Array(1024 * 32);
-    db.execute("insert into blobs (id, data) values (?, ?)", 0, blob);
+    db.exec("insert into blobs (id, data) values (?, ?)", 0, blob);
   });
 
   await t.step("sql blob", async (t) => {
@@ -352,12 +348,14 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("drop table", () => {
-    db.execute("drop table test");
-    db.execute("drop table blobs");
+    db.exec("drop table test");
+    db.exec("drop table blobs");
   });
 
   await t.step("close", () => {
     db.close();
-    Deno.removeSync(DB_URL);
+    try {
+      Deno.removeSync(DB_URL);
+    } catch (_) { /** ignore, already being used */ }
   });
 });

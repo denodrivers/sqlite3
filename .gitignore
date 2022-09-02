@@ -7,3 +7,8 @@
 *.so
 *.db-shm
 *.db-wal
+package-lock.json
+*.sqlite
+node_modules/
+# C benchmark binary
+bench/bench
