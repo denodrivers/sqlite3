@@ -148,9 +148,10 @@ export class Database {
     }
 
     const pHandle = new Uint32Array(2);
-    unwrap(sqlite3_open_v2(toCString(this.#path), pHandle, flags, 0));
-
+    const result = sqlite3_open_v2(toCString(this.#path), pHandle, flags, 0);
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+    if (result !== 0) sqlite3_close_v2(this.#handle);
+    unwrap(result);
   }
 
   /**
