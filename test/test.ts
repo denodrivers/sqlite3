@@ -49,7 +49,7 @@ Deno.test("sqlite", async (t) => {
   await t.step("execute pragma", () => {
     db.exec("pragma journal_mode = WAL");
     db.exec("pragma synchronous = normal");
-    db.exec("pragma temp_store = memory");
+    assertEquals(db.exec("pragma temp_store = memory"), 0);
   });
 
   await t.step("select version", () => {

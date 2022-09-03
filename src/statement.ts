@@ -35,6 +35,7 @@ const {
   sqlite3_sql,
   sqlite3_stmt_readonly,
   sqlite3_bind_parameter_name,
+  sqlite3_changes,
   // sqlite3_column_int,
 } = ffi;
 
@@ -68,6 +69,7 @@ export class Statement {
   #handle: Deno.PointerValue;
   #finalizerToken: { handle: Deno.PointerValue };
   #bound = false;
+  #hasNoArgs = false;
 
   /** Unsafe Raw (pointer) to the sqlite object */
   get unsafeHandle(): Deno.PointerValue {
@@ -90,7 +92,7 @@ export class Statement {
   }
 
   /** Simply run the query without retrieving any output there may be. */
-  run(...args: RestBindParameters): void {
+  run(...args: RestBindParameters): number {
     return this.#runWithArgs(...args);
   }
 
@@ -140,6 +142,7 @@ export class Statement {
         this.#handle,
       )) === 0
     ) {
+      this.#hasNoArgs = true;
       this.all = this.#allNoArgs;
       this.values = this.#valuesNoArgs;
       this.run = this.#runNoArgs;
@@ -153,7 +156,9 @@ export class Statement {
 
   /** Get bind parameter index by name */
   bindParameterIndex(name: string): number {
-    if (name[0] !== ":" && name[0] !== "@") name = ":" + name;
+    if (name[0] !== ":" && name[0] !== "@" && name[0] !== "$") {
+      name = ":" + name;
+    }
     return sqlite3_bind_parameter_index(this.#handle, toCString(name));
   }
 
@@ -178,7 +183,7 @@ export class Statement {
 
   #begin(): void {
     sqlite3_reset(this.#handle);
-    if (!this.#bound) sqlite3_clear_bindings(this.#handle);
+    if (!this.#bound || this.#hasNoArgs) sqlite3_clear_bindings(this.#handle);
     this.#cachedColCount = undefined;
     this.#colNameCache = {};
   }
@@ -222,14 +227,13 @@ export class Statement {
     }
   }
 
-  #runNoArgs(): undefined {
+  #runNoArgs(): number {
     this.#begin();
     const status = sqlite3_step(this.#handle);
-    if (status === SQLITE3_ROW || status === SQLITE3_DONE) {
-      return undefined;
-    } else {
+    if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    return sqlite3_changes(this.db.unsafeHandle);
   }
 
   #bind(i: number, param: BindValue): void {
@@ -340,15 +344,14 @@ export class Statement {
     }
   }
 
-  #runWithArgs(...params: RestBindParameters): undefined {
+  #runWithArgs(...params: RestBindParameters): number {
     this.#begin();
     this.#bindAll(params);
     const status = sqlite3_step(this.#handle);
-    if (status === SQLITE3_ROW || status === SQLITE3_DONE) {
-      return undefined;
-    } else {
+    if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    return sqlite3_changes(this.db.unsafeHandle);
   }
 
   #valuesNoArgs<T extends Array<unknown>>(): T[] {
