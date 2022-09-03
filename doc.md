@@ -213,18 +213,10 @@ properties (functions) which can be used to change `BEGIN` to
 `BEGIN DEFERRED`/`BEGIN IMMEDIATE`/`BEGIN EXCLUSIVE`.
 
 ```ts
-const runTransaction = db.transaction(() => {
-  db.exec("INSERT INTO foo VALUES ('bar')");
-  db.exec("INSERT INTO foo VALUES ('baz')");
-});
-
-runTransaction();
-
-// Passing data to the transaction function
-
+const stmt = db.prepare("INSERT INTO foo VALUES (?)");
 const runTransaction = db.transaction((data: SomeData[]) => {
   for (const item of data) {
-    db.exec("INSERT INTO foo VALUES (?)", item.value);
+    stmt.run(item.value);
   }
 });
 
