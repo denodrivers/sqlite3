@@ -148,9 +148,10 @@ export class Database {
     }
 
     const pHandle = new Uint32Array(2);
-    unwrap(sqlite3_open_v2(toCString(this.#path), pHandle, flags, 0));
-
+    const result = sqlite3_open_v2(toCString(this.#path), pHandle, flags, 0);
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+    if (result !== 0) sqlite3_close_v2(this.#handle);
+    unwrap(result);
   }
 
   /**
@@ -200,7 +201,8 @@ export class Database {
   }
 
   /**
-   * Simply executes the SQL, without returning anything.
+   * Simply executes the SQL statement (supports multiple statements separated by semicolon).
+   * Returns the number of changes made by last statement.
    *
    * Example:
    * ```ts
@@ -222,7 +224,7 @@ export class Database {
    * Under the hood, it uses `sqlite3_exec` if no parameters are given to bind
    * with the SQL statement, a prepared statement otherwise.
    */
-  exec(sql: string, ...params: RestBindParameters): void {
+  exec(sql: string, ...params: RestBindParameters): number {
     if (params.length === 0) {
       const pErr = new Uint32Array(2);
       sqlite3_exec(this.#handle, toCString(sql), 0, 0, pErr);
@@ -232,16 +234,17 @@ export class Database {
         sqlite3_free(errPtr);
         throw new Error(err);
       }
-      return;
+      return sqlite3_changes(this.#handle);
     }
 
     const stmt = this.prepare(sql);
     stmt.run(...params);
+    return sqlite3_changes(this.#handle);
   }
 
-  /** Alias for `exec` */
-  run(sql: string, ...params: RestBindParameters): void {
-    this.exec(sql, ...params);
+  /** Alias for `exec`. */
+  run(sql: string, ...params: RestBindParameters): number {
+    return this.exec(sql, ...params);
   }
 
   /**
@@ -369,7 +372,7 @@ const wrapTransaction = (
   function sqliteTransaction(): any {
     const { apply } = Function.prototype;
     let before, after, undo;
-    if (!db.autocommit) {
+    if (db.inTransaction) {
       before = savepoint;
       after = release;
       undo = rollbackTo;

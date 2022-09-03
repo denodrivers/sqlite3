@@ -378,6 +378,45 @@ const symbols = {
     ],
     result: "i64",
   },
+
+  sqlite3_backup_init: {
+    parameters: [
+      "pointer", // sqlite3 *pDest
+      "buffer", // const char *zDestName
+      "pointer", // sqlite3 *pSource
+      "buffer", // const char *zSourceName
+    ],
+    result: "pointer",
+  },
+
+  sqlite3_backup_step: {
+    parameters: [
+      "pointer", // sqlite3_backup *p
+      "i32", // int nPage
+    ],
+    result: "i32",
+  },
+
+  sqlite3_backup_finish: {
+    parameters: [
+      "pointer", // sqlite3_backup *p
+    ],
+    result: "i32",
+  },
+
+  sqlite3_backup_remaining: {
+    parameters: [
+      "pointer", // sqlite3_backup *p
+    ],
+    result: "i32",
+  },
+
+  sqlite3_backup_pagecount: {
+    parameters: [
+      "pointer", // sqlite3_backup *p
+    ],
+    result: "i32",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];

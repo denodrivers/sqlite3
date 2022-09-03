@@ -7,6 +7,8 @@
 
 Fastest & correct JavaScript bindings to SQLite3 C API, using Deno FFI.
 
+# Example
+
 ```ts
 import { Database } from "https://deno.land/x/sqlite3@0.5.0/mod.ts";
 
@@ -18,14 +20,32 @@ console.log(version);
 db.close();
 ```
 
+# Usage
+
+Since this library depends on the unstable FFI API, you must pass `--allow-env`,
+`--allow-ffi` and `--unstable` flags. Without it, the module will fail to find
+and open SQLite3 native library.
+
+```sh
+deno run --allow-ffi --allow-env --unstable <file>
+# or just
+deno run -A --unstable <file>
+```
+
+# Benchmark
+
 ![image](https://user-images.githubusercontent.com/34997667/185867199-d6c38d20-4040-42d2-a39a-37c81dc1af24.png)
 
 [Benchmark](./bench) based on
 [just-js/02-sqlite](https://just-js.github.io/benchmarks/02-sqlite.html)
 
+See [bench](./bench) for benchmarks source.
+
 ## Documentation
 
-Check out the documentation
+See [doc.md](./doc.md) for documentation.
+
+Check out the API reference
 [here](https://doc.deno.land/https://deno.land/x/sqlite3@0.5.0/mod.ts).
 
 ## Native Library
