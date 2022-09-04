@@ -417,6 +417,22 @@ const symbols = {
     ],
     result: "i32",
   },
+
+  sqlite3_column_int_fast: {
+    parameters: [
+      "pointer", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+    ],
+    result: "i32",
+  },
+
+  fastconfig: {
+    parameters: [
+      "buffer", // char* flag
+      "buffer", // int64* value
+    ],
+    result: "void",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
