@@ -41,7 +41,7 @@ Deno.test("sqlite", async (t) => {
 
   let db!: Database;
   await t.step("open (url)", () => {
-    db = new Database(DB_URL);
+    db = new Database(DB_URL, { int64: true });
   });
 
   if (typeof db !== "object") throw new Error("db open failed");

@@ -14,6 +14,8 @@ pass `create: false` in the options.
   to `false`.
 - `memory: boolean` - Whether to open the database in memory. Defaults to
   `false`.
+- `int64: boolean` - Whether to support BigInt columns. False by default, which
+  means integers larger than 32 bit will be inaccurate.
 - `flags: number` - Raw flags to pass to the C API. Normally you don't need
   this. Passing this ignores all other options.
 
@@ -131,7 +133,7 @@ To get rows in array form, use `values()` method.
 const rows = stmt.values(...params);
 ```
 
-To get only the first row, use the `get()` method.
+To get only the first row as array, use the `get()` method.
 
 ```ts
 const row = stmt.get(...params);
@@ -149,8 +151,8 @@ interface Foo {
 const rows = stmt.all<Foo>(...params);
 // rows is Foo[]
 
-const row = stmt.get<Foo>(...params);
-// row is Foo | undefined
+const row = stmt.get<[string, number]>(...params);
+// row is [string, number] | undefined
 
 const values = stmt.values<[string, number]>(...params);
 // values is [string, number][]
