@@ -395,35 +395,32 @@ export class Statement {
     return result as T[];
   }
 
-  #getRowObject?: CallableFunction;
-
   #allNoArgs<T extends Record<string, unknown>>(): T[] {
     this.#begin();
-    if (!this.#getRowObject) {
-      const columnCount = sqlite3_column_count(this.#handle);
-      const columnNames = new Array(columnCount);
-      for (let i = 0; i < columnCount; i++) {
-        columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
-      }
-      this.#getRowObject = new Function(
-        "getColumn",
-        `
+    const columnCount = sqlite3_column_count(this.#handle);
+    const columnNames = new Array(columnCount);
+    for (let i = 0; i < columnCount; i++) {
+      columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
+    }
+    const getRowObject = new Function(
+      "getColumn",
+      `
         return function() {
           return {
             ${
-          columnNames.map((name, i) =>
-            `"${name}": getColumn(${this.#handle}, ${i}, ${this.db.int64})`
-          ).join(",\n")
-        }
+        columnNames.map((name, i) =>
+          `"${name}": getColumn(${this.#handle}, ${i}, ${this.db.int64})`
+        ).join(",\n")
+      }
           };
         };
         `,
-      )(getColumn);
-    }
+    )(getColumn);
+
     const result: T[] = [];
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
-      result.push(this.#getRowObject!());
+      result.push(getRowObject());
       status = sqlite3_step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
