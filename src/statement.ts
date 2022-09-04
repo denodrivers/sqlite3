@@ -60,6 +60,47 @@ const statementFinalizer = new FinalizationRegistry(
   },
 );
 
+function getColumn(handle: number, i: number): any {
+  const ty = sqlite3_column_type(handle, i);
+  // TODO: it's faster to use int but int64 is needed for proper
+  // bigints support.
+  // if (ty === SQLITE_INTEGER) return ffi.sqlite3_column_int(handle, i);
+  switch (ty) {
+    case SQLITE_TEXT: {
+      const ptr = sqlite3_column_text(handle, i);
+      if (ptr === 0) return null;
+      return readCstr(ptr);
+    }
+
+    case SQLITE_INTEGER: {
+      const v = sqlite3_column_int64(handle, i);
+      const numv = Number(v);
+      if (Number.isSafeInteger(numv)) {
+        return numv;
+      } else {
+        return v;
+      }
+    }
+
+    case SQLITE_FLOAT: {
+      return sqlite3_column_double(handle, i);
+    }
+
+    case SQLITE_BLOB: {
+      const ptr = sqlite3_column_blob(handle, i);
+      const bytes = sqlite3_column_bytes(handle, i);
+      return new Uint8Array(
+        new Deno.UnsafePointerView(BigInt(ptr)).getArrayBuffer(bytes)
+          .slice(0),
+      );
+    }
+
+    default: {
+      return null;
+    }
+  }
+}
+
 /**
  * Represents a prepared statement.
  *
@@ -183,48 +224,9 @@ export class Statement {
 
   #begin(): void {
     sqlite3_reset(this.#handle);
-    if (!this.#bound || this.#hasNoArgs) sqlite3_clear_bindings(this.#handle);
+    if (!this.#bound && !this.#hasNoArgs) sqlite3_clear_bindings(this.#handle);
     this.#cachedColCount = undefined;
     this.#colNameCache = {};
-  }
-
-  #getColumn(handle: number, i: number): any {
-    const ty = sqlite3_column_type(handle, i);
-    // if (ty === SQLITE_INTEGER) return sqlite3_column_int(handle, i);
-    switch (ty) {
-      case SQLITE_TEXT: {
-        const ptr = sqlite3_column_text(handle, i);
-        if (ptr === 0) return null;
-        return readCstr(ptr);
-      }
-
-      case SQLITE_INTEGER: {
-        const v = sqlite3_column_int64(handle, i);
-        const numv = Number(v);
-        if (Number.isSafeInteger(numv)) {
-          return numv;
-        } else {
-          return v;
-        }
-      }
-
-      case SQLITE_FLOAT: {
-        return sqlite3_column_double(handle, i);
-      }
-
-      case SQLITE_BLOB: {
-        const ptr = sqlite3_column_blob(handle, i);
-        const bytes = sqlite3_column_bytes(handle, i);
-        return new Uint8Array(
-          new Deno.UnsafePointerView(BigInt(ptr)).getArrayBuffer(bytes)
-            .slice(0),
-        );
-      }
-
-      default: {
-        return null;
-      }
-    }
   }
 
   #runNoArgs(): number {
@@ -370,7 +372,7 @@ export class Statement {
       }];
       };
       `,
-    )(this.#getColumn.bind(this));
+    )(getColumn);
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowArray());
@@ -401,7 +403,7 @@ export class Statement {
       }];
       };
       `,
-    )(this.#getColumn.bind(this));
+    )(getColumn);
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowArray());
@@ -434,7 +436,7 @@ export class Statement {
         };
       };
       `,
-    )(this.#getColumn.bind(this));
+    )(getColumn);
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowObject());
@@ -470,7 +472,7 @@ export class Statement {
         };
       };
       `,
-    )(this.#getColumn.bind(this));
+    )(getColumn);
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowObject());
@@ -491,15 +493,23 @@ export class Statement {
   }
 
   /** Fetch only first row, if any. */
-  get<T extends Array<unknown>>(): T | undefined {
+  get<T extends Array<unknown>>(...params: RestBindParameters): T | undefined {
     const handle = this.#handle;
     const arr = this.#getPreArray<T>();
 
     sqlite3_reset(handle);
+    if (!this.#hasNoArgs && !this.#bound) {
+      sqlite3_clear_bindings(handle);
+      if (params.length) {
+        this.#bindAll(params);
+      }
+    }
+
     const status = sqlite3_step(handle);
+
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < arr.length; i++) {
-        arr[i] = this.#getColumn(handle as number, i);
+        arr[i] = getColumn(handle as number, i);
       }
 
       return arr as T;
@@ -542,7 +552,7 @@ export class Statement {
         };
       };
       `,
-    )(this.#getColumn.bind(this));
+    )(getColumn);
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
       yield getRowObject();
