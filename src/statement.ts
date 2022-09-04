@@ -36,7 +36,7 @@ const {
   sqlite3_stmt_readonly,
   sqlite3_bind_parameter_name,
   sqlite3_changes,
-  // sqlite3_column_int,
+  sqlite3_column_int,
 } = ffi;
 
 /** Types that can be possibly serialized as SQLite bind values */
@@ -60,11 +60,11 @@ const statementFinalizer = new FinalizationRegistry(
   },
 );
 
-function getColumn(handle: number, i: number): any {
+function getColumn(handle: number, i: number, int64: boolean): any {
   const ty = sqlite3_column_type(handle, i);
-  // TODO: it's faster to use int but int64 is needed for proper
-  // bigints support.
-  // if (ty === SQLITE_INTEGER) return ffi.sqlite3_column_int(handle, i);
+
+  if (ty === SQLITE_INTEGER && !int64) return sqlite3_column_int(handle, i);
+
   switch (ty) {
     case SQLITE_TEXT: {
       const ptr = sqlite3_column_text(handle, i);
@@ -187,6 +187,7 @@ export class Statement {
       this.all = this.#allNoArgs;
       this.values = this.#valuesNoArgs;
       this.run = this.#runNoArgs;
+      this.get = this.#getNoArgs;
     }
   }
 
@@ -203,39 +204,9 @@ export class Statement {
     return sqlite3_bind_parameter_index(this.#handle, toCString(name));
   }
 
-  #colNameCache: Record<number, string> = {};
-
-  /** Return the name of the column at given index in current row. */
-  columnName(index: number): string {
-    const cached = this.#colNameCache[index];
-    if (cached !== undefined) return cached;
-    return (this.#colNameCache[index] = readCstr(
-      readCstr(sqlite3_column_name(this.#handle, index)),
-    ));
-  }
-
-  #cachedColCount?: number;
-
-  /** Column count in current row. */
-  get columnCount(): number {
-    if (this.#cachedColCount !== undefined) return this.#cachedColCount;
-    return (this.#cachedColCount = sqlite3_column_count(this.#handle));
-  }
-
   #begin(): void {
     sqlite3_reset(this.#handle);
     if (!this.#bound && !this.#hasNoArgs) sqlite3_clear_bindings(this.#handle);
-    this.#cachedColCount = undefined;
-    this.#colNameCache = {};
-  }
-
-  #runNoArgs(): number {
-    this.#begin();
-    const status = sqlite3_step(this.#handle);
-    if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
-    }
-    return sqlite3_changes(this.db.unsafeHandle);
   }
 
   #bind(i: number, param: BindValue): void {
@@ -346,6 +317,15 @@ export class Statement {
     }
   }
 
+  #runNoArgs(): number {
+    this.#begin();
+    const status = sqlite3_step(this.#handle);
+    if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
+      unwrap(status, this.db.unsafeHandle);
+    }
+    return sqlite3_changes(this.db.unsafeHandle);
+  }
+
   #runWithArgs(...params: RestBindParameters): number {
     this.#begin();
     this.#bindAll(params);
@@ -366,7 +346,7 @@ export class Statement {
       return function() {
         return [${
         Array.from({ length: columnCount }).map((_, i) =>
-          `getColumn(${this.#handle}, ${i})`
+          `getColumn(${this.#handle}, ${i}, ${this.db.int64})`
         )
           .join(", ")
       }];
@@ -397,7 +377,7 @@ export class Statement {
       return function() {
         return [${
         Array.from({ length: columnCount }).map((_, i) =>
-          `getColumn(${this.#handle}, ${i})`
+          `getColumn(${this.#handle}, ${i}, ${this.db.int64})`
         )
           .join(", ")
       }];
@@ -422,21 +402,22 @@ export class Statement {
     for (let i = 0; i < columnCount; i++) {
       columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
     }
-    const result: T[] = [];
     const getRowObject = new Function(
       "getColumn",
       `
-      return function() {
-        return {
-          ${
+        return function() {
+          return {
+            ${
         columnNames.map((name, i) =>
-          `"${name}": getColumn(${this.#handle}, ${i})`
+          `"${name}": getColumn(${this.#handle}, ${i}, ${this.db.int64})`
         ).join(",\n")
       }
+          };
         };
-      };
-      `,
+        `,
     )(getColumn);
+
+    const result: T[] = [];
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowObject());
@@ -466,7 +447,7 @@ export class Statement {
         return {
           ${
         columnNames.map((name, i) =>
-          `"${name}": getColumn(${this.#handle}, ${i})`
+          `"${name}": getColumn(${this.#handle}, ${i}, ${this.db.int64})`
         ).join(",\n")
       }
         };
@@ -484,19 +465,11 @@ export class Statement {
     return result as T[];
   }
 
-  #arr: any[] = [];
-
-  #getPreArray<T>(): T[] {
-    if (this.#cachedColCount !== undefined) return this.#arr;
-    this.#cachedColCount = sqlite3_column_count(this.#handle);
-    return (this.#arr = new Array(this.#cachedColCount));
-  }
-
   /** Fetch only first row, if any. */
   get<T extends Array<unknown>>(...params: RestBindParameters): T | undefined {
     const handle = this.#handle;
-    const arr = this.#getPreArray<T>();
-
+    const int64 = this.db.int64;
+    const arr = new Array(sqlite3_column_count(handle));
     sqlite3_reset(handle);
     if (!this.#hasNoArgs && !this.#bound) {
       sqlite3_clear_bindings(handle);
@@ -509,9 +482,27 @@ export class Statement {
 
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < arr.length; i++) {
-        arr[i] = getColumn(handle as number, i);
+        arr[i] = getColumn(handle as number, i, int64);
       }
+      return arr as T;
+    } else if (status === SQLITE3_DONE) {
+      return;
+    } else {
+      unwrap(status, this.db.unsafeHandle);
+    }
+  }
 
+  #getNoArgs<T extends Array<unknown>>(): T | undefined {
+    const handle = this.#handle;
+    const int64 = this.db.int64;
+    const cc = sqlite3_column_count(handle);
+    const arr = new Array(cc);
+    sqlite3_reset(handle);
+    const status = sqlite3_step(handle);
+    if (status === SQLITE3_ROW) {
+      for (let i = 0; i < cc; i++) {
+        arr[i] = getColumn(handle as number, i, int64);
+      }
       return arr as T;
     } else if (status === SQLITE3_DONE) {
       return;
@@ -546,7 +537,7 @@ export class Statement {
         return {
           ${
         columnNames.map((name, i) =>
-          `"${name}": getColumn(${this.#handle}, ${i})`
+          `"${name}": getColumn(${this.#handle}, ${i}, ${this.db.int64})`
         ).join(",\n")
       }
         };

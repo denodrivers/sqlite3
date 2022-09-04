@@ -20,6 +20,8 @@ export interface DatabaseOpenOptions {
   flags?: number;
   /** Opens an in-memory database. */
   memory?: boolean;
+  /** Whether to support BigInt columns. False by default, integers larger than 32 bit will be inaccurate. */
+  int64?: boolean;
 }
 
 /** Transaction function created using `Database#transaction`. */
@@ -86,6 +88,9 @@ export class Database {
   #handle: Deno.PointerValue;
   #open = true;
 
+  /** Whether to support BigInt columns. False by default, integers larger than 32 bit will be inaccurate. */
+  int64: boolean;
+
   /** Whether DB connection is open */
   get open(): boolean {
     return this.#open;
@@ -129,6 +134,7 @@ export class Database {
   constructor(path: string | URL, options: DatabaseOpenOptions = {}) {
     this.#path = path instanceof URL ? fromFileUrl(path) : path;
     let flags = 0;
+    this.int64 = options.int64 ?? false;
     if (options.flags !== undefined) {
       flags = options.flags;
     } else {
