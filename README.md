@@ -4,6 +4,7 @@
 [![Doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https/deno.land/x/sqlite3@0.5.2/mod.ts)
 [![Checks](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml/badge.svg)](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/blob/master/LICENSE)
+[![Sponsor](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/DjDeveloperr)
 
 Fastest & correct JavaScript bindings to SQLite3 C API, using Deno FFI.
 
@@ -43,7 +44,8 @@ See [bench](./bench) for benchmarks source.
 
 ## Documentation
 
-See [doc.md](https://github.com/denodrivers/sqlite3/0.5.2/main/doc.md) for documentation.
+See [doc.md](https://github.com/denodrivers/sqlite3/0.5.2/main/doc.md) for
+documentation.
 
 Check out the complete API reference
 [here](https://doc.deno.land/https://deno.land/x/sqlite3@0.5.2/mod.ts).
