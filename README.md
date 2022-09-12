@@ -44,7 +44,7 @@ See [bench](./bench) for benchmarks source.
 
 ## Documentation
 
-See [doc.md](https://github.com/denodrivers/sqlite3/0.5.2/main/doc.md) for
+See [doc.md](https://github.com/denodrivers/sqlite3/blob/main/doc.md) for
 documentation.
 
 Check out the complete API reference
