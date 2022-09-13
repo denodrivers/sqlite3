@@ -1,3 +1,5 @@
+import { CachePolicy, prepare } from "https://deno.land/x/plug@0.5.2/plug.ts";
+
 const symbols = {
   sqlite3_open_v2: {
     parameters: [
@@ -421,13 +423,25 @@ const symbols = {
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
 
+
 try {
-  const filename = Deno.env.get("DENO_SQLITE_PATH") || {
-    windows: "sqlite3",
-    darwin: "libsqlite3.dylib",
-    linux: "libsqlite3.so",
-  }[Deno.build.os];
-  lib = Deno.dlopen(filename, symbols).symbols;
+  const customPath = Deno.env.get("DENO_SQLITE_PATH");
+  // TODO(@littledivy): Ship prebuilt shared library on Windows.
+  if (customPath || Deno.build.os === "windows") {
+    lib = Deno.dlopen(customPath || "sqlite3", symbols).symbols;
+  } else {
+    const url = "https://github.com/denodrivers/sqlite3/releases/download/0.1.0/";
+    lib = (await prepare({
+      name: "sqlite3",
+      urls: {
+        darwin: {
+          aarch64: url + "libsqlite3_aarch64.dylib",
+          x86_64: url + "libsqlite3.dylib",
+        },
+        linux: url + "libsqlite3.so",
+      },
+    })).symbols;
+  }
 } catch (e) {
   if (e instanceof Deno.errors.PermissionDenied) {
     throw e;
