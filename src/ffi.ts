@@ -423,14 +423,14 @@ const symbols = {
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
 
-
 try {
   const customPath = Deno.env.get("DENO_SQLITE_PATH");
   // TODO(@littledivy): Ship prebuilt shared library on Windows.
   if (customPath || Deno.build.os === "windows") {
     lib = Deno.dlopen(customPath || "sqlite3", symbols).symbols;
   } else {
-    const url = "https://github.com/denodrivers/sqlite3/releases/download/v0.5.3/";
+    const url =
+      "https://github.com/denodrivers/sqlite3/releases/download/v0.5.3/";
     lib = (await prepare({
       name: "sqlite3",
       urls: {
@@ -440,7 +440,7 @@ try {
         },
         linux: url + "libsqlite3.so",
       },
-    })).symbols;
+    }, symbols)).symbols;
   }
 } catch (e) {
   if (e instanceof Deno.errors.PermissionDenied) {

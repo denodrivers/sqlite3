@@ -55,26 +55,26 @@ Check out the complete API reference
 By default, this module will look for existing SQLite3 dynamic library on your
 path, which is `sqlite3.dll` on Windows.
 
-On Linux and macOS, this module will download and cache a prebuilt shared library
-from Github releases.
+On Linux and macOS, this module will download and cache a prebuilt shared
+library from Github releases.
 
-If the library you want to use is not on path, then
-you can use the `DENO_SQLITE_PATH` environment variable. You will have to
-install SQLite3 separately if it's not already installed, since it is not
-bundled with this module.
+If the library you want to use is not on path, then you can use the
+`DENO_SQLITE_PATH` environment variable. You will have to install SQLite3
+separately if it's not already installed, since it is not bundled with this
+module.
 
 ## Contributing
 
-On Linux and macOS, you need to build sqlite3 from source. Make sure that you have
-the submodule (`git submodule update --init --recursive`).
+On Linux and macOS, you need to build sqlite3 from source. Make sure that you
+have the submodule (`git submodule update --init --recursive`).
 
 ```sh
 mkdir -p build/
 make
 ```
 
-When running tests and benchmarks, you need to use the `DENO_SQLITE_PATH` env variable
-otherwise it won't use to local compiled shared library.
+When running tests and benchmarks, you need to use the `DENO_SQLITE_PATH` env
+variable otherwise it won't use to local compiled shared library.
 
 ```sh
 DENO_SQLITE_PATH=build/libsqlite3.dylib deno task bench

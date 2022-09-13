@@ -52,7 +52,7 @@ jobs:
         uses: denoland/setup-deno@main
         with:
           deno-version: 'v1.x'
-      
+
       - name: Build sqlite3 (unix)
         if: matrix.os != 'windows-latest'
         run: |
