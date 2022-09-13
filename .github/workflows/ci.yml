@@ -45,11 +45,27 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
+        with:
+          submodules: true
 
       - name: Install Deno
         uses: denoland/setup-deno@main
         with:
           deno-version: 'v1.x'
+      
+      - name: Build sqlite3 (unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p build
+          make
+
+      - name: Set DENO_SQLITE_PATH (linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: echo "DENO_SQLITE_PATH=$(pwd)/build/libsqlite3.so" >> $GITHUB_ENV
+
+      - name: Set DENO_SQLITE_PATH (macos)
+        if: matrix.os == 'macos-latest'
+        run: echo "DENO_SQLITE_PATH=$(pwd)/build/libsqlite3.dylib" >> $GITHUB_ENV
 
       - name: Run Tests
         run: deno task test
