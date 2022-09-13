@@ -1,4 +1,4 @@
-import { CachePolicy, prepare } from "https://deno.land/x/plug@0.5.2/plug.ts";
+import { prepare } from "https://deno.land/x/plug@0.5.2/plug.ts";
 
 const symbols = {
   sqlite3_open_v2: {
