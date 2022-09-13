@@ -78,5 +78,5 @@ jobs:
           tag_name: "release draft"
           draft: true
           files: |
-            bin/libsqlite3.so
-            bin/libsqlite3.dylib
+            build/libsqlite3.so
+            build/libsqlite3.dylib
