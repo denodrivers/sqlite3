@@ -10,5 +10,6 @@
 package-lock.json
 *.sqlite
 node_modules/
+build/
 # C benchmark binary
 bench/bench
