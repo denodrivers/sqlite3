@@ -69,7 +69,18 @@ function getColumn(handle: number, i: number, int64: boolean): any {
     case SQLITE_TEXT: {
       const ptr = sqlite3_column_text(handle, i);
       if (ptr === 0) return null;
-      return readCstr(ptr);
+      try {
+        return readCstr(ptr);
+      } catch (e) {
+        throw new Error(
+          `Error reading column ${i} as text (ptr: 0x${
+            ptr.toString(16).padStart(16, "0")
+          }, handle: 0x${handle.toString(16).padStart(16, "0")})`,
+          {
+            cause: e,
+          },
+        );
+      }
     }
 
     case SQLITE_INTEGER: {
