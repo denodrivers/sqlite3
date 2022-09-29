@@ -69,18 +69,7 @@ function getColumn(handle: number, i: number, int64: boolean): any {
     case SQLITE_TEXT: {
       const ptr = sqlite3_column_text(handle, i);
       if (ptr === 0) return null;
-      try {
-        return readCstr(ptr);
-      } catch (e) {
-        throw new Error(
-          `Error reading column ${i} as text (ptr: 0x${
-            ptr.toString(16).padStart(16, "0")
-          }, handle: 0x${handle.toString(16).padStart(16, "0")})`,
-          {
-            cause: e,
-          },
-        );
-      }
+      return readCstr(ptr);
     }
 
     case SQLITE_INTEGER: {
@@ -217,8 +206,13 @@ export class Statement {
 
   #begin(): void {
     sqlite3_reset(this.#handle);
-    if (!this.#bound && !this.#hasNoArgs) sqlite3_clear_bindings(this.#handle);
+    if (!this.#bound && !this.#hasNoArgs) {
+      sqlite3_clear_bindings(this.#handle);
+      this.#bindRefs.clear();
+    }
   }
+
+  #bindRefs: Set<any> = new Set();
 
   #bind(i: number, param: BindValue): void {
     switch (typeof param) {
@@ -239,6 +233,7 @@ export class Statement {
       }
       case "string": {
         const str = (Deno as any).core.encode(param);
+        this.#bindRefs.add(str);
         unwrap(
           sqlite3_bind_text(this.#handle, i + 1, str, str.byteLength, 0),
         );
@@ -248,6 +243,7 @@ export class Statement {
         if (param === null) {
           // pass
         } else if (param instanceof Uint8Array) {
+          this.#bindRefs.add(param);
           unwrap(
             sqlite3_bind_blob(
               this.#handle,
@@ -258,11 +254,13 @@ export class Statement {
             ),
           );
         } else if (param instanceof Date) {
+          const cstring = toCString(param.toISOString());
+          this.#bindRefs.add(cstring);
           unwrap(
             sqlite3_bind_text(
               this.#handle,
               i + 1,
-              toCString(param.toISOString()),
+              cstring,
               -1,
               0,
             ),
@@ -341,6 +339,9 @@ export class Statement {
     this.#begin();
     this.#bindAll(params);
     const status = sqlite3_step(this.#handle);
+    if (!this.#hasNoArgs && !this.#bound && params.length) {
+      this.#bindRefs.clear();
+    }
     if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
@@ -399,6 +400,9 @@ export class Statement {
     while (status === SQLITE3_ROW) {
       result.push(getRowArray());
       status = sqlite3_step(this.#handle);
+    }
+    if (!this.#hasNoArgs && !this.#bound && params.length) {
+      this.#bindRefs.clear();
     }
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
@@ -470,6 +474,9 @@ export class Statement {
       result.push(getRowObject());
       status = sqlite3_step(this.#handle);
     }
+    if (!this.#hasNoArgs && !this.#bound && params.length) {
+      this.#bindRefs.clear();
+    }
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
@@ -484,12 +491,17 @@ export class Statement {
     sqlite3_reset(handle);
     if (!this.#hasNoArgs && !this.#bound) {
       sqlite3_clear_bindings(handle);
+      this.#bindRefs.clear();
       if (params.length) {
         this.#bindAll(params);
       }
     }
 
     const status = sqlite3_step(handle);
+
+    if (!this.#hasNoArgs && !this.#bound && params.length) {
+      this.#bindRefs.clear();
+    }
 
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < arr.length; i++) {
@@ -524,6 +536,7 @@ export class Statement {
 
   /** Free up the statement object. */
   finalize(): void {
+    this.#bindRefs.clear();
     statementFinalizer.unregister(this.#finalizerToken);
     unwrap(sqlite3_finalize(this.#handle));
   }
