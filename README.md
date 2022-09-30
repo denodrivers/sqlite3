@@ -8,7 +8,7 @@
 
 Fastest & correct JavaScript bindings to SQLite3 C API, using Deno FFI.
 
-# Example
+## Example
 
 ```ts
 import { Database } from "https://deno.land/x/sqlite3@0.5.3/mod.ts";
@@ -21,19 +21,18 @@ console.log(version);
 db.close();
 ```
 
-# Usage
+## Usage
 
 Since this library depends on the unstable FFI API, you must pass `--allow-env`,
-`--allow-ffi` and `--unstable` flags. Without it, the module will fail to find
-and open SQLite3 native library.
+`--allow-ffi` and `--unstable` flags. Network and FS permissions are also needed
+on macOS and Linux to download and cache prebuilt library. It's recommended to
+just use `--allow-all`/`-A` flag since FFI basically gives full access.
 
 ```sh
-deno run --allow-ffi --allow-env --unstable <file>
-# or just
 deno run -A --unstable <file>
 ```
 
-# Benchmark
+## Benchmark
 
 ![image](https://user-images.githubusercontent.com/34997667/189836272-16a0d876-979f-4ccc-8380-571faf54acf7.png)
 
@@ -52,18 +51,21 @@ Check out the complete API reference
 
 ## Native Library
 
-By default, this module will look for existing SQLite3 dynamic library on your
-path, which is `sqlite3.dll` on Windows.
+On Linux and macOS, it will download and cache a prebuilt shared library from
+GitHub releases. For which it will also need net and read/write permission.
 
-On Linux and macOS, this module will download and cache a prebuilt shared
-library from Github releases.
+On Winows, it will look for existing SQLite3 dynamic library on your path, which
+is `sqlite3.dll`. You _might_ have to install SQLite3 library separately if it's
+not already installed, since it is not bundled with this module.
 
-If the library you want to use is not on path, then you can use the
-`DENO_SQLITE_PATH` environment variable. You will have to install SQLite3
-separately if it's not already installed, since it is not bundled with this
-module.
+If the library you want to use is not on path, then you can set the
+`DENO_SQLITE_PATH` environment variable, containing full path to the SQLite3
+shared library.
 
 ## Contributing
+
+Code is formatted using `deno fmt` and linted using `deno lint`. Please make
+sure to run these commands before committing.
 
 On Linux and macOS, you need to build sqlite3 from source. Make sure that you
 have the submodule (`git submodule update --init --recursive`).
@@ -88,6 +90,6 @@ DENO_SQLITE_PATH=build/libsqlite3.dylib deno task bench
 
 ## License
 
-Check [LICENSE](./LICENSE) for details.
+Apache-2.0. Check [LICENSE](./LICENSE) for details.
 
 Copyright © 2022 DjDeveloperr
