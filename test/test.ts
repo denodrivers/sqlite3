@@ -52,8 +52,15 @@ Deno.test("sqlite", async (t) => {
     assertEquals(db.exec("pragma temp_store = memory"), 0);
   });
 
-  await t.step("select version", () => {
-    const [version] = db.prepare("select sqlite_version()").get<[string]>()!;
+  await t.step("select version (row as array)", () => {
+    const [version] = db.prepare("select sqlite_version()").value<[string]>()!;
+    assertEquals(version, SQLITE_VERSION);
+  });
+
+  await t.step("select version (row as object)", () => {
+    const { version } = db.prepare("select sqlite_version() as version").get<
+      { version: string }
+    >()!;
     assertEquals(version, SQLITE_VERSION);
   });
 

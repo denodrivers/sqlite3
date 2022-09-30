@@ -187,6 +187,7 @@ export class Statement {
       this.all = this.#allNoArgs;
       this.values = this.#valuesNoArgs;
       this.run = this.#runNoArgs;
+      this.value = this.#valueNoArgs;
       this.get = this.#getNoArgs;
     }
   }
@@ -483,8 +484,10 @@ export class Statement {
     return result as T[];
   }
 
-  /** Fetch only first row, if any. */
-  get<T extends Array<unknown>>(...params: RestBindParameters): T | undefined {
+  /** Fetch only first row as an array, if any. */
+  value<T extends Array<unknown>>(
+    ...params: RestBindParameters
+  ): T | undefined {
     const handle = this.#handle;
     const int64 = this.db.int64;
     const arr = new Array(sqlite3_column_count(handle));
@@ -515,7 +518,7 @@ export class Statement {
     }
   }
 
-  #getNoArgs<T extends Array<unknown>>(): T | undefined {
+  #valueNoArgs<T extends Array<unknown>>(): T | undefined {
     const handle = this.#handle;
     const int64 = this.db.int64;
     const cc = sqlite3_column_count(handle);
@@ -527,6 +530,68 @@ export class Statement {
         arr[i] = getColumn(handle as number, i, int64);
       }
       return arr as T;
+    } else if (status === SQLITE3_DONE) {
+      return;
+    } else {
+      unwrap(status, this.db.unsafeHandle);
+    }
+  }
+
+  /** Fetch only first row as an object, if any. */
+  get<T extends Record<string, unknown>>(
+    ...params: RestBindParameters
+  ): T | undefined {
+    const handle = this.#handle;
+    const int64 = this.db.int64;
+    const columnCount = sqlite3_column_count(this.#handle);
+    const columnNames = new Array(columnCount);
+    for (let i = 0; i < columnCount; i++) {
+      columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
+    }
+    const row: Record<string, unknown> = {};
+    sqlite3_reset(handle);
+    if (!this.#hasNoArgs && !this.#bound) {
+      sqlite3_clear_bindings(handle);
+      this.#bindRefs.clear();
+      if (params.length) {
+        this.#bindAll(params);
+      }
+    }
+
+    const status = sqlite3_step(handle);
+
+    if (!this.#hasNoArgs && !this.#bound && params.length) {
+      this.#bindRefs.clear();
+    }
+
+    if (status === SQLITE3_ROW) {
+      for (let i = 0; i < columnCount; i++) {
+        row[columnNames[i]] = getColumn(handle as number, i, int64);
+      }
+      return row as T;
+    } else if (status === SQLITE3_DONE) {
+      return;
+    } else {
+      unwrap(status, this.db.unsafeHandle);
+    }
+  }
+
+  #getNoArgs<T extends Record<string, unknown>>(): T | undefined {
+    const handle = this.#handle;
+    const int64 = this.db.int64;
+    const columnCount = sqlite3_column_count(this.#handle);
+    const columnNames = new Array(columnCount);
+    for (let i = 0; i < columnCount; i++) {
+      columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
+    }
+    const row: Record<string, unknown> = {};
+    sqlite3_reset(handle);
+    const status = sqlite3_step(handle);
+    if (status === SQLITE3_ROW) {
+      for (let i = 0; i < columnCount; i++) {
+        row[columnNames[i]] = getColumn(handle as number, i, int64);
+      }
+      return row as T;
     } else if (status === SQLITE3_DONE) {
       return;
     } else {
