@@ -133,14 +133,20 @@ To get rows in array form, use `values()` method.
 const rows = stmt.values(...params);
 ```
 
-To get only the first row as array, use the `get()` method.
+To get only the first row as object, use the `get()` method.
 
 ```ts
 const row = stmt.get(...params);
 ```
 
-`all`/`values`/`get` methods also support a generic type parameter to specify
-the type of the returned object.
+To get only the first row as array, use the `value()` method.
+
+```ts
+const row = stmt.value(...params);
+```
+
+`all`/`values`/`get`/`value` methods also support a generic type parameter to
+specify the type of the returned object.
 
 ```ts
 interface Foo {
@@ -151,11 +157,14 @@ interface Foo {
 const rows = stmt.all<Foo>(...params);
 // rows is Foo[]
 
-const row = stmt.get<[string, number]>(...params);
-// row is [string, number] | undefined
+const row = stmt.get<Foo>(...params);
+// row is Foo | undefined
 
 const values = stmt.values<[string, number]>(...params);
 // values is [string, number][]
+
+const row = stmt.value<[string, number]>(...params);
+// row is [string, number] | undefined
 ```
 
 ## Freeing Prepared Statements
