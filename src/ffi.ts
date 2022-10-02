@@ -430,7 +430,7 @@ try {
     lib = Deno.dlopen(customPath || "sqlite3", symbols).symbols;
   } else {
     const url =
-      "https://github.com/denodrivers/sqlite3/releases/download/v0.6.0/";
+      "https://github.com/denodrivers/sqlite3/releases/download/0.6.1/";
     lib = (await prepare({
       name: "sqlite3",
       urls: {
