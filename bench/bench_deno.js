@@ -1,7 +1,6 @@
 import { Database } from "../mod.ts";
-import { nextTick } from "https://deno.land/std@0.126.0/node/_next_tick.ts";
 
-const db = new Database(":memory:");
+const db = new Database(":memory:", { unsafeConcurrency: true });
 
 db.run("PRAGMA auto_vacuum = none");
 db.run("PRAGMA temp_store = memory");
@@ -19,7 +18,7 @@ function bench(query) {
   const elapsed = Date.now() - start;
   const rate = Math.floor(runs / (elapsed / 1000));
   console.log(`time ${elapsed} ms rate ${rate}`);
-  if (--total) nextTick(() => bench(query));
+  if (--total) bench(query);
 }
 
 const query = db.prepare(sql);

@@ -22,6 +22,8 @@ export interface DatabaseOpenOptions {
   memory?: boolean;
   /** Whether to support BigInt columns. False by default, integers larger than 32 bit will be inaccurate. */
   int64?: boolean;
+  /** Apply agressive optimizations that are not possible with concurrent clients. */
+  unsafeConcurrency?: boolean;
 }
 
 /** Transaction function created using `Database#transaction`. */
@@ -91,6 +93,8 @@ export class Database {
   /** Whether to support BigInt columns. False by default, integers larger than 32 bit will be inaccurate. */
   int64: boolean;
 
+  unsafeConcurrency: boolean;
+
   /** Whether DB connection is open */
   get open(): boolean {
     return this.#open;
@@ -135,6 +139,7 @@ export class Database {
     this.#path = path instanceof URL ? fromFileUrl(path) : path;
     let flags = 0;
     this.int64 = options.int64 ?? false;
+    this.unsafeConcurrency = options.unsafeConcurrency ?? false;
     if (options.flags !== undefined) {
       flags = options.flags;
     } else {

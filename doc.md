@@ -18,6 +18,9 @@ pass `create: false` in the options.
   means integers larger than 32 bit will be inaccurate.
 - `flags: number` - Raw flags to pass to the C API. Normally you don't need
   this. Passing this ignores all other options.
+- `unsafeConcurrency: boolean` - Enable optimizations that will affect
+  syncronization with other clients. This can largerly improve performance for
+  cases where you only have one client.
 
 ### Usage
 

@@ -51,7 +51,7 @@ function bench(query) {
   const elapsed = Date.now() - start;
   const rate = Math.floor(runs / (elapsed / 1000));
   console.log(`time ${elapsed} ms rate ${rate}`);
-  if (--total) nextTick(() => bench(query));
+  if (--total) bench(query);
 }
 
 function prepareStatement() {
@@ -71,8 +71,11 @@ function prepareStatement() {
 const prepared = prepareStatement();
 function run() {
   sqlite3_step(prepared);
-  sqlite3_column_int(prepared, 0);
+  const int = sqlite3_column_int(prepared, 0);
   sqlite3_reset(prepared);
+  return int;
 }
+
+console.log(`user_version: ${run()}`);
 
 bench(run);
