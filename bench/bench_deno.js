@@ -22,4 +22,5 @@ function bench(query) {
 }
 
 const query = db.prepare(sql);
+console.log(query.get());
 bench(() => query.get());

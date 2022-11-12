@@ -527,6 +527,7 @@ export class Statement {
   }
 
   #columnNames: string[] | undefined;
+  #rowObject: Record<string, unknown> = {};
 
   columnNames(): string[] {
     if (!this.#columnNames || !this.#unsafeConcurrency) {
@@ -536,8 +537,11 @@ export class Statement {
         columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i));
       }
       this.#columnNames = columnNames;
+      this.#rowObject = {};
+      for (const name of columnNames) {
+        this.#rowObject![name] = undefined;
+      }
     }
-
     return this.#columnNames!;
   }
 
@@ -583,7 +587,7 @@ export class Statement {
     const int64 = this.db.int64;
 
     const columnNames = this.columnNames();
-    const row: Record<string, unknown> = {};
+    const row: Record<string, unknown> = this.#rowObject;
     sqlite3_reset(handle);
     const status = sqlite3_step(handle);
     if (status === SQLITE3_ROW) {

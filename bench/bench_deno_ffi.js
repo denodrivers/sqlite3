@@ -28,8 +28,6 @@ unwrap(
 );
 const db = pHandle[0] + 2 ** 32 * pHandle[1];
 
-import { nextTick } from "https://deno.land/std@0.126.0/node/_next_tick.ts";
-
 function exec(sql) {
   const _pErr = new Uint32Array(2);
   unwrap(sqlite3_exec(db, toCString(sql), 0, 0, _pErr));

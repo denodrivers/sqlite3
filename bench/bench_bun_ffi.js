@@ -1,4 +1,4 @@
-import { CString, dlopen, ptr } from "bun:ffi";
+import { dlopen, ptr } from "bun:ffi";
 
 import {
   SQLITE3_OPEN_CREATE,
@@ -17,7 +17,7 @@ const {
     sqlite3_column_int,
     sqlite3_errstr,
   },
-} = dlopen("libsqlite3.dylib", {
+} = dlopen("build/libsqlite3.dylib", {
   sqlite3_open_v2: {
     args: [
       "ptr", // const char *filename
@@ -141,7 +141,7 @@ const prepared = prepareStatement();
 function run() {
   sqlite3_step(prepared);
   const int = sqlite3_column_int(prepared, 0);
-  unwrap(sqlite3_reset(prepared));
+  sqlite3_reset(prepared);
   return int;
 }
 
