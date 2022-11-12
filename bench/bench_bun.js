@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 
+// Unsafe concurrency is default.
 const db = Database.open(":memory:");
 
 db.exec("PRAGMA auto_vacuum = none");
@@ -26,4 +27,5 @@ function bench(query) {
 }
 
 const query = createQuery(sql);
+console.log(query.get());
 bench(() => query.get());

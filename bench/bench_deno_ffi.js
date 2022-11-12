@@ -28,8 +28,6 @@ unwrap(
 );
 const db = pHandle[0] + 2 ** 32 * pHandle[1];
 
-import { nextTick } from "https://deno.land/std@0.126.0/node/_next_tick.ts";
-
 function exec(sql) {
   const _pErr = new Uint32Array(2);
   unwrap(sqlite3_exec(db, toCString(sql), 0, 0, _pErr));
@@ -51,7 +49,7 @@ function bench(query) {
   const elapsed = Date.now() - start;
   const rate = Math.floor(runs / (elapsed / 1000));
   console.log(`time ${elapsed} ms rate ${rate}`);
-  if (--total) nextTick(() => bench(query));
+  if (--total) bench(query);
 }
 
 function prepareStatement() {
@@ -71,8 +69,11 @@ function prepareStatement() {
 const prepared = prepareStatement();
 function run() {
   sqlite3_step(prepared);
-  sqlite3_column_int(prepared, 0);
+  const int = sqlite3_column_int(prepared, 0);
   sqlite3_reset(prepared);
+  return int;
 }
+
+console.log(`user_version: ${run()}`);
 
 bench(run);
