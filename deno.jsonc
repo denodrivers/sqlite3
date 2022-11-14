@@ -2,9 +2,9 @@
   "tasks": {
     "test": "deno test --unstable -A test/test.ts",
     // ops/sec
-    "bench": "deno run -A --unstable bench/bench_deno.js 50 1000000",
-    "bench-ffi": "deno run -A --unstable bench/bench_deno_ffi.js 50 1000000",
-    "bench-wasm": "deno run -A --unstable bench/bench_deno_wasm.js 50 1000000",
+    "bench-deno": "deno run -A --unstable bench/bench_deno.js 50 1000000",
+    "bench-deno-ffi": "deno run -A --unstable bench/bench_deno_ffi.js 50 1000000",
+    "bench-deno-wasm": "deno run -A --unstable bench/bench_deno_wasm.js 50 1000000",
     "bench-node": "node bench/bench_node.js 50 1000000",
     "bench-bun": "bun run bench/bench_bun.js 50 1000000",
     "bench-bun-ffi": "bun run bench/bench_bun_ffi.js 50 1000000",

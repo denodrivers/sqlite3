@@ -1,2 +1,2 @@
 build-c:
-	gcc -Wall -Wextra -pthread ../sqlite/build/.libs/libsqlite3.a -o bench bench.c
+	gcc -Wall -Wextra -pthread -o bench bench.c -l:libsqlite3.a -ldl -lm

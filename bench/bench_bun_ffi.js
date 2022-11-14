@@ -17,7 +17,7 @@ const {
     sqlite3_column_int,
     sqlite3_errstr,
   },
-} = dlopen("build/libsqlite3.dylib", {
+} = dlopen("build/libsqlite3.so", {
   sqlite3_open_v2: {
     args: [
       "ptr", // const char *filename
@@ -113,9 +113,9 @@ let total = parseInt(process.argv[2], 10);
 const runs = parseInt(process.argv[3], 10);
 
 function bench(query) {
-  const start = Date.now();
+  const start = performance.now();
   for (let i = 0; i < runs; i++) query();
-  const elapsed = Date.now() - start;
+  const elapsed = Math.floor(performance.now() - start);
   const rate = Math.floor(runs / (elapsed / 1000));
   console.log(`time ${elapsed} ms rate ${rate}`);
   if (--total) process.nextTick(() => bench(query));
