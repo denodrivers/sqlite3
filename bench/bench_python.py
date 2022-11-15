@@ -23,5 +23,5 @@ def bench():
     rate = runs / elapsed.total_seconds()
     print("time {} ms rate {}".format(round(elapsed.total_seconds() * 1000), round(rate)))
 
-while True:
+for _ in range(50):
     bench()

@@ -34,7 +34,7 @@ deno run -A --unstable <file>
 
 ## Benchmark
 
-![image](https://user-images.githubusercontent.com/34997667/189836272-16a0d876-979f-4ccc-8380-571faf54acf7.png)
+![image](./bench/results.png)
 
 [Benchmark](./bench) based on
 [just-js/02-sqlite](https://just-js.github.io/benchmarks/02-sqlite.html)

@@ -4,6 +4,7 @@
 *.exp
 *.pdb
 *.dll
+*.a
 *.so
 *.db-shm
 *.db-wal
@@ -13,3 +14,4 @@ node_modules/
 build/
 # C benchmark binary
 bench/bench
+deno.lock
