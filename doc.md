@@ -20,7 +20,7 @@ pass `create: false` in the options.
   this. Passing this ignores all other options.
 - `unsafeConcurrency: boolean` - Enable optimizations that will affect
   syncronization with other clients. This can largerly improve performance for
-  cases where you only have one client.
+  cases where you only have one client. Defaults to `true`.
 
 ### Usage
 

@@ -1,6 +1,6 @@
 import { Database } from "../mod.ts";
 
-const db = new Database(":memory:", { unsafeConcurrency: true });
+const db = new Database(":memory:");
 
 db.run("PRAGMA auto_vacuum = none");
 db.run("PRAGMA temp_store = memory");

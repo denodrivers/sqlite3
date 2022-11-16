@@ -1,8 +1,6 @@
 import { Database } from "../../mod.ts";
 
-const db = new Database("./bench/northwind.sqlite", {
-  unsafeConcurrency: true,
-});
+const db = new Database("./bench/northwind.sqlite");
 
 {
   const sql = db.prepare(`SELECT * FROM "Order"`);
