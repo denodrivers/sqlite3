@@ -44,6 +44,25 @@ export type Transaction<T> = ((v: T) => void) & {
   database: Database;
 };
 
+/**
+ * Options for user-defined functions.
+ *
+ * @link https://www.sqlite.org/c3ref/c_deterministic.html
+ */
+export interface FunctionOptions {
+  varargs?: boolean;
+  deterministic?: boolean;
+  directOnly?: boolean;
+  innocuous?: boolean;
+  subtype?: boolean;
+}
+
+export interface AggregateFunctionOptions extends FunctionOptions {
+  start: any | (() => any);
+  step: (aggregate: any, ...args: any[]) => void;
+  final?: (aggregate: any) => any;
+}
+
 const {
   sqlite3_open_v2,
   sqlite3_close_v2,
@@ -70,6 +89,8 @@ const {
   sqlite3_value_text,
   sqlite3_value_type,
   sqlite3_create_function,
+  sqlite3_result_int,
+  sqlite3_aggregate_context,
 } = ffi;
 
 /** SQLite version string */
@@ -340,7 +361,20 @@ export class Database {
 
   #callbacks = new Set<Deno.UnsafeCallback>();
 
-  function(name: string, fn: CallableFunction): void {
+  /**
+   * Creates a new user-defined function.
+   *
+   * Example:
+   * ```ts
+   * db.function("add", (a: number, b: number) => a + b);
+   * db.prepare("select add(1, 2)").value<[number]>()!; // [3]
+   * ```
+   */
+  function(
+    name: string,
+    fn: CallableFunction,
+    options?: FunctionOptions,
+  ): void {
     const cb = new Deno.UnsafeCallback(
       {
         parameters: ["pointer", "i32", "pointer"],
@@ -398,8 +432,10 @@ export class Database {
           return;
         }
 
-        if (result === undefined) {
+        if (result === undefined || result === null) {
           sqlite3_result_null(ctx);
+        } else if (typeof result === "boolean") {
+          sqlite3_result_int(ctx, result ? 1 : 0);
         } else if (typeof result === "number") {
           if (Number.isSafeInteger(result)) sqlite3_result_int64(ctx, result);
           else sqlite3_result_double(ctx, result);
@@ -410,10 +446,6 @@ export class Database {
           sqlite3_result_text(ctx, buffer, buffer.byteLength, 0);
         } else if (result instanceof Uint8Array) {
           sqlite3_result_blob(ctx, result, result.length, -1);
-        } else if (result instanceof Int32Array) {
-          sqlite3_result_blob(ctx, result, result.length * 4, -1);
-        } else if (result instanceof Float64Array) {
-          sqlite3_result_blob(ctx, result, result.length * 8, -1);
         } else {
           const buffer = new TextEncoder().encode(
             `Invalid return value: ${Deno.inspect(result)}`,
@@ -423,11 +455,29 @@ export class Database {
       },
     );
 
+    let flags = 1;
+
+    if (options?.deterministic) {
+      flags |= 0x000000800;
+    }
+
+    if (options?.directOnly) {
+      flags |= 0x000080000;
+    }
+
+    if (options?.subtype) {
+      flags |= 0x000100000;
+    }
+
+    if (options?.directOnly) {
+      flags |= 0x000200000;
+    }
+
     const err = sqlite3_create_function(
       this.#handle,
       toCString(name),
-      fn.length,
-      1,
+      options?.varargs ? -1 : fn.length,
+      flags,
       0,
       cb.pointer,
       0,
@@ -437,6 +487,159 @@ export class Database {
     unwrap(err, this.#handle);
 
     this.#callbacks.add(cb as Deno.UnsafeCallback);
+  }
+
+  /**
+   * Creates a new user-defined aggregate function.
+   */
+  aggregate(name: string, options: AggregateFunctionOptions): void {
+    const contexts = new Map<Deno.PointerValue, any>();
+
+    const cb = new Deno.UnsafeCallback(
+      {
+        parameters: ["pointer", "i32", "pointer"],
+        result: "void",
+      } as const,
+      (ctx, nArgs, pArgs) => {
+        const aggrCtx = sqlite3_aggregate_context(ctx, 8);
+        let aggregate;
+        if (contexts.has(aggrCtx)) {
+          aggregate = contexts.get(aggrCtx);
+        } else {
+          aggregate = typeof options.start === "function"
+            ? options.start()
+            : options.start;
+          contexts.set(aggrCtx, aggregate);
+        }
+        const argptr = new Deno.UnsafePointerView(pArgs);
+        const args: any[] = [];
+        for (let i = 0; i < nArgs; i++) {
+          const arg = Number(argptr.getBigUint64(i * 8));
+          const type = sqlite3_value_type(arg);
+          switch (type) {
+            case SQLITE_INTEGER:
+              args.push(sqlite3_value_int64(arg));
+              break;
+            case SQLITE_FLOAT:
+              args.push(sqlite3_value_double(arg));
+              break;
+            case SQLITE_TEXT:
+              args.push(
+                new TextDecoder().decode(
+                  new Uint8Array(
+                    Deno.UnsafePointerView.getArrayBuffer(
+                      sqlite3_value_text(arg),
+                      sqlite3_value_bytes(arg),
+                    ),
+                  ),
+                ),
+              );
+              break;
+            case SQLITE_BLOB:
+              args.push(
+                new Uint8Array(
+                  Deno.UnsafePointerView.getArrayBuffer(
+                    sqlite3_value_blob(arg),
+                    sqlite3_value_bytes(arg),
+                  ),
+                ),
+              );
+              break;
+            case SQLITE_NULL:
+              args.push(null);
+              break;
+            default:
+              throw new Error(`Unknown type: ${type}`);
+          }
+        }
+
+        let result: any;
+        try {
+          result = options.step(aggregate, ...args);
+        } catch (err) {
+          const buf = new TextEncoder().encode(err.message);
+          sqlite3_result_error(ctx, buf, buf.byteLength);
+          return;
+        }
+
+        contexts.set(aggrCtx, result);
+      },
+    );
+
+    const cbFinal = new Deno.UnsafeCallback(
+      {
+        parameters: ["pointer"],
+        result: "void",
+      } as const,
+      (ctx) => {
+        const aggrCtx = sqlite3_aggregate_context(ctx, 0);
+        const aggregate = contexts.get(aggrCtx);
+        contexts.delete(aggrCtx);
+        let result: any;
+        try {
+          result = options.final ? options.final(aggregate) : aggregate;
+        } catch (err) {
+          const buf = new TextEncoder().encode(err.message);
+          sqlite3_result_error(ctx, buf, buf.byteLength);
+          return;
+        }
+
+        if (result === undefined || result === null) {
+          sqlite3_result_null(ctx);
+        } else if (typeof result === "boolean") {
+          sqlite3_result_int(ctx, result ? 1 : 0);
+        } else if (typeof result === "number") {
+          if (Number.isSafeInteger(result)) sqlite3_result_int64(ctx, result);
+          else sqlite3_result_double(ctx, result);
+        } else if (typeof result === "bigint") {
+          sqlite3_result_int64(ctx, result);
+        } else if (typeof result === "string") {
+          const buffer = new TextEncoder().encode(result);
+          sqlite3_result_text(ctx, buffer, buffer.byteLength, 0);
+        } else if (result instanceof Uint8Array) {
+          sqlite3_result_blob(ctx, result, result.length, -1);
+        } else {
+          const buffer = new TextEncoder().encode(
+            `Invalid return value: ${Deno.inspect(result)}`,
+          );
+          sqlite3_result_error(ctx, buffer, buffer.byteLength);
+        }
+      },
+    );
+
+    let flags = 1;
+
+    if (options?.deterministic) {
+      flags |= 0x000000800;
+    }
+
+    if (options?.directOnly) {
+      flags |= 0x000080000;
+    }
+
+    if (options?.subtype) {
+      flags |= 0x000100000;
+    }
+
+    if (options?.directOnly) {
+      flags |= 0x000200000;
+    }
+
+    const err = sqlite3_create_function(
+      this.#handle,
+      toCString(name),
+      options?.varargs ? -1 : options.step.length - 1,
+      flags,
+      0,
+      0,
+      cb.pointer,
+      cbFinal.pointer,
+    );
+
+    unwrap(err, this.#handle);
+
+    this.#callbacks.add(cb as Deno.UnsafeCallback);
+    this.#callbacks.add(cbFinal as Deno.UnsafeCallback);
   }
 
   /**

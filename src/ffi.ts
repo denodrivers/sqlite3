@@ -542,6 +542,14 @@ const symbols = {
     ],
     result: "i32",
   },
+
+  sqlite3_aggregate_context: {
+    parameters: [
+      "pointer", // sqlite3_context *p
+      "i32", // int nBytes
+    ],
+    result: "pointer",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];

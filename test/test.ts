@@ -373,27 +373,64 @@ Deno.test("sqlite", async (t) => {
         }
         return result;
       });
+
+      db.function("regexp", (a: string, b: string): boolean => {
+        return new RegExp(b).test(a);
+      });
+
+      db.aggregate("deno_sum_2x", {
+        start: 0,
+        step(sum: number, value: number): number {
+          return sum + value;
+        },
+        final(sum: number): number {
+          return sum * 2;
+        },
+      });
     },
   });
 
   await t.step("test functions", () => {
-    const [result] =
-      db.prepare("select deno_add(?, ?)").values<[number]>(1, 2)[0];
+    const [result] = db.prepare("select deno_add(?, ?)").value<[number]>(1, 2)!;
     assertEquals(result, 3);
 
     const [result2] = db
       .prepare("select deno_uppercase(?)")
-      .values<[string]>("hello")[0];
+      .value<[string]>("hello")!;
     assertEquals(result2, "HELLO");
 
     const [result3] = db
       .prepare("select deno_buffer_add_1(?)")
-      .values<[Uint8Array]>(new Uint8Array([1, 2, 3]))[0];
+      .value<[Uint8Array]>(new Uint8Array([1, 2, 3]))!;
     assertEquals(result3, new Uint8Array([2, 3, 4]));
 
-    const [result4] =
-      db.prepare("select deno_add(?, ?)").values<[number]>(1.5, 1.5)[0];
+    const [result4] = db.prepare("select deno_add(?, ?)").value<[number]>(
+      1.5,
+      1.5,
+    )!;
     assertEquals(result4, 3);
+
+    const [result5] = db
+      .prepare("select regexp(?, ?)")
+      .value<[number]>("hello", "h.*")!;
+    assertEquals(result5, 1);
+
+    const [result6] = db
+      .prepare("select regexp(?, ?)")
+      .value<[number]>("hello", "x.*")!;
+    assertEquals(result6, 0);
+
+    db.exec("create table aggr_test (value integer)");
+    db.exec("insert into aggr_test (value) values (1)");
+    db.exec("insert into aggr_test (value) values (2)");
+    db.exec("insert into aggr_test (value) values (3)");
+
+    const stmt = db.prepare("select deno_sum_2x(value) from aggr_test");
+    const [result7] = stmt.value<[number]>()!;
+    assertEquals(result7, 12);
+    stmt.finalize();
+
+    db.exec("drop table aggr_test");
   });
 
   await t.step("drop table", () => {
