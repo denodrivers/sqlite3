@@ -354,15 +354,61 @@ Deno.test("sqlite", async (t) => {
     });
   });
 
+  await t.step({
+    name: "define functions",
+    sanitizeResources: false,
+    fn(): void {
+      db.function("deno_add", (a: number, b: number): number => {
+        return a + b;
+      });
+
+      db.function("deno_uppercase", (a: string): string => {
+        return a.toUpperCase();
+      });
+
+      db.function("deno_buffer_add_1", (a: Uint8Array): Uint8Array => {
+        const result = new Uint8Array(a.length);
+        for (let i = 0; i < a.length; i++) {
+          result[i] = a[i] + 1;
+        }
+        return result;
+      });
+    },
+  });
+
+  await t.step("test functions", () => {
+    const [result] =
+      db.prepare("select deno_add(?, ?)").values<[number]>(1, 2)[0];
+    assertEquals(result, 3);
+
+    const [result2] = db
+      .prepare("select deno_uppercase(?)")
+      .values<[string]>("hello")[0];
+    assertEquals(result2, "HELLO");
+
+    const [result3] = db
+      .prepare("select deno_buffer_add_1(?)")
+      .values<[Uint8Array]>(new Uint8Array([1, 2, 3]))[0];
+    assertEquals(result3, new Uint8Array([2, 3, 4]));
+
+    const [result4] =
+      db.prepare("select deno_add(?, ?)").values<[number]>(1.5, 1.5)[0];
+    assertEquals(result4, 3);
+  });
+
   await t.step("drop table", () => {
     db.exec("drop table test");
     db.exec("drop table blobs");
   });
 
-  await t.step("close", () => {
-    db.close();
-    try {
-      Deno.removeSync(DB_URL);
-    } catch (_) { /** ignore, already being used */ }
+  await t.step({
+    name: "close",
+    sanitizeResources: false,
+    fn(): void {
+      db.close();
+      try {
+        Deno.removeSync(DB_URL);
+      } catch (_) { /** ignore, already being used */ }
+    },
   });
 });

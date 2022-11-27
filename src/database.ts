@@ -5,6 +5,11 @@ import {
   SQLITE3_OPEN_MEMORY,
   SQLITE3_OPEN_READONLY,
   SQLITE3_OPEN_READWRITE,
+  SQLITE_BLOB,
+  SQLITE_FLOAT,
+  SQLITE_INTEGER,
+  SQLITE_NULL,
+  SQLITE_TEXT,
 } from "./constants.ts";
 import { readCstr, toCString, unwrap } from "./util.ts";
 import { RestBindParameters, Statement, STATEMENTS } from "./statement.ts";
@@ -52,6 +57,19 @@ const {
   sqlite3_sourceid,
   sqlite3_complete,
   sqlite3_finalize,
+  sqlite3_result_blob,
+  sqlite3_result_double,
+  sqlite3_result_error,
+  sqlite3_result_int64,
+  sqlite3_result_null,
+  sqlite3_result_text,
+  sqlite3_value_blob,
+  sqlite3_value_bytes,
+  sqlite3_value_double,
+  sqlite3_value_int64,
+  sqlite3_value_text,
+  sqlite3_value_type,
+  sqlite3_create_function,
 } = ffi;
 
 /** SQLite version string */
@@ -320,6 +338,107 @@ export class Database {
     return properties.default.value as any as Transaction<T>;
   }
 
+  #callbacks = new Set<Deno.UnsafeCallback>();
+
+  function(name: string, fn: CallableFunction): void {
+    const cb = new Deno.UnsafeCallback(
+      {
+        parameters: ["pointer", "i32", "pointer"],
+        result: "void",
+      } as const,
+      (ctx, nArgs, pArgs) => {
+        const argptr = new Deno.UnsafePointerView(pArgs);
+        const args: any[] = [];
+        for (let i = 0; i < nArgs; i++) {
+          const arg = Number(argptr.getBigUint64(i * 8));
+          const type = sqlite3_value_type(arg);
+          switch (type) {
+            case SQLITE_INTEGER:
+              args.push(sqlite3_value_int64(arg));
+              break;
+            case SQLITE_FLOAT:
+              args.push(sqlite3_value_double(arg));
+              break;
+            case SQLITE_TEXT:
+              args.push(
+                new TextDecoder().decode(
+                  new Uint8Array(
+                    Deno.UnsafePointerView.getArrayBuffer(
+                      sqlite3_value_text(arg),
+                      sqlite3_value_bytes(arg),
+                    ),
+                  ),
+                ),
+              );
+              break;
+            case SQLITE_BLOB:
+              args.push(
+                new Uint8Array(
+                  Deno.UnsafePointerView.getArrayBuffer(
+                    sqlite3_value_blob(arg),
+                    sqlite3_value_bytes(arg),
+                  ),
+                ),
+              );
+              break;
+            case SQLITE_NULL:
+              args.push(null);
+              break;
+            default:
+              throw new Error(`Unknown type: ${type}`);
+          }
+        }
+
+        let result: any;
+        try {
+          result = fn(...args);
+        } catch (err) {
+          const buf = new TextEncoder().encode(err.message);
+          sqlite3_result_error(ctx, buf, buf.byteLength);
+          return;
+        }
+
+        if (result === undefined) {
+          sqlite3_result_null(ctx);
+        } else if (typeof result === "number") {
+          if (Number.isSafeInteger(result)) sqlite3_result_int64(ctx, result);
+          else sqlite3_result_double(ctx, result);
+        } else if (typeof result === "bigint") {
+          sqlite3_result_int64(ctx, result);
+        } else if (typeof result === "string") {
+          const buffer = new TextEncoder().encode(result);
+          sqlite3_result_text(ctx, buffer, buffer.byteLength, 0);
+        } else if (result instanceof Uint8Array) {
+          sqlite3_result_blob(ctx, result, result.length, -1);
+        } else if (result instanceof Int32Array) {
+          sqlite3_result_blob(ctx, result, result.length * 4, -1);
+        } else if (result instanceof Float64Array) {
+          sqlite3_result_blob(ctx, result, result.length * 8, -1);
+        } else {
+          const buffer = new TextEncoder().encode(
+            `Invalid return value: ${Deno.inspect(result)}`,
+          );
+          sqlite3_result_error(ctx, buffer, buffer.byteLength);
+        }
+      },
+    );
+
+    const err = sqlite3_create_function(
+      this.#handle,
+      toCString(name),
+      fn.length,
+      1,
+      0,
+      cb.pointer,
+      0,
+      0,
+    );
+
+    unwrap(err, this.#handle);
+
+    this.#callbacks.add(cb as Deno.UnsafeCallback);
+  }
+
   /**
    * Closes the database connection.
    *
@@ -332,6 +451,9 @@ export class Database {
         sqlite3_finalize(stmt);
         STATEMENTS.delete(stmt);
       }
+    }
+    for (const cb of this.#callbacks) {
+      cb.close();
     }
     unwrap(sqlite3_close_v2(this.#handle));
     this.#open = false;

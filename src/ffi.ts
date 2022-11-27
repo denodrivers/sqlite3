@@ -419,6 +419,129 @@ const symbols = {
     ],
     result: "i32",
   },
+
+  sqlite3_create_function: {
+    parameters: [
+      "pointer", // sqlite3 *db
+      "buffer", // const char *zFunctionName
+      "i32", // int nArg
+      "i32", // int eTextRep
+      "pointer", // void *pApp
+      "pointer", // void (*xFunc)(sqlite3_context*,int,sqlite3_value**)
+      "pointer", // void (*xStep)(sqlite3_context*,int,sqlite3_value**)
+      "pointer", // void (*xFinal)(sqlite3_context*)
+    ],
+    result: "i32",
+  },
+
+  sqlite3_result_blob: {
+    parameters: [
+      "pointer", // sqlite3_context *p
+      "buffer", // const void *z
+      "i32", // int n
+      "pointer", // void (*xDel)(void*)
+    ],
+    result: "void",
+  },
+
+  sqlite3_result_double: {
+    parameters: [
+      "pointer", // sqlite3_context *p
+      "f64", // double rVal
+    ],
+    result: "void",
+  },
+
+  sqlite3_result_error: {
+    parameters: [
+      "pointer", // sqlite3_context *p
+      "buffer", // const char *z
+      "i32", // int n
+    ],
+    result: "void",
+  },
+
+  sqlite3_result_int: {
+    parameters: [
+      "pointer", // sqlite3_context *p
+      "i32", // int iVal
+    ],
+    result: "void",
+  },
+
+  sqlite3_result_int64: {
+    parameters: [
+      "pointer", // sqlite3_context *p
+      "i64", // sqlite3_int64 iVal
+    ],
+    result: "void",
+  },
+
+  sqlite3_result_null: {
+    parameters: [
+      "pointer", // sqlite3_context *p
+    ],
+    result: "void",
+  },
+
+  sqlite3_result_text: {
+    parameters: [
+      "pointer", // sqlite3_context *p
+      "buffer", // const char *z
+      "i32", // int n
+      "pointer", // void (*xDel)(void*)
+    ],
+    result: "void",
+  },
+
+  sqlite3_value_type: {
+    parameters: [
+      "pointer", // sqlite3_value *pVal
+    ],
+    result: "i32",
+  },
+
+  sqlite3_value_blob: {
+    parameters: [
+      "pointer", // sqlite3_value *pVal
+    ],
+    result: "pointer",
+  },
+
+  sqlite3_value_double: {
+    parameters: [
+      "pointer", // sqlite3_value *pVal
+    ],
+    result: "f64",
+  },
+
+  sqlite3_value_int: {
+    parameters: [
+      "pointer", // sqlite3_value *pVal
+    ],
+    result: "i32",
+  },
+
+  sqlite3_value_int64: {
+    parameters: [
+      "pointer", // sqlite3_value *pVal
+    ],
+    result: "i64",
+  },
+
+  sqlite3_value_text: {
+    parameters: [
+      "pointer", // sqlite3_value *pVal
+    ],
+    result: "pointer",
+  },
+
+  sqlite3_value_bytes: {
+    parameters: [
+      "pointer", // sqlite3_value *pVal
+    ],
+    result: "i32",
+  },
 } as const;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
