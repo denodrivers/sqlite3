@@ -54,9 +54,12 @@ export type BindValue =
 export type BindParameters = BindValue[] | Record<string, BindValue>;
 export type RestBindParameters = BindValue[] | [BindParameters];
 
+export const STATEMENTS = new Map<Deno.PointerValue, Deno.PointerValue>();
+
 const statementFinalizer = new FinalizationRegistry(
   (ptr: Deno.PointerValue) => {
     sqlite3_finalize(ptr);
+    STATEMENTS.delete(ptr);
   },
 );
 
@@ -90,8 +93,7 @@ function getColumn(handle: number, i: number, int64: boolean): any {
       const ptr = sqlite3_column_blob(handle, i);
       const bytes = sqlite3_column_bytes(handle, i);
       return new Uint8Array(
-        new Deno.UnsafePointerView(BigInt(ptr)).getArrayBuffer(bytes)
-          .slice(0),
+        Deno.UnsafePointerView.getArrayBuffer(ptr, bytes).slice(0),
       );
     }
 
@@ -175,6 +177,7 @@ export class Statement {
       db.unsafeHandle,
     );
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+    STATEMENTS.set(this.#handle, db.unsafeHandle);
     this.#unsafeConcurrency = db.unsafeConcurrency;
     this.#finalizerToken = { handle: this.#handle };
     statementFinalizer.register(this, this.#handle, this.#finalizerToken);
@@ -604,8 +607,10 @@ export class Statement {
 
   /** Free up the statement object. */
   finalize(): void {
+    if (!STATEMENTS.has(this.#handle)) return;
     this.#bindRefs.clear();
     statementFinalizer.unregister(this.#finalizerToken);
+    STATEMENTS.delete(this.#handle);
     unwrap(sqlite3_finalize(this.#handle));
   }
 

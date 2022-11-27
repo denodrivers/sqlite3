@@ -7,7 +7,7 @@ import {
   SQLITE3_OPEN_READWRITE,
 } from "./constants.ts";
 import { readCstr, toCString, unwrap } from "./util.ts";
-import { RestBindParameters, Statement } from "./statement.ts";
+import { RestBindParameters, Statement, STATEMENTS } from "./statement.ts";
 import { BlobOpenOptions, SQLBlob } from "./blob.ts";
 
 /** Various options that can be configured when opening Database connection. */
@@ -51,6 +51,7 @@ const {
   sqlite3_libversion,
   sqlite3_sourceid,
   sqlite3_complete,
+  sqlite3_finalize,
 } = ffi;
 
 /** SQLite version string */
@@ -326,6 +327,12 @@ export class Database {
    */
   close(): void {
     if (!this.#open) return;
+    for (const [stmt, db] of STATEMENTS) {
+      if (db === this.#handle) {
+        sqlite3_finalize(stmt);
+        STATEMENTS.delete(stmt);
+      }
+    }
     unwrap(sqlite3_close_v2(this.#handle));
     this.#open = false;
   }
