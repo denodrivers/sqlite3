@@ -54,7 +54,7 @@ Check out the complete API reference
 On Linux and macOS, it will download and cache a prebuilt shared library from
 GitHub releases. For which it will also need net and read/write permission.
 
-On Winows, it will look for existing SQLite3 dynamic library on your path, which
+On Windows, it will look for existing SQLite3 dynamic library on your path, which
 is `sqlite3.dll`. You _might_ have to install SQLite3 library separately if it's
 not already installed, since it is not bundled with this module.
 
