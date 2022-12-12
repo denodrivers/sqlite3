@@ -84,24 +84,28 @@ export function isComplete(statement: string): boolean {
  *
  * // Or open using File URL
  * const db = new Database(new URL("./myfile.db", import.meta.url));
+ * 
+ * // Or wait until later to open.
+ * const db = new Database();
+ * db.open("myfile.db");
  * ```
  */
 export class Database {
-  #path: string;
-  #handle: Deno.PointerValue;
-  #open = true;
+  #path!: string;
+  #handle!: Deno.PointerValue;
+  #open = false;
 
   /** Whether to support BigInt columns. False by default, integers larger than 32 bit will be inaccurate. */
   int64: boolean;
 
   unsafeConcurrency: boolean;
 
-  /** Whether DB connection is open */
-  get open(): boolean {
+  /** Whether DB connection is open. */
+  get connected(): boolean {
     return this.#open;
   }
 
-  /** Unsafe Raw (pointer) to the sqlite object */
+  /** Unsafe Raw (pointer) to the sqlite object. */
   get unsafeHandle(): Deno.PointerValue {
     return this.#handle;
   }
@@ -136,7 +140,21 @@ export class Database {
     return this.#open && !this.autocommit;
   }
 
-  constructor(path: string | URL, options: DatabaseOpenOptions = {}) {
+  constructor(path: string | URL = "", options: DatabaseOpenOptions = {}) {
+    this.int64 = options.int64 ?? false;
+    this.unsafeConcurrency = options.unsafeConcurrency ?? false;
+  
+    if (!path) {
+      return;
+    }
+    this.open(path, options);
+  }
+
+  /** Open a Database. */
+  open(path: string | URL, options: DatabaseOpenOptions = {}): boolean {
+    if (this.#open || !path) {
+      return false;
+    }
     this.#path = path instanceof URL ? fromFileUrl(path) : path;
     let flags = 0;
     this.int64 = options.int64 ?? false;
@@ -164,6 +182,8 @@ export class Database {
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
     if (result !== 0) sqlite3_close_v2(this.#handle);
     unwrap(result);
+    this.#open = true;
+    return true;
   }
 
   /**
