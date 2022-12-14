@@ -151,9 +151,11 @@ export class Database {
   }
 
   /** Open a Database. */
-  open(path: string | URL, options: DatabaseOpenOptions = {}): boolean {
-    if (this.#open || !path) {
-      return false;
+  open(path: string | URL, options: DatabaseOpenOptions = {}): void {
+    if (this.#open) {
+      throw new Error("Database already open");
+    } else if (!path) {
+      throw new TypeError("Path must not be empty");
     }
     this.#path = path instanceof URL ? fromFileUrl(path) : path;
     let flags = 0;
@@ -183,7 +185,6 @@ export class Database {
     if (result !== 0) sqlite3_close_v2(this.#handle);
     unwrap(result);
     this.#open = true;
-    return true;
   }
 
   /**
