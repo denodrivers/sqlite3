@@ -84,7 +84,7 @@ export function isComplete(statement: string): boolean {
  *
  * // Or open using File URL
  * const db = new Database(new URL("./myfile.db", import.meta.url));
- * 
+ *
  * // Or wait until later to open.
  * const db = new Database();
  * db.open("myfile.db");
@@ -143,7 +143,7 @@ export class Database {
   constructor(path: string | URL = "", options: DatabaseOpenOptions = {}) {
     this.int64 = options.int64 ?? false;
     this.unsafeConcurrency = options.unsafeConcurrency ?? false;
-  
+
     if (!path) {
       return;
     }

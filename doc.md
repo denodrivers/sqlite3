@@ -39,6 +39,10 @@ const db = new Database("test.db", { readonly: true });
 
 // Open existing database, error if it doesn't exist
 const db = new Database("test.db", { create: false });
+
+// Create a new database object and open later.
+const db = new Database();
+db.open("test.db");
 ```
 
 ## Properties of `Database`
