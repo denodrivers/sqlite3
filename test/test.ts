@@ -207,7 +207,7 @@ Deno.test("sqlite", async (t) => {
       value,
       "bigint",
       0,
-      new Uint8Array(0),
+      new Uint8Array(1),
       null,
     );
     const [int] = db.prepare(
@@ -224,7 +224,7 @@ Deno.test("sqlite", async (t) => {
       value,
       "bigint2",
       0,
-      new Uint8Array(0),
+      new Uint8Array(1),
       null,
     );
     const [int] = db.prepare(
@@ -241,7 +241,7 @@ Deno.test("sqlite", async (t) => {
       value,
       "bigint3",
       0,
-      new Uint8Array(0),
+      new Uint8Array(1),
       null,
     );
     const [int] = db.prepare(
@@ -257,7 +257,7 @@ Deno.test("sqlite", async (t) => {
       NaN,
       "nan",
       NaN,
-      new Uint8Array(0),
+      new Uint8Array(1),
       null,
     );
     const [int, double] = db.prepare(
@@ -354,15 +354,107 @@ Deno.test("sqlite", async (t) => {
     });
   });
 
+  await t.step({
+    name: "define functions",
+    sanitizeResources: false,
+    fn(): void {
+      db.function("deno_add", (a: number, b: number): number => {
+        return a + b;
+      });
+
+      db.function("deno_uppercase", (a: string): string => {
+        return a.toUpperCase();
+      });
+
+      db.function("deno_buffer_add_1", (a: Uint8Array): Uint8Array => {
+        const result = new Uint8Array(a.length);
+        for (let i = 0; i < a.length; i++) {
+          result[i] = a[i] + 1;
+        }
+        return result;
+      });
+
+      db.function("regexp", (a: string, b: string): boolean => {
+        return new RegExp(b).test(a);
+      });
+
+      db.aggregate("deno_sum_2x", {
+        start: 0,
+        step(sum: number, value: number): number {
+          return sum + value;
+        },
+        final(sum: number): number {
+          return sum * 2;
+        },
+      });
+    },
+  });
+
+  await t.step("test functions", () => {
+    const [result] = db
+      .prepare("select deno_add(?, ?)")
+      .enableCallback()
+      .value<[number]>(1, 2)!;
+    assertEquals(result, 3);
+
+    const [result2] = db
+      .prepare("select deno_uppercase(?)")
+      .enableCallback()
+      .value<[string]>("hello")!;
+    assertEquals(result2, "HELLO");
+
+    const [result3] = db
+      .prepare("select deno_buffer_add_1(?)")
+      .enableCallback()
+      .value<[Uint8Array]>(new Uint8Array([1, 2, 3]))!;
+    assertEquals(result3, new Uint8Array([2, 3, 4]));
+
+    const [result4] = db.prepare("select deno_add(?, ?)").value<[number]>(
+      1.5,
+      1.5,
+    )!;
+    assertEquals(result4, 3);
+
+    const [result5] = db
+      .prepare("select regexp(?, ?)")
+      .enableCallback()
+      .value<[number]>("hello", "h.*")!;
+    assertEquals(result5, 1);
+
+    const [result6] = db
+      .prepare("select regexp(?, ?)")
+      .enableCallback()
+      .value<[number]>("hello", "x.*")!;
+    assertEquals(result6, 0);
+
+    db.exec("create table aggr_test (value integer)");
+    db.exec("insert into aggr_test (value) values (1)");
+    db.exec("insert into aggr_test (value) values (2)");
+    db.exec("insert into aggr_test (value) values (3)");
+
+    const stmt = db.prepare("select deno_sum_2x(value) from aggr_test");
+    stmt.callback = true;
+    const [result7] = stmt.value<[number]>()!;
+    assertEquals(result7, 12);
+    // Releases lock from table.
+    stmt.finalize();
+
+    db.exec("drop table aggr_test");
+  });
+
   await t.step("drop table", () => {
     db.exec("drop table test");
     db.exec("drop table blobs");
   });
 
-  await t.step("close", () => {
-    db.close();
-    try {
-      Deno.removeSync(DB_URL);
-    } catch (_) { /** ignore, already being used */ }
+  await t.step({
+    name: "close",
+    sanitizeResources: false,
+    fn(): void {
+      db.close();
+      try {
+        Deno.removeSync(DB_URL);
+      } catch (_) { /** ignore, already being used */ }
+    },
   });
 });

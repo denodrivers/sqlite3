@@ -37,6 +37,7 @@ const {
   sqlite3_bind_parameter_name,
   sqlite3_changes,
   sqlite3_column_int,
+  sqlite3_step_cb,
 } = ffi;
 
 /** Types that can be possibly serialized as SQLite bind values */
@@ -114,6 +115,16 @@ export class Statement {
   #bound = false;
   #hasNoArgs = false;
   #unsafeConcurrency;
+
+  /**
+   * Whether the query might call into JavaScript or not.
+   *
+   * Must enable if the query makes use of user defined functions,
+   * otherwise there can be V8 crashes.
+   *
+   * Off by default. Causes performance degradation.
+   */
+  callback = false;
 
   /** Unsafe Raw (pointer) to the sqlite object */
   get unsafeHandle(): Deno.PointerValue {
@@ -194,6 +205,12 @@ export class Statement {
       this.value = this.#valueNoArgs;
       this.get = this.#getNoArgs;
     }
+  }
+
+  /** Shorthand for `this.callback = true`. Enables calling user defined functions. */
+  enableCallback(): this {
+    this.callback = true;
+    return this;
   }
 
   /** Get bind parameter name by index */
@@ -333,7 +350,8 @@ export class Statement {
 
   #runNoArgs(): number {
     this.#begin();
-    const status = sqlite3_step(this.#handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    const status = step(this.#handle);
     if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
@@ -343,7 +361,8 @@ export class Statement {
   #runWithArgs(...params: RestBindParameters): number {
     this.#begin();
     this.#bindAll(params);
-    const status = sqlite3_step(this.#handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    const status = step(this.#handle);
     if (!this.#hasNoArgs && !this.#bound && params.length) {
       this.#bindRefs.clear();
     }
@@ -370,10 +389,11 @@ export class Statement {
       };
       `,
     )(getColumn);
-    let status = sqlite3_step(this.#handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    let status = step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowArray());
-      status = sqlite3_step(this.#handle);
+      status = step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
@@ -401,10 +421,11 @@ export class Statement {
       };
       `,
     )(getColumn);
-    let status = sqlite3_step(this.#handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    let status = step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowArray());
-      status = sqlite3_step(this.#handle);
+      status = step(this.#handle);
     }
     if (!this.#hasNoArgs && !this.#bound && params.length) {
       this.#bindRefs.clear();
@@ -444,10 +465,11 @@ export class Statement {
     const getRowObject = this.getRowObject();
 
     const result: T[] = [];
-    let status = sqlite3_step(this.#handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    let status = step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowObject());
-      status = sqlite3_step(this.#handle);
+      status = step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
@@ -462,10 +484,11 @@ export class Statement {
     this.#bindAll(params);
     const getRowObject = this.getRowObject();
     const result: T[] = [];
-    let status = sqlite3_step(this.#handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    let status = step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowObject());
-      status = sqlite3_step(this.#handle);
+      status = step(this.#handle);
     }
     if (!this.#hasNoArgs && !this.#bound && params.length) {
       this.#bindRefs.clear();
@@ -492,7 +515,8 @@ export class Statement {
       }
     }
 
-    const status = sqlite3_step(handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    const status = step(handle);
 
     if (!this.#hasNoArgs && !this.#bound && params.length) {
       this.#bindRefs.clear();
@@ -516,7 +540,8 @@ export class Statement {
     const cc = sqlite3_column_count(handle);
     const arr = new Array(cc);
     sqlite3_reset(handle);
-    const status = sqlite3_step(handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    const status = step(handle);
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < cc; i++) {
         arr[i] = getColumn(handle as number, i, int64);
@@ -567,7 +592,8 @@ export class Statement {
       }
     }
 
-    const status = sqlite3_step(handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    const status = step(handle);
 
     if (!this.#hasNoArgs && !this.#bound && params.length) {
       this.#bindRefs.clear();
@@ -592,7 +618,8 @@ export class Statement {
     const columnNames = this.columnNames();
     const row: Record<string, unknown> = this.#rowObject;
     sqlite3_reset(handle);
-    const status = sqlite3_step(handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    const status = step(handle);
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < columnNames?.length; i++) {
         row[columnNames[i]] = getColumn(handle as number, i, int64);
@@ -623,10 +650,11 @@ export class Statement {
   *[Symbol.iterator](): IterableIterator<any> {
     this.#begin();
     const getRowObject = this.getRowObject();
-    let status = sqlite3_step(this.#handle);
+    const step = this.callback ? sqlite3_step_cb : sqlite3_step;
+    let status = step(this.#handle);
     while (status === SQLITE3_ROW) {
       yield getRowObject();
-      status = sqlite3_step(this.#handle);
+      status = step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
