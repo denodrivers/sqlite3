@@ -207,7 +207,7 @@ Deno.test("sqlite", async (t) => {
       value,
       "bigint",
       0,
-      new Uint8Array(0),
+      new Uint8Array(1),
       null,
     );
     const [int] = db.prepare(
@@ -224,7 +224,7 @@ Deno.test("sqlite", async (t) => {
       value,
       "bigint2",
       0,
-      new Uint8Array(0),
+      new Uint8Array(1),
       null,
     );
     const [int] = db.prepare(
@@ -241,7 +241,7 @@ Deno.test("sqlite", async (t) => {
       value,
       "bigint3",
       0,
-      new Uint8Array(0),
+      new Uint8Array(1),
       null,
     );
     const [int] = db.prepare(
@@ -257,7 +257,7 @@ Deno.test("sqlite", async (t) => {
       NaN,
       "nan",
       NaN,
-      new Uint8Array(0),
+      new Uint8Array(1),
       null,
     );
     const [int, double] = db.prepare(
