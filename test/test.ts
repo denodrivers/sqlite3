@@ -268,15 +268,10 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step("empty string on not null column", () => {
-    const ldb = new Database(":memory:");
-    try {
-      ldb.exec("create table foo ( name text not null )");
-      ldb.exec("insert into foo (name) values (?)", "");
-      const s = ldb.prepare("select * from foo").value<string[]>();
-      assertEquals(s, [""]);
-    } finally {
-      ldb.close();
-    }
+    db.exec(`create table empty_string_not_null ( name text not null )`);
+    db.exec("insert into empty_string_not_null (name) values (?)", "");
+    const s = db.prepare("select * from empty_string_not_null").value<string[]>();
+    assertEquals(s, [""]);
   });
 
   await t.step("create blob table", () => {
