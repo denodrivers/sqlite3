@@ -270,7 +270,9 @@ Deno.test("sqlite", async (t) => {
   await t.step("empty string on not null column", () => {
     db.exec(`create table empty_string_not_null ( name text not null )`);
     db.exec("insert into empty_string_not_null (name) values (?)", "");
-    const s = db.prepare("select * from empty_string_not_null").value<string[]>();
+    const s = db.prepare("select * from empty_string_not_null").value<
+      string[]
+    >();
     assertEquals(s, [""]);
   });
 
