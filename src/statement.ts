@@ -57,6 +57,8 @@ export type RestBindParameters = BindValue[] | [BindParameters];
 
 export const STATEMENTS = new Map<Deno.PointerValue, Deno.PointerValue>();
 
+const emptyStringBuffer = new Uint8Array(1);
+
 const statementFinalizer = new FinalizationRegistry(
   (ptr: Deno.PointerValue) => {
     sqlite3_finalize(ptr);
@@ -254,11 +256,22 @@ export class Statement {
         break;
       }
       case "string": {
-        const str = (Deno as any).core.encode(param);
-        this.#bindRefs.add(str);
-        unwrap(
-          sqlite3_bind_text(this.#handle, i + 1, str, str.byteLength, 0),
-        );
+        if (param === "") {
+          // Empty string is encoded as empty buffer in Deno. And as of
+          // right now (Deno 1.29.1), ffi layer converts it to NULL pointer,
+          // which causes sqlite3_bind_text to bind the NULL value instead
+          // of an empty string. As a workaround let's use a special
+          // non-empty buffer, but specify zero length.
+          unwrap(
+            sqlite3_bind_text(this.#handle, i + 1, emptyStringBuffer, 0, 0),
+          );
+        } else {
+          const str = (Deno as any).core.encode(param);
+          this.#bindRefs.add(str);
+          unwrap(
+            sqlite3_bind_text(this.#handle, i + 1, str, str.byteLength, 0),
+          );
+        }
         break;
       }
       case "object": {
