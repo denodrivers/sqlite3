@@ -316,7 +316,7 @@ Deno.test("sqlite", async (t) => {
     await t.step("read from blob (stream)", async () => {
       let chunks = 0;
       for await (const chunk of blob.readable) {
-        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x02));
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x01));
         chunks++;
       }
       assertEquals(chunks, 2);
@@ -325,7 +325,7 @@ Deno.test("sqlite", async (t) => {
     await t.step("read from blob (iter)", () => {
       let chunks = 0;
       for (const chunk of blob) {
-        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x02));
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x01));
         chunks++;
       }
       assertEquals(chunks, 2);
