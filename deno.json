@@ -1,8 +1,11 @@
 {
+  "name": "sqlite3",
+  "version": "0.6.1",
+  "github": "https://github.com/denodrivers/sqlite3",
+
   "tasks": {
     "test": "deno test --unstable -A test/test.ts",
     "build-sqlite-win": "mkdir -p build && cd build && nmake /f ..\\sqlite\\Makefile.msc sqlite3.dll TOP=..\\sqlite",
-    // ops/sec
     "bench-deno": "deno run -A --unstable bench/bench_deno.js 50 1000000",
     "bench-deno-ffi": "deno run -A --unstable bench/bench_deno_ffi.js 50 1000000",
     "bench-deno-wasm": "deno run -A --unstable bench/bench_deno_wasm.js 50 1000000",
@@ -11,7 +14,6 @@
     "bench-bun-ffi": "bun run bench/bench_bun_ffi.js 50 1000000",
     "bench-c": "./bench/bench 50 1000000",
     "bench-python": "python ./bench/bench_python.py",
-    // northwind
     "bench:northwind": "deno bench -A --unstable bench/northwind/deno.js",
     "bench-wasm:northwind": "deno run -A --unstable bench/northwind/deno_wasm.js",
     "bench-node:northwind": "node bench/northwind/node.mjs",

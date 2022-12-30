@@ -1,4 +1,5 @@
 import { prepare } from "https://deno.land/x/plug@0.5.2/plug.ts";
+import meta from "../deno.json" assert { type: "json" };
 
 const symbols = {
   sqlite3_open_v2: {
@@ -568,8 +569,7 @@ try {
   if (customPath) {
     lib = Deno.dlopen(customPath, symbols).symbols;
   } else {
-    const url =
-      "https://github.com/denodrivers/sqlite3/releases/download/0.6.1/";
+    const url = `${meta.github}/releases/download/${meta.version}/`;
     lib = (await prepare({
       name: "sqlite3",
       urls: {
@@ -587,9 +587,7 @@ try {
     throw e;
   }
 
-  const error = new Error(
-    "Native SQLite3 library not found, try installing SQLite3. If you have an existing installation, either add it to path or set the `DENO_SQLITE_PATH` environment variable.",
-  );
+  const error = new Error("Failed to load SQLite3 Dynamic Library");
   error.cause = e;
 
   throw error;
