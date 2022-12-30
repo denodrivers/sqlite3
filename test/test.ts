@@ -313,21 +313,10 @@ Deno.test("sqlite", async (t) => {
       blob.writeSync(0, data);
     });
 
-    await t.step("read from blob (async)", async () => {
-      const data = new Uint8Array(blob.byteLength);
-      await blob.read(0, data);
-      assertEquals(data, new Uint8Array(1024 * 32).fill(0x01));
-    });
-
-    await t.step("write to blob (async)", async () => {
-      const data = new Uint8Array(1024 * 32).fill(0x02);
-      await blob.write(0, data);
-    });
-
     await t.step("read from blob (stream)", async () => {
       let chunks = 0;
       for await (const chunk of blob.readable) {
-        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x02));
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x01));
         chunks++;
       }
       assertEquals(chunks, 2);
@@ -336,7 +325,7 @@ Deno.test("sqlite", async (t) => {
     await t.step("read from blob (iter)", () => {
       let chunks = 0;
       for (const chunk of blob) {
-        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x02));
+        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x01));
         chunks++;
       }
       assertEquals(chunks, 2);
@@ -347,15 +336,6 @@ Deno.test("sqlite", async (t) => {
       await writer.write(new Uint8Array(1024 * 16).fill(0x03));
       await writer.write(new Uint8Array(1024 * 16).fill(0x03));
       await writer.close();
-    });
-
-    await t.step("read from blob (async iter)", async () => {
-      let chunks = 0;
-      for await (const chunk of blob) {
-        assertEquals(chunk, new Uint8Array(1024 * 16).fill(0x03));
-        chunks++;
-      }
-      assertEquals(chunks, 2);
     });
 
     await t.step("close blob", () => {

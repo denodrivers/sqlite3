@@ -7,9 +7,7 @@ const {
   sqlite3_blob_bytes,
   sqlite3_blob_close,
   sqlite3_blob_read,
-  sqlite3_blob_read_async,
   sqlite3_blob_write,
-  sqlite3_blob_write_async,
 } = ffi;
 
 /** Various options that can be configured when opening a Blob via `Database#openBlob`. */
@@ -68,33 +66,6 @@ export class SQLBlob {
   /** Write a buffer (Uint8Array) at given offset in the Blob */
   writeSync(offset: number, p: Uint8Array): void {
     unwrap(sqlite3_blob_write(this.#handle, p, p.byteLength, offset));
-  }
-
-  /**
-   * Read asynchronously from the Blob at given offset into a buffer.
-   *
-   * This function suspends sqlite3_blob_read function into a separate
-   * thread, so beware of data races. Once you pass a buffer it should
-   * not be used until this function resolves.
-   */
-  async read(offset: number, p: Uint8Array): Promise<void> {
-    unwrap(
-      await sqlite3_blob_read_async(
-        this.#handle,
-        p,
-        p.byteLength,
-        offset,
-      ),
-    );
-  }
-
-  /**
-   * Write a buffer (Uint8Array) at given offset in the Blob.
-   */
-  async write(offset: number, p: Uint8Array): Promise<void> {
-    unwrap(
-      await sqlite3_blob_write_async(this.#handle, p, p.byteLength, offset),
-    );
   }
 
   /** Close the Blob. It **must** be called to prevent leaks. */
