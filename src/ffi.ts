@@ -313,30 +313,6 @@ const symbols = {
     result: "i32",
   },
 
-  sqlite3_blob_read_async: {
-    name: "sqlite3_blob_read",
-    parameters: [
-      "pointer", /* sqlite3_blob *blob */
-      "buffer", /* void *Z */
-      "i32", /* int N */
-      "i32", /* int iOffset */
-    ],
-    nonblocking: true,
-    result: "i32",
-  },
-
-  sqlite3_blob_write_async: {
-    name: "sqlite3_blob_write",
-    parameters: [
-      "pointer", /* sqlite3_blob *blob */
-      "buffer", /* const void *z */
-      "i32", /* int n */
-      "i32", /* int iOffset */
-    ],
-    nonblocking: true,
-    result: "i32",
-  },
-
   sqlite3_blob_bytes: {
     parameters: ["pointer" /* sqlite3_blob *blob */],
     result: "i32",
