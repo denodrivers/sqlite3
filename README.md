@@ -51,8 +51,8 @@ Check out the complete API reference
 
 ## Native Library
 
-It will download and cache a prebuilt shared library from
-GitHub releases. For which it will also need net and read/write permission.
+It will download and cache a prebuilt shared library from GitHub releases. For
+which it will also need net and read/write permission.
 
 If you want to use custom library, then you can set the `DENO_SQLITE_PATH`
 environment variable, containing full path to the SQLite3 shared library.
