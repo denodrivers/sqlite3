@@ -565,9 +565,8 @@ let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
 
 try {
   const customPath = Deno.env.get("DENO_SQLITE_PATH");
-  // TODO(@littledivy): Ship prebuilt shared library on Windows.
-  if (customPath || Deno.build.os === "windows") {
-    lib = Deno.dlopen(customPath || "sqlite3", symbols).symbols;
+  if (customPath) {
+    lib = Deno.dlopen(customPath, symbols).symbols;
   } else {
     const url =
       "https://github.com/denodrivers/sqlite3/releases/download/0.6.1/";
@@ -579,6 +578,7 @@ try {
           x86_64: url + "libsqlite3.dylib",
         },
         linux: url + "libsqlite3.so",
+        windows: url + "sqlite.dll",
       },
     }, symbols)).symbols;
   }
