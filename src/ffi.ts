@@ -554,7 +554,7 @@ try {
           x86_64: url + "libsqlite3.dylib",
         },
         linux: url + "libsqlite3.so",
-        windows: url + "sqlite.dll",
+        windows: url + "sqlite3.dll",
       },
     }, symbols)).symbols;
   }
