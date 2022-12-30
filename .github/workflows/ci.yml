@@ -48,6 +48,10 @@ jobs:
           mkdir -p build
           make
 
+      - name: Build sqlite3 (windows)
+        if: matrix.os == 'windows-latest'
+        run: deno task build-sqlite-win
+
       - name: Set DENO_SQLITE_PATH (linux)
         if: matrix.os == 'ubuntu-latest'
         run: echo "DENO_SQLITE_PATH=$(pwd)/build/libsqlite3.so" >> $GITHUB_ENV
@@ -55,6 +59,10 @@ jobs:
       - name: Set DENO_SQLITE_PATH (macos)
         if: matrix.os == 'macos-latest'
         run: echo "DENO_SQLITE_PATH=$(pwd)/build/libsqlite3.dylib" >> $GITHUB_ENV
+
+      - name: Set DENO_SQLITE_PATH (windows)
+        if: matrix.os == 'windows-latest'
+        run: echo "DENO_SQLITE_PATH=$(pwd)/build/sqlite3.dll" >> $GITHUB_ENV
 
       - name: Run Tests
         run: deno task test
@@ -70,3 +78,4 @@ jobs:
           files: |
             build/libsqlite3.so
             build/libsqlite3.dylib
+            build/sqlite3.dll

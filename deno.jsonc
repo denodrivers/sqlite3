@@ -1,6 +1,7 @@
 {
   "tasks": {
     "test": "deno test --unstable -A test/test.ts",
+    "build-sqlite-win": "mkdir -p build && cd build && nmake /f ..\\sqlite\\Makefile.msc sqlite3.dll TOP=..\\sqlite",
     // ops/sec
     "bench-deno": "deno run -A --unstable bench/bench_deno.js 50 1000000",
     "bench-deno-ffi": "deno run -A --unstable bench/bench_deno_ffi.js 50 1000000",
