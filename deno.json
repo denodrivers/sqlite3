@@ -1,6 +1,6 @@
 {
   "name": "sqlite3",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "github": "https://github.com/denodrivers/sqlite3",
 
   "tasks": {
