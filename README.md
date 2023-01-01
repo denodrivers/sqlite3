@@ -1,7 +1,7 @@
 # Deno SQLite3
 
 [![Tags](https://img.shields.io/github/release/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/releases)
-[![Doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https/deno.land/x/sqlite3@0.7.1/mod.ts)
+[![Doc](https://doc.deno.land/badge.svg)](https://doc.deno.land/https/deno.land/x/sqlite3@0.7.2/mod.ts)
 [![Checks](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml/badge.svg)](https://github.com/denodrivers/sqlite3/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/blob/master/LICENSE)
 [![Sponsor](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/DjDeveloperr)
@@ -11,7 +11,7 @@ The fastest and correct module for SQLite3 in Deno.
 ## Example
 
 ```ts
-import { Database } from "https://deno.land/x/sqlite3@0.7.1/mod.ts";
+import { Database } from "https://deno.land/x/sqlite3@0.7.2/mod.ts";
 
 const db = new Database("test.db");
 
@@ -47,7 +47,7 @@ See [doc.md](https://github.com/denodrivers/sqlite3/blob/main/doc.md) for
 documentation.
 
 Check out the complete API reference
-[here](https://doc.deno.land/https://deno.land/x/sqlite3@0.7.1/mod.ts).
+[here](https://doc.deno.land/https://deno.land/x/sqlite3@0.7.2/mod.ts).
 
 ## Native Library
 
@@ -83,11 +83,9 @@ DENO_SQLITE_PATH=build/libsqlite3.dylib deno task bench
 ## Related
 
 - [x/sqlite](https://deno.land/x/sqlite), WASM based.
-- [async-sqlite3](https://github.com/denodrivers/async-sqlite3), asynchronous
-  SQLite3 bindings using `rusqlite`.
 
 ## License
 
 Apache-2.0. Check [LICENSE](./LICENSE) for details.
 
-Copyright © 2022 DjDeveloperr
+Copyright © 2023 DjDeveloperr
