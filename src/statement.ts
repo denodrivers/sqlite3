@@ -61,8 +61,10 @@ const emptyStringBuffer = new Uint8Array(1);
 
 const statementFinalizer = new FinalizationRegistry(
   (ptr: Deno.PointerValue) => {
-    sqlite3_finalize(ptr);
-    STATEMENTS.delete(ptr);
+    if (STATEMENTS.has(ptr)) {
+      sqlite3_finalize(ptr);
+      STATEMENTS.delete(ptr);
+    }
   },
 );
 
