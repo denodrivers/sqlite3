@@ -536,7 +536,7 @@ const symbols = {
     ],
     result: "pointer",
   },
-} as const;
+} as const satisfies Deno.ForeignLibraryInterface;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
 
