@@ -1,4 +1,4 @@
-import { prepare } from "https://deno.land/x/plug@0.5.2/plug.ts";
+import { dlopen } from "https://deno.land/x/plug@1.0.0/mod.ts";
 import meta from "../deno.json" assert { type: "json" };
 
 const symbols = {
@@ -545,18 +545,18 @@ try {
   if (customPath) {
     lib = Deno.dlopen(customPath, symbols).symbols;
   } else {
-    const url = `${meta.github}/releases/download/${meta.version}/`;
-    lib = (await prepare({
-      name: "sqlite3",
-      urls: {
-        darwin: {
-          aarch64: url + "libsqlite3_aarch64.dylib",
-          x86_64: url + "libsqlite3.dylib",
+    lib = (
+      await dlopen(
+        {
+          name: meta.name,
+          url: `${meta.github}/releases/download/${meta.version}/`,
+          suffixes: {
+            aarch64: "_aarch64",
+          },
         },
-        linux: url + "libsqlite3.so",
-        windows: url + "sqlite3.dll",
-      },
-    }, symbols)).symbols;
+        symbols,
+      )
+    ).symbols;
   }
 } catch (e) {
   if (e instanceof Deno.errors.PermissionDenied) {
