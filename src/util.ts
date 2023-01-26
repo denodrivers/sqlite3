@@ -16,7 +16,8 @@ export function isObject(value: unknown): boolean {
   return typeof value === "object" && value !== null;
 }
 
-const { op_ffi_cstr_read, op_ffi_get_buf } = (Deno as any).core.ops;
+const ops = (Deno as any)[(Deno as any).internal].core.ops;
+const { op_ffi_cstr_read, op_ffi_get_buf } = ops;
 
 export class SqliteError extends Error {
   name = "SqliteError";
