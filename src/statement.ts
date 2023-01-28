@@ -268,7 +268,7 @@ export class Statement {
             sqlite3_bind_text(this.#handle, i + 1, emptyStringBuffer, 0, 0),
           );
         } else {
-          const str = (Deno as any).core.encode(param);
+          const str = new TextEncoder().encode(param);
           this.#bindRefs.add(str);
           unwrap(
             sqlite3_bind_text(this.#handle, i + 1, str, str.byteLength, 0),
