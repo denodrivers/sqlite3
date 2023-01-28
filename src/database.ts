@@ -30,7 +30,7 @@ export interface DatabaseOpenOptions {
   /** Apply agressive optimizations that are not possible with concurrent clients. */
   unsafeConcurrency?: boolean;
   /** Enable or disable extension loading */
-  loadExtensions?: boolean;
+  enableLoadExtension?: boolean;
 }
 
 /** Transaction function created using `Database#transaction`. */
@@ -133,7 +133,7 @@ export class Database {
   #path: string;
   #handle: Deno.PointerValue;
   #open = true;
-  #loadExtensions = false;
+  #enableLoadExtension = false;
 
   /** Whether to support BigInt columns. False by default, integers larger than 32 bit will be inaccurate. */
   int64: boolean;
@@ -180,15 +180,15 @@ export class Database {
     return this.#open && !this.autocommit;
   }
 
-  get loadExtensions(): boolean {
-    return this.#loadExtensions;
+  get enableLoadExtension(): boolean {
+    return this.#enableLoadExtension;
   }
 
   // deno-lint-ignore explicit-module-boundary-types
-  set loadExtensions(enabled: boolean) {
+  set enableLoadExtension(enabled: boolean) {
     const result = sqlite3_enable_load_extension(this.#handle, Number(enabled));
     unwrap(result, this.#handle);
-    this.#loadExtensions = true;
+    this.#enableLoadExtension = enabled;
   }
 
   constructor(path: string | URL, options: DatabaseOpenOptions = {}) {
@@ -220,8 +220,8 @@ export class Database {
     if (result !== 0) sqlite3_close_v2(this.#handle);
     unwrap(result);
 
-    if (options.loadExtensions) {
-      this.loadExtensions = options.loadExtensions;
+    if (options.enableLoadExtension) {
+      this.enableLoadExtension = options.enableLoadExtension;
     }
   }
 
@@ -666,7 +666,7 @@ export class Database {
    * Loads an SQLite extension library from the named file.
    */
   loadExtension(file: string, entryPoint?: string): void {
-    if (!this.loadExtensions) {
+    if (!this.enableLoadExtension) {
       throw new Error("Extension loading is not enabled");
     }
 
