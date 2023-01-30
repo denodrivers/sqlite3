@@ -21,6 +21,9 @@ pass `create: false` in the options.
 - `unsafeConcurrency: boolean` - Enable optimizations that will affect
   syncronization with other clients. This can largerly improve performance for
   cases where you only have one client.
+- `enableLoadExtension: boolean` - Enables the loading of SQLite extensions from
+  a dynamic library, this needs to be set to true for the method `loadExtension`
+  to work. Defaults to `false`.
 
 ### Usage
 
@@ -54,6 +57,33 @@ const db = new Database("test.db", { create: false });
 - `lastInsertRowId: number` - The rowid of the last inserted row.
 - `autocommit: boolean` - Whether the database is in autocommit mode. This is
   `true` when not in a transaction, and `false` when in a transaction.
+- `enableLoadExtension: boolean` - Enables the loading of SQLite extensions from
+  a dynamic library, this needs to be set to true for the method `loadExtension`
+  to work. Defaults to `false`.
+
+## Loading extensions
+
+Loading SQLite3 extensions is enabled through the `enableLoadExtension` property
+and config option. For security reasons it is disabled by default. If enabled it
+is used with the `loadExtension` method on the database, it will attempt to load
+the specified file as specified by the
+[SQLite documentation](https://www.sqlite.org/c3ref/load_extension.html).
+Optionally a second argument can be passed to the method specifying the
+entrypoint name.
+
+```ts
+const db = new Database("test.db", { loadExtensions: true });
+
+db.loadExtension("mod_spatialite");
+```
+
+It is also possible to load an extension directly from SQL using the
+`load_extension` functions as specified by the
+[SQLite documentation](https://www.sqlite.org/lang_corefunc.html#load_extension).
+
+```ts
+db.exec("SELECT load_extension('mod_spatialite')");
+```
 
 ## Closing Database
 

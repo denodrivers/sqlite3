@@ -536,7 +536,25 @@ const symbols = {
     ],
     result: "pointer",
   },
-} as const;
+
+  sqlite3_enable_load_extension: {
+    parameters: [
+      "pointer", // sqlite3 *db
+      "i32", // int onoff
+    ],
+    result: "i32",
+  },
+
+  sqlite3_load_extension: {
+    parameters: [
+      "pointer", // sqlite3 *db
+      "buffer", // const char *zFile
+      "buffer", // const char *zProc
+      "buffer", // const char **pzErrMsg
+    ],
+    result: "i32",
+  },
+} as const satisfies Deno.ForeignLibraryInterface;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];
 

@@ -29,6 +29,8 @@ export interface DatabaseOpenOptions {
   int64?: boolean;
   /** Apply agressive optimizations that are not possible with concurrent clients. */
   unsafeConcurrency?: boolean;
+  /** Enable or disable extension loading */
+  enableLoadExtension?: boolean;
 }
 
 /** Transaction function created using `Database#transaction`. */
@@ -91,6 +93,8 @@ const {
   sqlite3_create_function,
   sqlite3_result_int,
   sqlite3_aggregate_context,
+  sqlite3_enable_load_extension,
+  sqlite3_load_extension,
 } = ffi;
 
 /** SQLite version string */
@@ -129,6 +133,7 @@ export class Database {
   #path: string;
   #handle: Deno.PointerValue;
   #open = true;
+  #enableLoadExtension = false;
 
   /** Whether to support BigInt columns. False by default, integers larger than 32 bit will be inaccurate. */
   int64: boolean;
@@ -175,6 +180,17 @@ export class Database {
     return this.#open && !this.autocommit;
   }
 
+  get enableLoadExtension(): boolean {
+    return this.#enableLoadExtension;
+  }
+
+  // deno-lint-ignore explicit-module-boundary-types
+  set enableLoadExtension(enabled: boolean) {
+    const result = sqlite3_enable_load_extension(this.#handle, Number(enabled));
+    unwrap(result, this.#handle);
+    this.#enableLoadExtension = enabled;
+  }
+
   constructor(path: string | URL, options: DatabaseOpenOptions = {}) {
     this.#path = path instanceof URL ? fromFileUrl(path) : path;
     let flags = 0;
@@ -203,6 +219,10 @@ export class Database {
     this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
     if (result !== 0) sqlite3_close_v2(this.#handle);
     unwrap(result);
+
+    if (options.enableLoadExtension) {
+      this.enableLoadExtension = options.enableLoadExtension;
+    }
   }
 
   /**
@@ -640,6 +660,33 @@ export class Database {
 
     this.#callbacks.add(cb as Deno.UnsafeCallback);
     this.#callbacks.add(cbFinal as Deno.UnsafeCallback);
+  }
+
+  /**
+   * Loads an SQLite extension library from the named file.
+   */
+  loadExtension(file: string, entryPoint?: string): void {
+    if (!this.enableLoadExtension) {
+      throw new Error("Extension loading is not enabled");
+    }
+
+    const pzErrMsg = new Uint32Array(2);
+
+    const result = sqlite3_load_extension(
+      this.#handle,
+      toCString(file),
+      entryPoint ? toCString(entryPoint) : null,
+      pzErrMsg,
+    );
+
+    const pzErrPtr = pzErrMsg[0] + 2 ** 32 * pzErrMsg[1];
+    if (pzErrPtr !== 0) {
+      const pzErr = readCstr(pzErrPtr);
+      sqlite3_free(pzErrPtr);
+      throw new Error(pzErr);
+    }
+
+    unwrap(result, this.#handle);
   }
 
   /**
