@@ -1,4 +1,4 @@
-import { dlopen } from "https://deno.land/x/plug@1.0.0/mod.ts";
+import { dlopen } from "https://deno.land/x/plug@1.0.1/mod.ts";
 import meta from "../deno.json" assert { type: "json" };
 
 const symbols = {
