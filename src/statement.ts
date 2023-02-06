@@ -370,6 +370,7 @@ export class Statement {
     if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    sqlite3_reset(this.#handle);
     return sqlite3_changes(this.db.unsafeHandle);
   }
 
@@ -384,6 +385,7 @@ export class Statement {
     if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    sqlite3_reset(this.#handle);
     return sqlite3_changes(this.db.unsafeHandle);
   }
 
@@ -413,6 +415,7 @@ export class Statement {
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    sqlite3_reset(this.#handle);
     return result as T[];
   }
 
@@ -448,6 +451,7 @@ export class Statement {
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    sqlite3_reset(this.#handle);
     return result as T[];
   }
 
@@ -489,6 +493,7 @@ export class Statement {
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    sqlite3_reset(this.#handle);
     return result as T[];
   }
 
@@ -511,6 +516,7 @@ export class Statement {
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    sqlite3_reset(this.#handle);
     return result as T[];
   }
 
@@ -541,6 +547,7 @@ export class Statement {
       for (let i = 0; i < arr.length; i++) {
         arr[i] = getColumn(handle as number, i, int64);
       }
+      sqlite3_reset(this.#handle);
       return arr as T;
     } else if (status === SQLITE3_DONE) {
       return;
@@ -561,6 +568,7 @@ export class Statement {
       for (let i = 0; i < cc; i++) {
         arr[i] = getColumn(handle as number, i, int64);
       }
+      sqlite3_reset(this.#handle);
       return arr as T;
     } else if (status === SQLITE3_DONE) {
       return;
@@ -618,6 +626,7 @@ export class Statement {
       for (let i = 0; i < columnNames.length; i++) {
         row[columnNames[i]] = getColumn(handle as number, i, int64);
       }
+      sqlite3_reset(this.#handle);
       return row as T;
     } else if (status === SQLITE3_DONE) {
       return;
@@ -639,6 +648,7 @@ export class Statement {
       for (let i = 0; i < columnNames?.length; i++) {
         row[columnNames[i]] = getColumn(handle as number, i, int64);
       }
+      sqlite3_reset(this.#handle);
       return row as T;
     } else if (status === SQLITE3_DONE) {
       return;
@@ -674,5 +684,6 @@ export class Statement {
     if (status !== SQLITE3_DONE) {
       unwrap(status, this.db.unsafeHandle);
     }
+    sqlite3_reset(this.#handle);
   }
 }

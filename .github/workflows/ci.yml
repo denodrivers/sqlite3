@@ -27,8 +27,8 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        
+        os: [ubuntu-20.04, windows-latest, macos-latest]
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -57,7 +57,7 @@ jobs:
         run: deno task build-sqlite-win
 
       - name: Set DENO_SQLITE_PATH (linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-20.04'
         run: echo "DENO_SQLITE_PATH=$(pwd)/build/libsqlite3.so" >> $GITHUB_ENV
 
       - name: Set DENO_SQLITE_PATH (macos)
