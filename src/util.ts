@@ -35,11 +35,14 @@ export function unwrap(code: number, db?: Deno.PointerValue): void {
     const errmsg = sqlite3_errmsg(db);
     if (errmsg === 0) throw new SqliteError(code);
     throw new Error(Deno.UnsafePointerView.getCString(sqlite3_errmsg(db)));
-  } else throw new SqliteError(code, Deno.UnsafePointerView.getCString(sqlite3_errstr(code)));
+  } else {
+    throw new SqliteError(
+      code,
+      Deno.UnsafePointerView.getCString(sqlite3_errstr(code)),
+    );
+  }
 }
 
-const readCstr = Deno.UnsafePointerView.getCString;
+export const buf = Deno.UnsafePointerView.getArrayBuffer;
 
-const buf = Deno.UnsafePointerView.getArrayBuffer;
-
-export { readCstr, buf };
+export const readCstr = Deno.UnsafePointerView.getCString;
