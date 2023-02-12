@@ -16,9 +16,6 @@ export function isObject(value: unknown): boolean {
   return typeof value === "object" && value !== null;
 }
 
-const ops = (Deno as any)[(Deno as any).internal].core.ops;
-const { op_ffi_cstr_read, op_ffi_get_buf } = ops;
-
 export class SqliteError extends Error {
   name = "SqliteError";
 
@@ -37,8 +34,12 @@ export function unwrap(code: number, db?: Deno.PointerValue): void {
   } else if (db !== undefined) {
     const errmsg = sqlite3_errmsg(db);
     if (errmsg === 0) throw new SqliteError(code);
-    throw new Error(op_ffi_cstr_read(sqlite3_errmsg(db)));
-  } else throw new SqliteError(code, op_ffi_cstr_read(sqlite3_errstr(code)));
+    throw new Error(Deno.UnsafePointerView.getCString(sqlite3_errmsg(db)));
+  } else throw new SqliteError(code, Deno.UnsafePointerView.getCString(sqlite3_errstr(code)));
 }
 
-export { op_ffi_cstr_read as readCstr, op_ffi_get_buf as buf };
+const readCstr = Deno.UnsafePointerView.getCString;
+
+const buf = Deno.UnsafePointerView.getArrayBuffer;
+
+export { readCstr, buf };
