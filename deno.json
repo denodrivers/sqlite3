@@ -1,6 +1,6 @@
 {
   "name": "sqlite3",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "github": "https://github.com/denodrivers/sqlite3",
 
   "tasks": {
@@ -19,6 +19,7 @@
     "bench-node:northwind": "node bench/northwind/node.mjs",
     "bench-bun:northwind": "bun run bench/northwind/bun.js"
   },
+
   "lint": {
     "rules": {
       "exclude": [
