@@ -33,12 +33,12 @@ export function unwrap(code: number, db?: Deno.PointerValue): void {
     throw new SqliteError(code, "SQLite3 API misuse");
   } else if (db !== undefined) {
     const errmsg = sqlite3_errmsg(db);
-    if (errmsg === 0) throw new SqliteError(code);
-    throw new Error(Deno.UnsafePointerView.getCString(sqlite3_errmsg(db)));
+    if (errmsg === null) throw new SqliteError(code);
+    throw new Error(Deno.UnsafePointerView.getCString(sqlite3_errmsg(db)!));
   } else {
     throw new SqliteError(
       code,
-      Deno.UnsafePointerView.getCString(sqlite3_errstr(code)),
+      Deno.UnsafePointerView.getCString(sqlite3_errstr(code)!),
     );
   }
 }

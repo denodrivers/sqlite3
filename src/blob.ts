@@ -50,7 +50,7 @@ export class SQLBlob {
       options.readonly === false ? 1 : 0,
       pHandle,
     ));
-    this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+    this.#handle = Deno.UnsafePointer.create(pHandle[0] + 2 ** 32 * pHandle[1]);
   }
 
   /** Byte size of the Blob */

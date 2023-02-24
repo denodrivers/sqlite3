@@ -98,7 +98,7 @@ const symbols = {
   sqlite3_column_type: {
     parameters: [
       "pointer", // sqlite3_stmt *pStmt
-      "pointer", // int iCol
+      "i32", // int iCol
     ],
     result: "i32",
   },
@@ -108,7 +108,7 @@ const symbols = {
       "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
-    result: "u64",
+    result: "pointer",
   },
 
   sqlite3_finalize: {
@@ -157,7 +157,7 @@ const symbols = {
       "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
-    result: "u64",
+    result: "pointer",
   },
 
   sqlite3_column_bytes: {
@@ -173,7 +173,7 @@ const symbols = {
       "pointer", // sqlite3_stmt *pStmt
       "i32", // int iCol
     ],
-    result: "u64",
+    result: "pointer",
   },
 
   sqlite3_column_decltype: {
@@ -253,7 +253,7 @@ const symbols = {
     parameters: [
       "pointer", // sqlite3_stmt *pStmt
     ],
-    result: "u64",
+    result: "pointer",
   },
 
   sqlite3_bind_parameter_count: {
@@ -425,7 +425,7 @@ const symbols = {
       "pointer", // sqlite3_context *p
       "buffer", // const void *z
       "i32", // int n
-      "pointer", // void (*xDel)(void*)
+      "isize", // void (*xDel)(void*)
     ],
     result: "void",
   },
@@ -475,7 +475,7 @@ const symbols = {
       "pointer", // sqlite3_context *p
       "buffer", // const char *z
       "i32", // int n
-      "pointer", // void (*xDel)(void*)
+      "isize", // void (*xDel)(void*)
     ],
     result: "void",
   },

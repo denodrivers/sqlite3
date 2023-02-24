@@ -98,9 +98,9 @@ const {
 } = ffi;
 
 /** SQLite version string */
-export const SQLITE_VERSION = readCstr(sqlite3_libversion());
+export const SQLITE_VERSION = readCstr(sqlite3_libversion()!);
 /** SQLite source ID string */
-export const SQLITE_SOURCEID = readCstr(sqlite3_sourceid());
+export const SQLITE_SOURCEID = readCstr(sqlite3_sourceid()!);
 
 /**
  * Whether the given SQL statement is complete.
@@ -215,8 +215,8 @@ export class Database {
     }
 
     const pHandle = new Uint32Array(2);
-    const result = sqlite3_open_v2(toCString(this.#path), pHandle, flags, 0);
-    this.#handle = pHandle[0] + 2 ** 32 * pHandle[1];
+    const result = sqlite3_open_v2(toCString(this.#path), pHandle, flags, null);
+    this.#handle = Deno.UnsafePointer.create(pHandle[0] + 2 ** 32 * pHandle[1]);
     if (result !== 0) sqlite3_close_v2(this.#handle);
     unwrap(result);
 
@@ -298,9 +298,15 @@ export class Database {
   exec(sql: string, ...params: RestBindParameters): number {
     if (params.length === 0) {
       const pErr = new Uint32Array(2);
-      sqlite3_exec(this.#handle, toCString(sql), 0, 0, pErr);
-      const errPtr = pErr[0] + 2 ** 32 * pErr[1];
-      if (errPtr !== 0) {
+      sqlite3_exec(
+        this.#handle,
+        toCString(sql),
+        null,
+        null,
+        new Uint8Array(pErr.buffer),
+      );
+      const errPtr = Deno.UnsafePointer.create(pErr[0] + 2 ** 32 * pErr[1]);
+      if (errPtr !== null) {
         const err = readCstr(errPtr);
         sqlite3_free(errPtr);
         throw new Error(err);
@@ -401,10 +407,12 @@ export class Database {
         result: "void",
       } as const,
       (ctx, nArgs, pArgs) => {
-        const argptr = new Deno.UnsafePointerView(pArgs);
+        const argptr = new Deno.UnsafePointerView(pArgs!);
         const args: any[] = [];
         for (let i = 0; i < nArgs; i++) {
-          const arg = Number(argptr.getBigUint64(i * 8));
+          const arg = Deno.UnsafePointer.create(
+            Number(argptr.getBigUint64(i * 8)),
+          );
           const type = sqlite3_value_type(arg);
           switch (type) {
             case SQLITE_INTEGER:
@@ -418,7 +426,7 @@ export class Database {
                 new TextDecoder().decode(
                   new Uint8Array(
                     Deno.UnsafePointerView.getArrayBuffer(
-                      sqlite3_value_text(arg),
+                      sqlite3_value_text(arg)!,
                       sqlite3_value_bytes(arg),
                     ),
                   ),
@@ -429,7 +437,7 @@ export class Database {
               args.push(
                 new Uint8Array(
                   Deno.UnsafePointerView.getArrayBuffer(
-                    sqlite3_value_blob(arg),
+                    sqlite3_value_blob(arg)!,
                     sqlite3_value_bytes(arg),
                   ),
                 ),
@@ -498,10 +506,10 @@ export class Database {
       toCString(name),
       options?.varargs ? -1 : fn.length,
       flags,
-      0,
+      null,
       cb.pointer,
-      0,
-      0,
+      null,
+      null,
     );
 
     unwrap(err, this.#handle);
@@ -513,7 +521,7 @@ export class Database {
    * Creates a new user-defined aggregate function.
    */
   aggregate(name: string, options: AggregateFunctionOptions): void {
-    const contexts = new Map<Deno.PointerValue, any>();
+    const contexts = new Map<number | bigint, any>();
 
     const cb = new Deno.UnsafeCallback(
       {
@@ -522,19 +530,22 @@ export class Database {
       } as const,
       (ctx, nArgs, pArgs) => {
         const aggrCtx = sqlite3_aggregate_context(ctx, 8);
+        const aggrPtr = Deno.UnsafePointer.value(aggrCtx);
         let aggregate;
-        if (contexts.has(aggrCtx)) {
-          aggregate = contexts.get(aggrCtx);
+        if (contexts.has(aggrPtr)) {
+          aggregate = contexts.get(aggrPtr);
         } else {
           aggregate = typeof options.start === "function"
             ? options.start()
             : options.start;
-          contexts.set(aggrCtx, aggregate);
+          contexts.set(aggrPtr, aggregate);
         }
-        const argptr = new Deno.UnsafePointerView(pArgs);
+        const argptr = new Deno.UnsafePointerView(pArgs!);
         const args: any[] = [];
         for (let i = 0; i < nArgs; i++) {
-          const arg = Number(argptr.getBigUint64(i * 8));
+          const arg = Deno.UnsafePointer.create(
+            Number(argptr.getBigUint64(i * 8)),
+          );
           const type = sqlite3_value_type(arg);
           switch (type) {
             case SQLITE_INTEGER:
@@ -548,7 +559,7 @@ export class Database {
                 new TextDecoder().decode(
                   new Uint8Array(
                     Deno.UnsafePointerView.getArrayBuffer(
-                      sqlite3_value_text(arg),
+                      sqlite3_value_text(arg)!,
                       sqlite3_value_bytes(arg),
                     ),
                   ),
@@ -559,7 +570,7 @@ export class Database {
               args.push(
                 new Uint8Array(
                   Deno.UnsafePointerView.getArrayBuffer(
-                    sqlite3_value_blob(arg),
+                    sqlite3_value_blob(arg)!,
                     sqlite3_value_bytes(arg),
                   ),
                 ),
@@ -582,7 +593,7 @@ export class Database {
           return;
         }
 
-        contexts.set(aggrCtx, result);
+        contexts.set(aggrPtr, result);
       },
     );
 
@@ -593,8 +604,9 @@ export class Database {
       } as const,
       (ctx) => {
         const aggrCtx = sqlite3_aggregate_context(ctx, 0);
-        const aggregate = contexts.get(aggrCtx);
-        contexts.delete(aggrCtx);
+        const aggrPtr = Deno.UnsafePointer.value(aggrCtx);
+        const aggregate = contexts.get(aggrPtr);
+        contexts.delete(aggrPtr);
         let result: any;
         try {
           result = options.final ? options.final(aggregate) : aggregate;
@@ -650,8 +662,8 @@ export class Database {
       toCString(name),
       options?.varargs ? -1 : options.step.length - 1,
       flags,
-      0,
-      0,
+      null,
+      null,
       cb.pointer,
       cbFinal.pointer,
     );
@@ -679,8 +691,10 @@ export class Database {
       pzErrMsg,
     );
 
-    const pzErrPtr = pzErrMsg[0] + 2 ** 32 * pzErrMsg[1];
-    if (pzErrPtr !== 0) {
+    const pzErrPtr = Deno.UnsafePointer.create(
+      pzErrMsg[0] + 2 ** 32 * pzErrMsg[1],
+    );
+    if (pzErrPtr !== null) {
       const pzErr = readCstr(pzErrPtr);
       sqlite3_free(pzErrPtr);
       throw new Error(pzErr);
