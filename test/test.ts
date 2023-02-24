@@ -39,6 +39,11 @@ Deno.test("sqlite", async (t) => {
     Deno.removeSync("test-path.db");
   });
 
+  await t.step("open (readonly)", () => {
+    const db = new Database(":memory:", { readonly: true });
+    db.close();
+  });
+
   let db!: Database;
   await t.step("open (url)", () => {
     db = new Database(DB_URL, { int64: true });

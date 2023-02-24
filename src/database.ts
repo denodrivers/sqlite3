@@ -209,7 +209,7 @@ export class Database {
         flags |= SQLITE3_OPEN_READWRITE;
       }
 
-      if (options.create ?? true) {
+      if ((options.create ?? true) && !options.readonly) {
         flags |= SQLITE3_OPEN_CREATE;
       }
     }
