@@ -581,7 +581,9 @@ try {
   if (sqliteLocal === "1") {
     lib = Deno.dlopen(
       new URL(
-        `../build/${Deno.build.os === "windows" ? "" : "lib"}sqlite3.${
+        `../build/${Deno.build.os === "windows" ? "" : "lib"}sqlite3${
+          Deno.build.arch !== "x86_64" ? `_${Deno.build.arch}` : ""
+        }.${
           Deno.build.os === "windows"
             ? "dll"
             : Deno.build.os === "darwin"
