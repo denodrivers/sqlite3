@@ -1,3 +1,5 @@
+const ARCH = Deno.env.get("TARGET_ARCH") || Deno.build.arch;
+
 const COMPILE_OPTIONS: Record<string, string> = {
   SQLITE_DQS: "0",
   SQLITE_DEFAULT_MEMSTATUS: "0",
@@ -36,7 +38,7 @@ const ext = Deno.build.os === "windows"
   : "so";
 const lib = `${prefix}sqlite3.${ext}`;
 const libWithArch = `${prefix}sqlite3${
-  Deno.build.arch !== "x86_64" ? `_${Deno.build.arch}` : ""
+  ARCH !== "x86_64" ? `_${ARCH}` : ""
 }.${ext}`;
 
 const SLICE_WIN = Deno.build.os === "windows" ? 1 : 0;
@@ -94,6 +96,7 @@ if (Deno.build.os === "windows") {
   $(
     new URL("../sqlite/configure", import.meta.url),
     "--enable-releasemode",
+    ...(Deno.build.arch === ARCH ? [] : ["--host", Deno.build.arch]),
   );
   $(
     "make",

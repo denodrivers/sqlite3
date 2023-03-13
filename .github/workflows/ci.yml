@@ -24,6 +24,30 @@ jobs:
       - name: Lint
         run: deno lint --ignore=sqlite
 
+  cross-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v2
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@main
+        with:
+          deno-version: 'v1.x'
+
+      - name: Install Dependencies
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo apt update
+          sudo apt install gcc-9-aarch64-linux-gnu
+          sudo apt-get install tcl-dev:arm64
+        
+      - name: Build
+        env:
+          CC: aarch64-linux-gnu-gcc-9
+          TARGET_ARCH: aarch64
+        run: deno task build
+
   test:
     strategy:
       matrix:
