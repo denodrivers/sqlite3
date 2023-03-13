@@ -38,7 +38,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo dpkg --add-architecture arm64
-          sudo apt update
+          sudo apt update || true
           sudo apt install gcc-9-aarch64-linux-gnu
           sudo apt-get install tcl-dev:arm64
         
