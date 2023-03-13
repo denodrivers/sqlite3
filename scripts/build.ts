@@ -87,10 +87,10 @@ if (Deno.build.os === "windows") {
     "..\\sqlite\\Makefile.msc",
     "sqlite3.dll",
     "TOP=..\\sqlite",
-    // CFLAGS,
+    CFLAGS,
   );
   await Deno.copyFile(
-    new URL(`../build/sqlite/${lib}`, import.meta.url),
+    new URL(`../sqlite/build/${lib}`, import.meta.url),
     new URL(`../build/${libWithArch}`, import.meta.url),
   );
 } else {
