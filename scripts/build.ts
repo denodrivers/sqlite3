@@ -69,7 +69,7 @@ if (Deno.build.os !== "windows") {
 
 const CFLAGS = `${
   Deno.build.os === "windows" ? "OPT_FEATURE_FLAGS" : "CFLAGS"
-}=${Deno.build.os === "windows" ? "" : "-g -O3 "}${
+}=${Deno.build.os === "windows" ? "" : "-g -O3 -fPIC "}${
   Object.entries(
     COMPILE_OPTIONS,
   )
@@ -96,7 +96,9 @@ if (Deno.build.os === "windows") {
   $(
     new URL("../sqlite/configure", import.meta.url),
     "--enable-releasemode",
-    ...(Deno.build.arch === ARCH ? [] : ["--host", Deno.build.arch]),
+    ...(Deno.build.arch === ARCH
+      ? []
+      : ["--disable-tcl", "--host", Deno.build.arch]),
   );
   $(
     "make",
@@ -104,6 +106,18 @@ if (Deno.build.os === "windows") {
     "8",
     CFLAGS,
   );
+  if (Deno.build.os === "linux" && ARCH !== Deno.build.arch) {
+    $(
+      Deno.env.get("CC")!,
+      "-shared",
+      "-o",
+      "./libsqlite3.so",
+      "-L./.libs",
+      "-Wl,--whole-archive",
+      "-lsqlite3",
+      "-Wl,--no-whole-archive",
+    );
+  }
   await Deno.copyFile(
     new URL(`../sqlite/build/.libs/${lib}`, import.meta.url),
     new URL(`../build/${libWithArch}`, import.meta.url),
