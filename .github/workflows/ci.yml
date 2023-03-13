@@ -59,8 +59,8 @@ jobs:
           files: |
             build/libsqlite3_aarch64.so
   
-  cross-build-linux-aarch64:
-    runs-on: ubuntu-latest
+  cross-build-macos-aarch64:
+    runs-on: macos-latest
     steps:
       - name: Setup repo
         uses: actions/checkout@v2
@@ -72,14 +72,9 @@ jobs:
         with:
           deno-version: 'v1.x'
 
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install gcc-9-aarch64-linux-gnu
-        
       - name: Build
         env:
-          CC: aarch64-linux-gnu-gcc-9
+          CC: clang
           TARGET_ARCH: aarch64
         run: deno task build
 
@@ -92,7 +87,7 @@ jobs:
           tag_name: "Release Draft"
           draft: true
           files: |
-            build/libsqlite3_aarch64.so
+            build/libsqlite3_aarch64.dylib
 
   test:
     strategy:
