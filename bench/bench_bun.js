@@ -27,5 +27,4 @@ function bench(query) {
 }
 
 const query = createQuery(sql);
-console.log(query.get());
 bench(() => query.get());
