@@ -24,11 +24,13 @@ jobs:
       - name: Lint
         run: deno lint --ignore=sqlite
 
-  cross-build:
+  cross-build-linux-aarch64:
     runs-on: ubuntu-latest
     steps:
       - name: Setup repo
         uses: actions/checkout@v2
+        with:
+          submodules: true
 
       - name: Setup Deno
         uses: denoland/setup-deno@main
