@@ -62,22 +62,18 @@ environment variable, containing full path to the SQLite3 shared library.
 Code is formatted using `deno fmt` and linted using `deno lint`. Please make
 sure to run these commands before committing.
 
-On Linux and macOS, you need to build sqlite3 from source. Make sure that you
-have the submodule (`git submodule update --init --recursive`).
+You can optionally build sqlite3 from source. Make sure that you have the
+submodule (`git submodule update --init --recursive`).
 
 ```sh
-mkdir -p build/
-# unix
-make
-# windows
-deno task build-sqlite-win
+deno task build
 ```
 
-When running tests and benchmarks, you need to use the `DENO_SQLITE_PATH` env
-variable otherwise it won't use to local compiled shared library.
+When running tests and benchmarks, you use the `DENO_SQLITE_LOCAL=1` env
+variable otherwise it won't use to locally compiled SQLite library.
 
 ```sh
-DENO_SQLITE_PATH=build/libsqlite3.dylib deno task bench
+DENO_SQLITE_LOCAL=1 deno task bench
 ```
 
 ## Related

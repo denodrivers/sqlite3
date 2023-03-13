@@ -41,34 +41,17 @@ jobs:
         uses: denoland/setup-deno@main
         with:
           deno-version: 'v1.x'
-
-      - name: Build sqlite3 (unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          mkdir -p build
-          make
       
       - name: Setup MSVC Dev Env
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Build sqlite3 (windows)
-        if: matrix.os == 'windows-latest'
-        run: deno task build-sqlite-win
-
-      - name: Set DENO_SQLITE_PATH (linux)
-        if: matrix.os == 'ubuntu-20.04'
-        run: echo "DENO_SQLITE_PATH=$(pwd)/build/libsqlite3.so" >> $GITHUB_ENV
-
-      - name: Set DENO_SQLITE_PATH (macos)
-        if: matrix.os == 'macos-latest'
-        run: echo "DENO_SQLITE_PATH=$(pwd)/build/libsqlite3.dylib" >> $GITHUB_ENV
-
-      - name: Set DENO_SQLITE_PATH (windows)
-        if: matrix.os == 'windows-latest'
-        run: echo "DENO_SQLITE_PATH=$(pwd)/build/sqlite3.dll" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Build sqlite3
+        run: deno task build
 
       - name: Run Tests
+        env:
+          DENO_SQLITE_LOCAL: 1
         run: deno task test
 
       - name: Release
@@ -77,7 +60,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: "release draft"
+          tag_name: "Release Draft"
           draft: true
           files: |
             build/libsqlite3.so
