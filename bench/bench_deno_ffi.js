@@ -23,14 +23,14 @@ unwrap(
     pHandle,
     SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_PRIVATECACHE |
       SQLITE3_OPEN_CREATE | SQLITE3_OPEN_MEMORY,
-    0,
+    null,
   ),
 );
-const db = pHandle[0] + 2 ** 32 * pHandle[1];
+const db = Deno.UnsafePointer.create(pHandle[0] + 2 ** 32 * pHandle[1]);
 
 function exec(sql) {
   const _pErr = new Uint32Array(2);
-  unwrap(sqlite3_exec(db, toCString(sql), 0, 0, _pErr));
+  unwrap(sqlite3_exec(db, toCString(sql), null, null, _pErr));
 }
 
 exec("PRAGMA auto_vacuum = none");
@@ -60,10 +60,10 @@ function prepareStatement() {
       toCString(sql),
       sql.length,
       pHandle,
-      0,
+      null,
     ),
   );
-  return pHandle[0] + 2 ** 32 * pHandle[1];
+  return Deno.UnsafePointer.create(pHandle[0] + 2 ** 32 * pHandle[1]);
 }
 
 const prepared = prepareStatement();
