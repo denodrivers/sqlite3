@@ -436,6 +436,11 @@ Deno.test("sqlite", async (t) => {
     db.exec("drop table aggr_test");
   });
 
+  await t.step("fts5", () => {
+    db.exec("create virtual table tbl_fts using fts5(a)");
+    db.exec("drop table tbl_fts");
+  });
+
   await t.step("drop table", () => {
     db.exec("drop table test");
     db.exec("drop table blobs");

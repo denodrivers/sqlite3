@@ -5,7 +5,7 @@
 
   "tasks": {
     "test": "deno test --unstable -A test/test.ts",
-    "build-sqlite-win": "mkdir -p build && cd build && nmake /f ..\\sqlite\\Makefile.msc sqlite3.dll TOP=..\\sqlite",
+    "build": "deno run -A --unstable scripts/build.ts",
     "bench-deno": "deno run -A --unstable bench/bench_deno.js 50 1000000",
     "bench-deno-ffi": "deno run -A --unstable bench/bench_deno_ffi.js 50 1000000",
     "bench-deno-wasm": "deno run -A --unstable bench/bench_deno_wasm.js 50 1000000",

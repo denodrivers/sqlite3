@@ -1,4 +1,4 @@
-import { createCanvas } from "https://deno.land/x/skia_canvas@0.3.1/mod.ts";
+import { createCanvas } from "https://deno.land/x/skia_canvas@0.5.2/mod.ts";
 import "https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js";
 import "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js";
 
