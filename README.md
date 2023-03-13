@@ -25,8 +25,10 @@ db.close();
 
 Since this library depends on the unstable FFI API, you must pass `--allow-env`,
 `--allow-ffi` and `--unstable` flags. Network and FS permissions are also needed
-on macOS and Linux to download and cache prebuilt library. It's recommended to
-just use `--allow-all`/`-A` flag since FFI basically gives full access.
+to download and cache prebuilt library.
+
+It's recommended to just use `--allow-all` / `-A` flag since FFI basically gives
+full access.
 
 ```sh
 deno run -A --unstable <file>
