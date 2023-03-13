@@ -84,7 +84,7 @@ if (Deno.build.os === "windows") {
   $(
     "nmake",
     "/f",
-    "..\\sqlite\\Makefile.msc",
+    "..\\Makefile.msc",
     "sqlite3.dll",
     "TOP=..\\sqlite",
     CFLAGS,
