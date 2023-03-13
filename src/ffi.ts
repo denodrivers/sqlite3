@@ -557,6 +557,7 @@ const symbols = {
 
   sqlite3_initialize: {
     parameters: [],
+    callback: true,
     result: "i32",
   },
 } as const satisfies Deno.ForeignLibraryInterface;
@@ -615,15 +616,16 @@ try {
     throw e;
   }
 
-  const error = new Error("Failed to load SQLite3 Dynamic Library");
-  error.cause = e;
-
-  throw error;
+  throw new Error("Failed to load SQLite3 Dynamic Library", { cause: e });
 }
+
+console.log("SQLite3 loaded");
 
 const init = lib.sqlite3_initialize();
 if (init !== 0) {
   throw new Error(`Failed to initialize SQLite3: ${init}`);
 }
+
+console.log("SQLite3 initialized");
 
 export default lib;
