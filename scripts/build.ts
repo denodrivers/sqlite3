@@ -67,7 +67,7 @@ await Deno.remove(new URL("../sqlite/build", import.meta.url), {
 await Deno.mkdir(new URL("../build", import.meta.url));
 await Deno.mkdir(new URL("../sqlite/build", import.meta.url));
 
-const CFLAGS = `CFLAGS+= -g -O3 ${
+const CFLAGS = `CFLAGS=-g -O3 ${
   Object.entries(
     COMPILE_OPTIONS,
   )
