@@ -71,7 +71,7 @@ const CFLAGS = `${
   Deno.build.os === "windows" ? "OPT_FEATURE_FLAGS" : "CFLAGS"
 }=${Deno.build.os === "windows" ? "" : "-g -O3 -fPIC "}${
   Deno.build.os === "darwin" && ARCH !== Deno.build.arch && ARCH === "aarch64"
-    ? " -arch x86_64 -arch arm64 "
+    ? " -arch arm64 "
     : ""
 }${
   Object.entries(
@@ -111,6 +111,19 @@ if (Deno.build.os === "windows") {
     "8",
     CFLAGS,
   );
+  if (
+    Deno.build.os === "darwin" && ARCH !== Deno.build.arch && ARCH === "aarch64"
+  ) {
+    $(
+      "clang",
+      "-dynamiclib",
+      "-arch",
+      "arm64",
+      "-o",
+      "./libsqlite3.dylib",
+      "./sqlite3.o",
+    );
+  }
   await Deno.copyFile(
     new URL(`../sqlite/build/.libs/${lib}`, import.meta.url),
     new URL(`../build/${libWithArch}`, import.meta.url),
