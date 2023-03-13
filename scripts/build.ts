@@ -80,7 +80,7 @@ const CFLAGS = `CFLAGS=-g -O3 ${
 }`;
 
 if (Deno.build.os === "windows") {
-  Deno.chdir(new URL("../build", import.meta.url));
+  Deno.chdir(new URL("../sqlite/build", import.meta.url));
   $(
     "nmake",
     "/f",
