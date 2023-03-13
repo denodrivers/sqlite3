@@ -100,9 +100,12 @@ if (Deno.build.os === "windows") {
   $(
     new URL("../sqlite/configure", import.meta.url),
     "--enable-releasemode",
-    ...(Deno.build.arch === ARCH && Deno.build.os !== "darwin"
+    ...(Deno.build.arch === ARCH
       ? []
-      : ["--disable-tcl", "--host=arm-linux"]),
+      : [
+        "--disable-tcl",
+        `--host=arm-${Deno.build.os === "darwin" ? "macos" : "linux"}`,
+      ]),
   );
   $(
     "make",
