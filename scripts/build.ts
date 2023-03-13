@@ -32,6 +32,10 @@ const COMPILE_OPTIONS: Record<string, string> = {
   HAVE_UINT64_T: "1",
   SQLITE_ENABLE_COLUMN_METADATA: "1",
   SQLITE_DEFAULT_FOREIGN_KEYS: "1",
+  SQLITE_ENABLE_STMTVTAB: "1",
+  SQLITE_ENABLE_DBPAGE_VTAB: "1",
+  SQLITE_ENABLE_DBSTAT_VTAB: "1",
+  SQLITE_ENABLE_BYTECODE_VTAB: "1",
 };
 
 const prefix = Deno.build.os === "windows" ? "" : "lib";
@@ -71,7 +75,9 @@ if (Deno.build.os !== "windows") {
   COMPILE_OPTIONS["SQLITE_OS_UNIX"] = "1";
 }
 
-const CFLAGS = `CFLAGS=-g -O3 ${
+const CFLAGS = `${
+  Deno.build.os === "windows" ? "OPT_FEATURE_FLAGS" : "CFLAGS"
+}=${Deno.build.os === "windows" ? "" : "-g -O3 "}${
   Object.entries(
     COMPILE_OPTIONS,
   )
