@@ -24,6 +24,41 @@ jobs:
       - name: Lint
         run: deno lint --ignore=sqlite
 
+  cross-build-linux-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@main
+        with:
+          deno-version: 'v1.x'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install gcc-9-aarch64-linux-gnu
+        
+      - name: Build
+        env:
+          CC: aarch64-linux-gnu-gcc-9
+          TARGET_ARCH: aarch64
+        run: deno task build
+      
+      - name: Release
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: softprops/action-gh-release@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "Release Draft"
+          draft: true
+          files: |
+            build/libsqlite3_aarch64.so
+
   test:
     strategy:
       matrix:

@@ -615,10 +615,7 @@ try {
     throw e;
   }
 
-  const error = new Error("Failed to load SQLite3 Dynamic Library");
-  error.cause = e;
-
-  throw error;
+  throw new Error("Failed to load SQLite3 Dynamic Library", { cause: e });
 }
 
 const init = lib.sqlite3_initialize();
