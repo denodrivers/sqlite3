@@ -86,7 +86,7 @@ if (Deno.build.os === "windows") {
     "/f",
     "..\\Makefile.msc",
     "sqlite3.dll",
-    "TOP=..\\sqlite",
+    "TOP=..\\",
     CFLAGS,
   );
   await Deno.copyFile(
