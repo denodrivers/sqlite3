@@ -67,6 +67,10 @@ await Deno.remove(new URL("../sqlite/build", import.meta.url), {
 await Deno.mkdir(new URL("../build", import.meta.url));
 await Deno.mkdir(new URL("../sqlite/build", import.meta.url));
 
+if (Deno.build.os !== "windows") {
+  COMPILE_OPTIONS["SQLITE_OS_UNIX"] = "1";
+}
+
 const CFLAGS = `CFLAGS=-g -O3 ${
   Object.entries(
     COMPILE_OPTIONS,
@@ -80,7 +84,7 @@ if (Deno.build.os === "windows") {
   $(
     "nmake",
     "/f",
-    ".\\sqlite\\Makefile.msc",
+    "..\\sqlite\\Makefile.msc",
     "sqlite3.dll",
     "TOP=..\\sqlite",
     CFLAGS,
