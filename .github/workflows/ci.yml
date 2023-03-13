@@ -58,6 +58,36 @@ jobs:
           draft: true
           files: |
             build/libsqlite3_aarch64.so
+  
+  cross-build-macos-aarch64:
+    runs-on: macos-latest
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@main
+        with:
+          deno-version: 'v1.x'
+        
+      - name: Build
+        env:
+          CC: clang
+          TARGET_ARCH: aarch64
+        run: deno task build
+      
+      - name: Release
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: softprops/action-gh-release@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "Release Draft"
+          draft: true
+          files: |
+            build/libsqlite3_aarch64.dylib
 
   test:
     strategy:

@@ -70,6 +70,10 @@ if (Deno.build.os !== "windows") {
 const CFLAGS = `${
   Deno.build.os === "windows" ? "OPT_FEATURE_FLAGS" : "CFLAGS"
 }=${Deno.build.os === "windows" ? "" : "-g -O3 -fPIC "}${
+  Deno.build.os === "darwin" && ARCH !== Deno.build.arch && ARCH === "aarch64"
+    ? " -arch arm64 "
+    : ""
+}${
   Object.entries(
     COMPILE_OPTIONS,
   )
@@ -96,7 +100,9 @@ if (Deno.build.os === "windows") {
   $(
     new URL("../sqlite/configure", import.meta.url),
     "--enable-releasemode",
-    ...(Deno.build.arch === ARCH ? [] : ["--disable-tcl", "--host=arm-linux"]),
+    ...(Deno.build.arch === ARCH && Deno.build.os !== "darwin"
+      ? []
+      : ["--disable-tcl", "--host=arm-linux"]),
   );
   $(
     "make",
