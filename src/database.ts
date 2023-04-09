@@ -170,7 +170,7 @@ export class Database {
     return Number(sqlite3_last_insert_rowid(this.#handle));
   }
 
-  /** Whether autocommit is enabled. Enabled by default, cab be disabled using BEGIN statement. */
+  /** Whether autocommit is enabled. Enabled by default, can be disabled using BEGIN statement. */
   get autocommit(): boolean {
     return sqlite3_get_autocommit(this.#handle) === 1;
   }
