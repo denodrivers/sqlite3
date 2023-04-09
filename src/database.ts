@@ -35,7 +35,7 @@ export interface DatabaseOpenOptions {
 
 /** Transaction function created using `Database#transaction`. */
 export type Transaction<T extends (...args: any[]) => void> =
-  & ((...args: Parameters<T>) => void)
+  & ((...args: Parameters<T>) => ReturnType<T>)
   & {
     /** BEGIN */
     default: Transaction<T>;
@@ -775,7 +775,7 @@ const wrapTransaction = <T extends (...args: any[]) => void>(
   db: Database,
   { begin, commit, rollback, savepoint, release, rollbackTo }: any,
 ) =>
-  function sqliteTransaction(...args: Parameters<T>): void {
+  function sqliteTransaction(...args: Parameters<T>): ReturnType<T> {
     const { apply } = Function.prototype;
     let before, after, undo;
     if (db.inTransaction) {
