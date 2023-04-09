@@ -34,17 +34,19 @@ export interface DatabaseOpenOptions {
 }
 
 /** Transaction function created using `Database#transaction`. */
-export type Transaction<T> = ((v: T) => void) & {
-  /** BEGIN */
-  default: Transaction<T>;
-  /** BEGIN DEFERRED */
-  deferred: Transaction<T>;
-  /** BEGIN IMMEDIATE */
-  immediate: Transaction<T>;
-  /** BEGIN EXCLUSIVE */
-  exclusive: Transaction<T>;
-  database: Database;
-};
+export type Transaction<T extends (...args: any[]) => void> =
+  & ((...args: Parameters<T>) => void)
+  & {
+    /** BEGIN */
+    default: Transaction<T>;
+    /** BEGIN DEFERRED */
+    deferred: Transaction<T>;
+    /** BEGIN IMMEDIATE */
+    immediate: Transaction<T>;
+    /** BEGIN EXCLUSIVE */
+    exclusive: Transaction<T>;
+    database: Database;
+  };
 
 /**
  * Options for user-defined functions.
@@ -361,8 +363,8 @@ export class Database {
    * ]);
    * ```
    */
-  transaction<T = any>(
-    fn: (this: Transaction<T>, _: T) => unknown,
+  transaction<T extends (this: Transaction<T>, ...args: any[]) => void>(
+    fn: T,
   ): Transaction<T> {
     // Based on https://github.com/WiseLibs/better-sqlite3/blob/master/lib/methods/transaction.js
     const controller = getController(this);
@@ -382,7 +384,7 @@ export class Database {
     Object.defineProperties(properties.exclusive.value, properties);
 
     // Return the default version of the transaction function
-    return properties.default.value as any as Transaction<T>;
+    return properties.default.value as Transaction<T>;
   }
 
   #callbacks = new Set<Deno.UnsafeCallback>();
@@ -768,12 +770,12 @@ const getController = (db: Database) => {
 };
 
 // Return a new transaction function by wrapping the given function
-const wrapTransaction = (
-  fn: any,
+const wrapTransaction = <T extends (...args: any[]) => void>(
+  fn: T,
   db: Database,
   { begin, commit, rollback, savepoint, release, rollbackTo }: any,
 ) =>
-  function sqliteTransaction(): any {
+  function sqliteTransaction(...args: Parameters<T>): void {
     const { apply } = Function.prototype;
     let before, after, undo;
     if (db.inTransaction) {
@@ -788,7 +790,7 @@ const wrapTransaction = (
     before.run();
     try {
       // @ts-ignore An outer value of 'this' is shadowed by this container.
-      const result = apply.call(fn, this, arguments);
+      const result = apply.call(fn, this, args);
       after.run();
       return result;
     } catch (ex) {
