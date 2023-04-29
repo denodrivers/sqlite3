@@ -72,7 +72,7 @@ Optionally a second argument can be passed to the method specifying the
 entrypoint name.
 
 ```ts
-const db = new Database("test.db", { loadExtensions: true });
+const db = new Database("test.db", { enableLoadExtension: true });
 
 db.loadExtension("mod_spatialite");
 ```
