@@ -202,8 +202,10 @@ const row = stmt.value<[string, number]>(...params);
 
 ## SQLite functions that return JSON
 
-When using [SQLite's builtin JSON functions](https://www.sqlite.org/json1.html), `sqlite3` will detect when a value has a "subtype" of JSON. If so, it will attempt to `JSON.parse()` the text value and return the parsed JavaScript object or array.
-
+When using [SQLite's builtin JSON functions](https://www.sqlite.org/json1.html),
+`sqlite3` will detect when a value has a "subtype" of JSON. If so, it will
+attempt to `JSON.parse()` the text value and return the parsed JavaScript object
+or array.
 
 ```ts
 const [list] = db
@@ -218,7 +220,9 @@ const [object] = db
 // object = { name: "Peter" }
 ```
 
-Use the builtin [`json()`](https://www.sqlite.org/json1.html#jmini) SQL function to convert your text values into JSON. 
+Use the builtin [`json()`](https://www.sqlite.org/json1.html#jmini) SQL function
+to convert your text values into JSON.
+
 ## Freeing Prepared Statements
 
 Though the `Statement` object is automatically freed once it is no longer used,

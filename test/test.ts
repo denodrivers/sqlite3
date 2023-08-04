@@ -182,11 +182,13 @@ Deno.test("sqlite", async (t) => {
 
   await t.step("query json", () => {
     const row = db
-      .prepare("select json('[1,2,3]'), json_object('name', 'alex'), '{\"no_subtype\": true}'")
-      .values<[number[], {name: string}, string]>()[0];
+      .prepare(
+        "select json('[1,2,3]'), json_object('name', 'alex'), '{\"no_subtype\": true}'",
+      )
+      .values<[number[], { name: string }, string]>()[0];
 
     assertEquals(row[0], [1, 2, 3]);
-    assertEquals(row[1], {name: "alex"});
+    assertEquals(row[1], { name: "alex" });
     assertEquals(row[2], '{"no_subtype": true}');
   });
 
