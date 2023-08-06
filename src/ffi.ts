@@ -110,6 +110,13 @@ const symbols = {
     ],
     result: "pointer",
   },
+  sqlite3_column_value: {
+    parameters: [
+      "pointer", // sqlite3_stmt *pStmt
+      "i32", // int iCol
+    ],
+    result: "pointer",
+  },
 
   sqlite3_finalize: {
     parameters: [
@@ -481,6 +488,12 @@ const symbols = {
   },
 
   sqlite3_value_type: {
+    parameters: [
+      "pointer", // sqlite3_value *pVal
+    ],
+    result: "i32",
+  },
+  sqlite3_value_subtype: {
     parameters: [
       "pointer", // sqlite3_value *pVal
     ],

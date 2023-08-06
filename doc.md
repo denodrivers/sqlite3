@@ -200,6 +200,29 @@ const row = stmt.value<[string, number]>(...params);
 // row is [string, number] | undefined
 ```
 
+## SQLite functions that return JSON
+
+When using [SQLite's builtin JSON functions](https://www.sqlite.org/json1.html),
+`sqlite3` will detect when a value has a "subtype" of JSON. If so, it will
+attempt to `JSON.parse()` the text value and return the parsed JavaScript object
+or array.
+
+```ts
+const [list] = db
+  .prepare("SELECT json_array(1, 2, 3) as list")
+  .value<[number[]]>()!;
+// list = [ 1, 2, 3 ]
+
+const [object] = db
+  .prepare("SELECT json_object('name', 'Peter') as object")
+  .value<[{ name: string }]>()!;
+
+// object = { name: "Peter" }
+```
+
+Use the builtin [`json()`](https://www.sqlite.org/json1.html#jmini) SQL function
+to convert your text values into JSON.
+
 ## Freeing Prepared Statements
 
 Though the `Statement` object is automatically freed once it is no longer used,
@@ -307,23 +330,25 @@ stmt.run("baz", "foo");
 
 JavaScript to SQLite type mapping:
 
-| JavaScript type | SQLite type       |
-| --------------- | ----------------- |
-| `null`          | `NULL`            |
-| `undefined`     | `NULL`            |
-| `number`        | `INTEGER`/`FLOAT` |
-| `bigint`        | `INTEGER`         |
-| `string`        | `TEXT`            |
-| `boolean`       | `INTEGER`         |
-| `Date`          | `TEXT` (ISO)      |
-| `Uint8Array`    | `BLOB`            |
+| JavaScript type         | SQLite type                 |
+| ----------------------- | --------------------------- |
+| `null`                  | `NULL`                      |
+| `undefined`             | `NULL`                      |
+| `number`                | `INTEGER`/`FLOAT`           |
+| `bigint`                | `INTEGER`                   |
+| `string`                | `TEXT`                      |
+| `boolean`               | `INTEGER`                   |
+| `Date`                  | `TEXT` (ISO)                |
+| `Uint8Array`            | `BLOB`                      |
+| JSON-serializable value | `TEXT` (`JSON.stringify()`) |
 
 When retrieving rows, the types are mapped back to JavaScript types:
 
-| SQLite type | JavaScript type   |
-| ----------- | ----------------- |
-| `NULL`      | `null`            |
-| `INTEGER`   | `number`/`bigint` |
-| `FLOAT`     | `number`          |
-| `TEXT`      | `string`          |
-| `BLOB`      | `Uint8Array`      |
+| SQLite type              | JavaScript type           |
+| ------------------------ | ------------------------- |
+| `NULL`                   | `null`                    |
+| `INTEGER`                | `number`/`bigint`         |
+| `FLOAT`                  | `number`                  |
+| `TEXT`                   | `string`                  |
+| `TEXT` with JSON subtype | `object` (`JSON.parse()`) |
+| `BLOB`                   | `Uint8Array`              |

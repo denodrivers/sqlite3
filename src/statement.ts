@@ -17,6 +17,8 @@ const {
   sqlite3_step,
   sqlite3_column_count,
   sqlite3_column_type,
+  sqlite3_column_value,
+  sqlite3_value_subtype,
   sqlite3_column_text,
   sqlite3_finalize,
   sqlite3_column_int64,
@@ -50,7 +52,9 @@ export type BindValue =
   | null
   | undefined
   | Date
-  | Uint8Array;
+  | Uint8Array
+  | BindValue[]
+  | { [key: string]: BindValue };
 
 export type BindParameters = BindValue[] | Record<string, BindValue>;
 export type RestBindParameters = BindValue[] | [BindParameters];
@@ -68,6 +72,9 @@ const statementFinalizer = new FinalizationRegistry(
   },
 );
 
+// https://github.com/sqlite/sqlite/blob/195611d8e6fc0bba559a49e91e6ceb42e4bdd6ba/src/json.c#L125-L126
+const JSON_SUBTYPE = 74;
+
 function getColumn(handle: Deno.PointerValue, i: number, int64: boolean): any {
   const ty = sqlite3_column_type(handle, i);
 
@@ -77,7 +84,17 @@ function getColumn(handle: Deno.PointerValue, i: number, int64: boolean): any {
     case SQLITE_TEXT: {
       const ptr = sqlite3_column_text(handle, i);
       if (ptr === null) return null;
-      return readCstr(ptr, 0);
+      const text = readCstr(ptr, 0);
+      const value = sqlite3_column_value(handle, i);
+      const subtype = sqlite3_value_subtype(value);
+      if (subtype === JSON_SUBTYPE) {
+        try {
+          return JSON.parse(text);
+        } catch (_error) {
+          return text;
+        }
+      }
+      return text;
     }
 
     case SQLITE_INTEGER: {
@@ -297,7 +314,17 @@ export class Statement {
             ),
           );
         } else {
-          throw new Error(`Value of unsupported type: ${Deno.inspect(param)}`);
+          const cstring = toCString(JSON.stringify(param));
+          this.#bindRefs.add(cstring);
+          unwrap(
+            sqlite3_bind_text(
+              this.#handle,
+              i + 1,
+              cstring,
+              -1,
+              null,
+            ),
+          );
         }
         break;
       }
