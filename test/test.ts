@@ -7,6 +7,8 @@ import {
 } from "../mod.ts";
 import { assert, assertEquals, assertThrows } from "./deps.ts";
 
+console.log("sqlite version:", SQLITE_VERSION);
+
 Deno.test("sqlite", async (t) => {
   await t.step("sourceid", () => {
     assert(SQLITE_SOURCEID.length > 0);
