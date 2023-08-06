@@ -330,23 +330,25 @@ stmt.run("baz", "foo");
 
 JavaScript to SQLite type mapping:
 
-| JavaScript type | SQLite type       |
-| --------------- | ----------------- |
-| `null`          | `NULL`            |
-| `undefined`     | `NULL`            |
-| `number`        | `INTEGER`/`FLOAT` |
-| `bigint`        | `INTEGER`         |
-| `string`        | `TEXT`            |
-| `boolean`       | `INTEGER`         |
-| `Date`          | `TEXT` (ISO)      |
-| `Uint8Array`    | `BLOB`            |
+| JavaScript type         | SQLite type                 |
+| ----------------------- | --------------------------- |
+| `null`                  | `NULL`                      |
+| `undefined`             | `NULL`                      |
+| `number`                | `INTEGER`/`FLOAT`           |
+| `bigint`                | `INTEGER`                   |
+| `string`                | `TEXT`                      |
+| `boolean`               | `INTEGER`                   |
+| `Date`                  | `TEXT` (ISO)                |
+| `Uint8Array`            | `BLOB`                      |
+| JSON-serializable value | `TEXT` (`JSON.stringify()`) |
 
 When retrieving rows, the types are mapped back to JavaScript types:
 
-| SQLite type | JavaScript type   |
-| ----------- | ----------------- |
-| `NULL`      | `null`            |
-| `INTEGER`   | `number`/`bigint` |
-| `FLOAT`     | `number`          |
-| `TEXT`      | `string`          |
-| `BLOB`      | `Uint8Array`      |
+| SQLite type              | JavaScript type           |
+| ------------------------ | ------------------------- |
+| `NULL`                   | `null`                    |
+| `INTEGER`                | `number`/`bigint`         |
+| `FLOAT`                  | `number`                  |
+| `TEXT`                   | `string`                  |
+| `TEXT` with JSON subtype | `object` (`JSON.parse()`) |
+| `BLOB`                   | `Uint8Array`              |

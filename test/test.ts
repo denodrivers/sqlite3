@@ -215,6 +215,23 @@ Deno.test("sqlite", async (t) => {
     assertEquals(row[3], new Uint8Array([3, 2, 1]));
     assertEquals(row[4], null);
   });
+  await t.step("query parameters", () => {
+    const row = db.prepare(
+      "select ?, ?, ?, ?, ?",
+    ).values<[number, string, string, string, string]>(
+      1,
+      "alex",
+      new Date("2023-01-01"),
+      [1, 2, 3],
+      { name: "alex" },
+    )[0];
+
+    assertEquals(row[0], 1);
+    assertEquals(row[1], "alex");
+    assertEquals(row[2], "2023-01-01T00:00:00.000Z");
+    assertEquals(row[3], "[1,2,3]");
+    assertEquals(row[4], '{"name":"alex"}');
+  });
 
   await t.step("more than 32-bit int", () => {
     const value = 978307200000;

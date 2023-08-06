@@ -52,7 +52,9 @@ export type BindValue =
   | null
   | undefined
   | Date
-  | Uint8Array;
+  | Uint8Array
+  | BindValue[]
+  | { [key: string]: BindValue };
 
 export type BindParameters = BindValue[] | Record<string, BindValue>;
 export type RestBindParameters = BindValue[] | [BindParameters];
@@ -312,7 +314,17 @@ export class Statement {
             ),
           );
         } else {
-          throw new Error(`Value of unsupported type: ${Deno.inspect(param)}`);
+          const cstring = toCString(JSON.stringify(param));
+          this.#bindRefs.add(cstring);
+          unwrap(
+            sqlite3_bind_text(
+              this.#handle,
+              i + 1,
+              cstring,
+              -1,
+              null,
+            ),
+          );
         }
         break;
       }
