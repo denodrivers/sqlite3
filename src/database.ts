@@ -327,13 +327,13 @@ export class Database {
   }
 
   /** Safely execute SQL with parameters using a tagged template */
-  sql<T extends unknown[] = any[]>(
+  sql<T extends Record<string, unknown> = Record<string, any>>(
     strings: TemplateStringsArray,
     ...parameters: RestBindParameters
   ): T[] {
     const sql = strings.join("?");
     const stmt = this.prepare(sql);
-    return stmt.values(...parameters);
+    return stmt.all(...parameters);
   }
 
   /**

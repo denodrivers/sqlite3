@@ -121,7 +121,9 @@ API.
 
 See [Binding Parameters](#binding-parameters) for more details.
 
-Alternatively, use the `.sql` tagged template to safely execute SQL with given parameters. It will execute the given SQL with parameters bounded and returns all rows, calling `.values()` under the hood.
+Alternatively, use the `.sql` tagged template to safely execute SQL with given
+parameters. It will execute the given SQL with parameters bounded and returns
+all rows with `.all()`.
 
 ```ts
 const minimum = 20;
