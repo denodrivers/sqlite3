@@ -326,6 +326,16 @@ export class Database {
     return this.exec(sql, ...params);
   }
 
+  /** Safely execute SQL with parameters using a tagged template */
+  sql<T extends unknown[] = any[]>(
+    strings: TemplateStringsArray,
+    ...parameters: RestBindParameters
+  ): T[] {
+    const sql = strings.join("?");
+    const stmt = this.prepare(sql);
+    return stmt.values(...parameters);
+  }
+
   /**
    * Wraps a callback function in a transaction.
    *
