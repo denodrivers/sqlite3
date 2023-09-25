@@ -235,6 +235,18 @@ Deno.test("sqlite", async (t) => {
     assertEquals(row[4], '{"name":"alex"}');
   });
 
+  await t.step(".sql tagged template", () => {
+    assertEquals(db.sql`select 1, 2, 3`, [{ "1": 1, "2": 2, "3": 3 }]);
+    assertEquals(
+      db.sql`select ${1} as a, ${Math.PI} as b, ${new Uint8Array([1, 2])} as c`,
+      [
+        { a: 1, b: 3.141592653589793, c: new Uint8Array([1, 2]) },
+      ],
+    );
+
+    assertEquals(db.sql`select ${"1; DROP TABLE"}`, [{ "?": "1; DROP TABLE" }]);
+  });
+
   await t.step("more than 32-bit int", () => {
     const value = 978307200000;
     db.exec(

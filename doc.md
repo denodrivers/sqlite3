@@ -121,6 +121,23 @@ API.
 
 See [Binding Parameters](#binding-parameters) for more details.
 
+Alternatively, use the `.sql` tagged template to safely execute SQL with given
+parameters. It will execute the given SQL with parameters bounded and returns
+all rows with `.all()`.
+
+```ts
+const minimum = 20;
+const results = db.sql`
+  SELECT
+    id,
+    name,
+    age
+  FROM students
+  WHERE age > ${minimum}`;
+
+console.log(results); // [ [ 2, "Brian", 30 ] ]
+```
+
 ## Creating Prepared Statements
 
 To prepare a statement, use the `prepare()` method. This method will return a
