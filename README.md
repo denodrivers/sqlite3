@@ -86,4 +86,4 @@ DENO_SQLITE_LOCAL=1 deno task bench
 
 Apache-2.0. Check [LICENSE](./LICENSE) for details.
 
-Copyright © 2023 DjDeveloperr
+Copyright © 2023 DjDeveloperr.
