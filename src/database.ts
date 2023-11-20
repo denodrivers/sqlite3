@@ -745,7 +745,7 @@ export class Database {
    */
   backup(dest: Database, name = "main"): void {
     const backup = sqlite3_backup_init(
-      dest.unsafeHandle,
+      dest.#handle,
       toCString(name),
       this.#handle,
       toCString("main"),
