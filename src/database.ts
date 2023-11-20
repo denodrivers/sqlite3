@@ -742,8 +742,9 @@ export class Database {
   /**
    * @param dest The destination database connection.
    * @param name Destination database name. "main" for main database, "temp" for temporary database, or the name specified after the AS keyword in an ATTACH statement for an attached database.
+   * @param pages The number of pages to copy. If it is negative, all remaining pages are copied (default).
    */
-  backup(dest: Database, name = "main"): void {
+  backup(dest: Database, name = "main", pages = -1): void {
     const backup = sqlite3_backup_init(
       dest.#handle,
       toCString(name),
@@ -751,7 +752,7 @@ export class Database {
       toCString("main"),
     );
     if (backup) {
-      unwrap(sqlite3_backup_step(backup, -1));
+      unwrap(sqlite3_backup_step(backup, pages));
       unwrap(sqlite3_backup_finish(backup));
     } else {
       unwrap(sqlite3_errcode(dest.#handle), dest.#handle);
