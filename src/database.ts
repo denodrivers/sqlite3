@@ -97,6 +97,10 @@ const {
   sqlite3_aggregate_context,
   sqlite3_enable_load_extension,
   sqlite3_load_extension,
+  sqlite3_backup_init,
+  sqlite3_backup_step,
+  sqlite3_backup_finish,
+  sqlite3_errcode,
 } = ffi;
 
 /** SQLite version string */
@@ -733,6 +737,25 @@ export class Database {
     }
     unwrap(sqlite3_close_v2(this.#handle));
     this.#open = false;
+  }
+
+  /**
+   * @param dest The destination database connection.
+   * @param name Destination database name. "main" for main database, "temp" for temporary database, or the name specified after the AS keyword in an ATTACH statement for an attached database.
+   */
+  backup(dest: Database, name = "main"): void {
+    const backup = sqlite3_backup_init(
+      dest.unsafeHandle,
+      toCString(name),
+      this.#handle,
+      toCString("main"),
+    );
+    if (backup) {
+      unwrap(sqlite3_backup_step(backup, -1));
+      unwrap(sqlite3_backup_finish(backup));
+    } else {
+      unwrap(sqlite3_errcode(dest.#handle), dest.#handle);
+    }
   }
 
   [Symbol.for("Deno.customInspect")](): string {
