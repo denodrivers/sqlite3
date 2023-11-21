@@ -352,6 +352,13 @@ const symbols = {
     result: "pointer",
   },
 
+  sqlite3_errcode: {
+    parameters: [
+      "pointer", // sqlite3 *db
+    ],
+    result: "i32",
+  },
+
   sqlite3_errmsg: {
     parameters: [
       "pointer", // sqlite3 *db

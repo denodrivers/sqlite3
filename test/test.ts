@@ -490,6 +490,30 @@ Deno.test("sqlite", async (t) => {
   });
 
   await t.step({
+    name: "backup",
+    fn(): void {
+      const url = new URL("backup.db", import.meta.url);
+      const db2 = new Database(url);
+      db.backup(db2, "main");
+
+      db2.close();
+
+      try {
+        Deno.removeSync(url);
+      } catch (_) { /* ignore */ }
+    },
+  });
+
+  await t.step("backup (error)", () => {
+    // source == destination
+    assertThrows(
+      () => db.backup(db, "main"),
+      Error,
+      "source and destination must be distinct",
+    );
+  });
+
+  await t.step({
     name: "close",
     sanitizeResources: false,
     fn(): void {

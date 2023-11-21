@@ -1,4 +1,4 @@
-import { SQLITE3_MISUSE, SQLITE3_OK } from "./constants.ts";
+import { SQLITE3_DONE, SQLITE3_MISUSE, SQLITE3_OK } from "./constants.ts";
 import ffi from "./ffi.ts";
 
 const {
@@ -28,13 +28,13 @@ export class SqliteError extends Error {
 }
 
 export function unwrap(code: number, db?: Deno.PointerValue): void {
-  if (code === SQLITE3_OK) return;
+  if (code === SQLITE3_OK || code === SQLITE3_DONE) return;
   if (code === SQLITE3_MISUSE) {
     throw new SqliteError(code, "SQLite3 API misuse");
   } else if (db !== undefined) {
     const errmsg = sqlite3_errmsg(db);
     if (errmsg === null) throw new SqliteError(code);
-    throw new Error(Deno.UnsafePointerView.getCString(sqlite3_errmsg(db)!));
+    throw new Error(Deno.UnsafePointerView.getCString(errmsg));
   } else {
     throw new SqliteError(
       code,
