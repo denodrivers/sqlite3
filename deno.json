@@ -1,23 +1,36 @@
 {
   "name": "sqlite3",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "github": "https://github.com/denodrivers/sqlite3",
 
+  "exports": "./mod.ts",
+
+  "exclude": [
+    "sqlite",
+    "scripts"
+  ],
+
   "tasks": {
-    "test": "deno test --unstable -A test/test.ts",
-    "build": "deno run -A --unstable scripts/build.ts",
-    "bench-deno": "deno run -A --unstable bench/bench_deno.js 50 1000000",
-    "bench-deno-ffi": "deno run -A --unstable bench/bench_deno_ffi.js 50 1000000",
-    "bench-deno-wasm": "deno run -A --unstable bench/bench_deno_wasm.js 50 1000000",
+    "test": "deno test --unstable-ffi -A test/test.ts",
+    "build": "deno run -A scripts/build.ts",
+    "bench-deno": "deno run -A --unstable-ffi bench/bench_deno.js 50 1000000",
+    "bench-deno-ffi": "deno run -A --unstable-ffi bench/bench_deno_ffi.js 50 1000000",
+    "bench-deno-wasm": "deno run -A --unstable-ffi bench/bench_deno_wasm.js 50 1000000",
     "bench-node": "node bench/bench_node.js 50 1000000",
     "bench-bun": "bun run bench/bench_bun.js 50 1000000",
     "bench-bun-ffi": "bun run bench/bench_bun_ffi.js 50 1000000",
     "bench-c": "./bench/bench 50 1000000",
     "bench-python": "python ./bench/bench_python.py",
-    "bench:northwind": "deno bench -A --unstable bench/northwind/deno.js",
-    "bench-wasm:northwind": "deno run -A --unstable bench/northwind/deno_wasm.js",
+    "bench:northwind": "deno bench -A --unstable-ffi bench/northwind/deno.js",
+    "bench-wasm:northwind": "deno run -A --unstable-ffi bench/northwind/deno_wasm.js",
     "bench-node:northwind": "node bench/northwind/node.mjs",
     "bench-bun:northwind": "bun run bench/northwind/bun.js"
+  },
+
+  "fmt": {
+    "exclude": [
+      "sqlite"
+    ]
   },
 
   "lint": {

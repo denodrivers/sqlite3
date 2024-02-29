@@ -59,15 +59,16 @@ export type BindValue =
 export type BindParameters = BindValue[] | Record<string, BindValue>;
 export type RestBindParameters = BindValue[] | [BindParameters];
 
-export const STATEMENTS = new Map<Deno.PointerValue, Deno.PointerValue>();
+/** Maps sqlite_stmt* pointers to sqlite* db pointers. */
+export const STATEMENTS_TO_DB = new Map<Deno.PointerValue, Deno.PointerValue>();
 
 const emptyStringBuffer = new Uint8Array(1);
 
 const statementFinalizer = new FinalizationRegistry(
   (ptr: Deno.PointerValue) => {
-    if (STATEMENTS.has(ptr)) {
+    if (STATEMENTS_TO_DB.has(ptr)) {
       sqlite3_finalize(ptr);
-      STATEMENTS.delete(ptr);
+      STATEMENTS_TO_DB.delete(ptr);
     }
   },
 );
@@ -203,7 +204,7 @@ export class Statement {
       db.unsafeHandle,
     );
     this.#handle = Deno.UnsafePointer.create(pHandle[0] + 2 ** 32 * pHandle[1]);
-    STATEMENTS.set(this.#handle, db.unsafeHandle);
+    STATEMENTS_TO_DB.set(this.#handle, db.unsafeHandle);
     this.#unsafeConcurrency = db.unsafeConcurrency;
     this.#finalizerToken = { handle: this.#handle };
     statementFinalizer.register(this, this.#handle, this.#finalizerToken);
@@ -744,10 +745,10 @@ export class Statement {
 
   /** Free up the statement object. */
   finalize(): void {
-    if (!STATEMENTS.has(this.#handle)) return;
+    if (!STATEMENTS_TO_DB.has(this.#handle)) return;
     this.#bindRefs.clear();
     statementFinalizer.unregister(this.#finalizerToken);
-    STATEMENTS.delete(this.#handle);
+    STATEMENTS_TO_DB.delete(this.#handle);
     unwrap(sqlite3_finalize(this.#handle));
   }
 

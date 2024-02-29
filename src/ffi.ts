@@ -1,5 +1,5 @@
-import { dlopen } from "https://deno.land/x/plug@1.0.1/mod.ts";
-import meta from "../deno.json" assert { type: "json" };
+import meta from "../deno.json" with { type: "json" };
+import { dlopen } from "../deps.ts";
 
 const symbols = {
   sqlite3_open_v2: {
@@ -432,6 +432,7 @@ const symbols = {
       "pointer", // void (*xFinal)(sqlite3_context*)
     ],
     result: "i32",
+    optional: true,
   },
 
   sqlite3_result_blob: {
@@ -555,6 +556,7 @@ const symbols = {
       "i32", // int nBytes
     ],
     result: "pointer",
+    optional: true,
   },
 
   sqlite3_enable_load_extension: {
@@ -563,6 +565,7 @@ const symbols = {
       "i32", // int onoff
     ],
     result: "i32",
+    optional: true,
   },
 
   sqlite3_load_extension: {
@@ -573,6 +576,7 @@ const symbols = {
       "buffer", // const char **pzErrMsg
     ],
     result: "i32",
+    optional: true,
   },
 
   sqlite3_initialize: {

@@ -12,7 +12,11 @@ import {
   SQLITE_TEXT,
 } from "./constants.ts";
 import { readCstr, toCString, unwrap } from "./util.ts";
-import { RestBindParameters, Statement, STATEMENTS } from "./statement.ts";
+import {
+  RestBindParameters,
+  Statement,
+  STATEMENTS_TO_DB,
+} from "./statement.ts";
 import { BlobOpenOptions, SQLBlob } from "./blob.ts";
 
 /** Various options that can be configured when opening Database connection. */
@@ -61,6 +65,9 @@ export interface FunctionOptions {
   subtype?: boolean;
 }
 
+/**
+ * Options for user-defined aggregate functions.
+ */
 export interface AggregateFunctionOptions extends FunctionOptions {
   start: any | (() => any);
   step: (aggregate: any, ...args: any[]) => void;
@@ -104,9 +111,9 @@ const {
 } = ffi;
 
 /** SQLite version string */
-export const SQLITE_VERSION = readCstr(sqlite3_libversion()!);
+export const SQLITE_VERSION: string = readCstr(sqlite3_libversion()!);
 /** SQLite source ID string */
-export const SQLITE_SOURCEID = readCstr(sqlite3_sourceid()!);
+export const SQLITE_SOURCEID: string = readCstr(sqlite3_sourceid()!);
 
 /**
  * Whether the given SQL statement is complete.
@@ -190,8 +197,12 @@ export class Database {
     return this.#enableLoadExtension;
   }
 
-  // deno-lint-ignore explicit-module-boundary-types
   set enableLoadExtension(enabled: boolean) {
+    if (sqlite3_enable_load_extension === null) {
+      throw new Error(
+        "Extension loading is not supported by the shared library that was used.",
+      );
+    }
     const result = sqlite3_enable_load_extension(this.#handle, Number(enabled));
     unwrap(result, this.#handle);
     this.#enableLoadExtension = enabled;
@@ -417,6 +428,12 @@ export class Database {
     fn: CallableFunction,
     options?: FunctionOptions,
   ): void {
+    if (sqlite3_create_function === null) {
+      throw new Error(
+        "User-defined functions are not supported by the shared library that was used.",
+      );
+    }
+
     const cb = new Deno.UnsafeCallback(
       {
         parameters: ["pointer", "i32", "pointer"],
@@ -537,6 +554,14 @@ export class Database {
    * Creates a new user-defined aggregate function.
    */
   aggregate(name: string, options: AggregateFunctionOptions): void {
+    if (
+      sqlite3_aggregate_context === null || sqlite3_create_function === null
+    ) {
+      throw new Error(
+        "User-defined functions are not supported by the shared library that was used.",
+      );
+    }
+
     const contexts = new Map<number | bigint, any>();
 
     const cb = new Deno.UnsafeCallback(
@@ -694,6 +719,12 @@ export class Database {
    * Loads an SQLite extension library from the named file.
    */
   loadExtension(file: string, entryPoint?: string): void {
+    if (sqlite3_load_extension === null) {
+      throw new Error(
+        "Extension loading is not supported by the shared library that was used.",
+      );
+    }
+
     if (!this.enableLoadExtension) {
       throw new Error("Extension loading is not enabled");
     }
@@ -726,10 +757,10 @@ export class Database {
    */
   close(): void {
     if (!this.#open) return;
-    for (const [stmt, db] of STATEMENTS) {
+    for (const [stmt, db] of STATEMENTS_TO_DB) {
       if (db === this.#handle) {
         sqlite3_finalize(stmt);
-        STATEMENTS.delete(stmt);
+        STATEMENTS_TO_DB.delete(stmt);
       }
     }
     for (const cb of this.#callbacks) {

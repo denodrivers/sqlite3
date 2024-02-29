@@ -1,1 +1,2 @@
-export { fromFileUrl } from "https://deno.land/std@0.179.0/path/mod.ts";
+export { fromFileUrl } from "jsr:@std/path@0.217";
+export { dlopen } from "jsr:@denosaurs/plug@1";
