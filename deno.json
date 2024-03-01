@@ -1,5 +1,5 @@
 {
-  "name": "sqlite3",
+  "name": "@db/sqlite",
   "version": "0.11.0",
   "github": "https://github.com/denodrivers/sqlite3",
 

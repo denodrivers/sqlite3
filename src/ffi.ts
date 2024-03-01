@@ -624,7 +624,7 @@ try {
     lib = (
       await dlopen(
         {
-          name: meta.name,
+          name: "sqlite3",
           url: `${meta.github}/releases/download/${meta.version}/`,
           suffixes: {
             aarch64: "_aarch64",
