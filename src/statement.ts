@@ -108,9 +108,14 @@ function getColumn(handle: Deno.PointerValue, i: number, int64: boolean): any {
 
     case SQLITE_BLOB: {
       const ptr = sqlite3_column_blob(handle, i);
+      
+      if (ptr === null) {
+        return new Uint8Array();
+      }
+
       const bytes = sqlite3_column_bytes(handle, i);
       return new Uint8Array(
-        Deno.UnsafePointerView.getArrayBuffer(ptr!, bytes).slice(0),
+        Deno.UnsafePointerView.getArrayBuffer(ptr, bytes).slice(0),
       );
     }
 
