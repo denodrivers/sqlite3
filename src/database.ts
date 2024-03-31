@@ -13,11 +13,11 @@ import {
 } from "./constants.ts";
 import { readCstr, toCString, unwrap } from "./util.ts";
 import {
-  RestBindParameters,
+  type RestBindParameters,
   Statement,
   STATEMENTS_TO_DB,
 } from "./statement.ts";
-import { BlobOpenOptions, SQLBlob } from "./blob.ts";
+import { type BlobOpenOptions, SQLBlob } from "./blob.ts";
 
 /** Various options that can be configured when opening Database connection. */
 export interface DatabaseOpenOptions {
