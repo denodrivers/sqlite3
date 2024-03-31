@@ -302,7 +302,7 @@ export class Statement {
             sqlite3_bind_blob(
               this.#handle,
               i + 1,
-              param,
+              param.byteLength === 0 ? emptyStringBuffer : param,
               param.byteLength,
               null,
             ),

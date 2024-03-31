@@ -328,14 +328,29 @@ Deno.test("sqlite", async (t) => {
     db.exec(`
       create table blobs (
         id integer primary key,
-        data blob not null
+        data blob
       )
     `);
   });
 
+  await t.step("empty blob vs null blob", () => {
+    db.exec("insert into blobs (id, data) values (?, ?)", 0, new Uint8Array());
+    db.exec("insert into blobs (id, data) values (?, ?)", 1, null);
+
+    const [
+      [blob1],
+      [blob2],
+    ] = db.prepare("select data from blobs").values<
+      [Uint8Array | null]
+    >();
+
+    assertEquals(blob1, new Uint8Array());
+    assertEquals(blob2, null);
+  });
+
   await t.step("insert blob", () => {
     const blob = new Uint8Array(1024 * 32);
-    db.exec("insert into blobs (id, data) values (?, ?)", 0, blob);
+    db.exec("insert into blobs (id, data) values (?, ?)", 3, blob);
   });
 
   await t.step("sql blob", async (t) => {
