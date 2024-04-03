@@ -324,6 +324,22 @@ Deno.test("sqlite", async (t) => {
     assertEquals(s, [""]);
   });
 
+  await t.step("enable update or delete limit", () => {
+    db.run(`
+      create table test_limit (
+        id integer primary key autoincrement
+      )
+    `);
+
+    db.run(`
+      delete from test_limit
+      order by id
+      limit 1
+    `);
+
+    db.run(`drop table test_limit`);
+  });
+
   await t.step("create blob table", () => {
     db.exec(`
       create table blobs (

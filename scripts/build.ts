@@ -96,6 +96,7 @@ if (Deno.build.os === "windows") {
   $(
     new URL("../sqlite/configure", import.meta.url),
     "--enable-releasemode",
+    "--enable-update-limit",
     ...(Deno.build.arch === ARCH ? [] : ["--disable-tcl", "--host=arm-linux"]),
   );
   $(
