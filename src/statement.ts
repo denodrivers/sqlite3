@@ -785,4 +785,12 @@ export class Statement {
     }
     sqlite3_reset(this.#handle);
   }
+
+  [Symbol.dispose](): void {
+    this.finalize();
+  }
+
+  [Symbol.for("Deno.customInspect")](): string {
+    return `Statement { ${this.expandedSql} }`;
+  }
 }

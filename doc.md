@@ -146,6 +146,15 @@ retrieve the results, and more.
 
 ```ts
 const stmt = db.prepare("SELECT * FROM foo WHERE bar = ? AND baz = ?");
+
+// or with a using statement
+
+{
+  using stmt = db.prepare("SELECT * FROM foo WHERE bar = ? AND baz = ?");
+  // use stmt
+}
+
+// automatically disposed
 ```
 
 For more details on binding parameters, see
@@ -249,6 +258,18 @@ this method.
 
 ```ts
 stmt.finalize();
+```
+
+You can also use `using` statement to automatically free the statement once the
+scope ends.
+
+```ts
+{
+  using stmt = db.prepare("SELECT * FROM foo WHERE bar = ? AND baz = ?");
+  stmt.run("bar", "baz");
+}
+
+// stmt is automatically finalized here
 ```
 
 ## Setting fixed parameters
