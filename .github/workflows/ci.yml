@@ -85,8 +85,6 @@ jobs:
         run: deno task build
 
       - name: Run Tests
-        env:
-          DENO_SQLITE_LOCAL: 1
         run: deno task test
 
       - name: Release

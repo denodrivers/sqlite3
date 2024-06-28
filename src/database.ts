@@ -1,5 +1,5 @@
-import ffi from "./ffi.ts";
-import { fromFileUrl } from "../deps.ts";
+import ffi, { unwrap } from "./ffi.ts";
+import { fromFileUrl } from "@std/path";
 import {
   SQLITE3_OPEN_CREATE,
   SQLITE3_OPEN_MEMORY,
@@ -11,7 +11,7 @@ import {
   SQLITE_NULL,
   SQLITE_TEXT,
 } from "./constants.ts";
-import { readCstr, toCString, unwrap } from "./util.ts";
+import { readCstr, toCString } from "./util.ts";
 import {
   type RestBindParameters,
   Statement,
@@ -83,9 +83,6 @@ const {
   sqlite3_get_autocommit,
   sqlite3_exec,
   sqlite3_free,
-  sqlite3_libversion,
-  sqlite3_sourceid,
-  sqlite3_complete,
   sqlite3_finalize,
   sqlite3_result_blob,
   sqlite3_result_double,
@@ -109,20 +106,6 @@ const {
   sqlite3_backup_finish,
   sqlite3_errcode,
 } = ffi;
-
-/** SQLite version string */
-export const SQLITE_VERSION: string = readCstr(sqlite3_libversion()!);
-/** SQLite source ID string */
-export const SQLITE_SOURCEID: string = readCstr(sqlite3_sourceid()!);
-
-/**
- * Whether the given SQL statement is complete.
- *
- * @param statement SQL statement string
- */
-export function isComplete(statement: string): boolean {
-  return Boolean(sqlite3_complete(toCString(statement)));
-}
 
 /**
  * Represents a SQLite3 database connection.
@@ -233,7 +216,9 @@ export class Database {
 
     const pHandle = new Uint32Array(2);
     const result = sqlite3_open_v2(toCString(this.#path), pHandle, flags, null);
-    this.#handle = Deno.UnsafePointer.create(pHandle[0] + 2 ** 32 * pHandle[1]);
+    this.#handle = Deno.UnsafePointer.create(
+      BigInt(pHandle[0] + 2 ** 32 * pHandle[1]),
+    );
     if (result !== 0) sqlite3_close_v2(this.#handle);
     unwrap(result);
 
@@ -275,7 +260,10 @@ export class Database {
    * @returns Statement object
    */
   prepare(sql: string): Statement {
-    return new Statement(this, sql);
+    return new Statement(this.unsafeHandle, sql, {
+      int64: this.int64,
+      unsafeConcurrency: this.unsafeConcurrency,
+    });
   }
 
   /**
@@ -285,7 +273,7 @@ export class Database {
    * otherwise you will have memory leaks.
    */
   openBlob(options: BlobOpenOptions): SQLBlob {
-    return new SQLBlob(this, options);
+    return new SQLBlob(this.unsafeHandle, options);
   }
 
   /**
@@ -322,7 +310,9 @@ export class Database {
         null,
         new Uint8Array(pErr.buffer),
       );
-      const errPtr = Deno.UnsafePointer.create(pErr[0] + 2 ** 32 * pErr[1]);
+      const errPtr = Deno.UnsafePointer.create(
+        BigInt(pErr[0] + 2 ** 32 * pErr[1]),
+      );
       if (errPtr !== null) {
         const err = readCstr(errPtr);
         sqlite3_free(errPtr);
@@ -332,7 +322,7 @@ export class Database {
     }
 
     const stmt = this.prepare(sql);
-    stmt.run(...params);
+    stmt.run(params);
     return sqlite3_changes(this.#handle);
   }
 
@@ -348,7 +338,7 @@ export class Database {
   ): T[] {
     const sql = strings.join("?");
     const stmt = this.prepare(sql);
-    return stmt.all(...parameters);
+    return stmt.all(parameters);
   }
 
   /**
@@ -444,7 +434,7 @@ export class Database {
         const args: any[] = [];
         for (let i = 0; i < nArgs; i++) {
           const arg = Deno.UnsafePointer.create(
-            Number(argptr.getBigUint64(i * 8)),
+            argptr.getBigUint64(i * 8),
           );
           const type = sqlite3_value_type(arg);
           switch (type) {
@@ -498,15 +488,18 @@ export class Database {
         } else if (typeof result === "boolean") {
           sqlite3_result_int(ctx, result ? 1 : 0);
         } else if (typeof result === "number") {
-          if (Number.isSafeInteger(result)) sqlite3_result_int64(ctx, result);
-          else sqlite3_result_double(ctx, result);
+          if (Number.isSafeInteger(result)) {
+            sqlite3_result_int64(ctx, BigInt(result));
+          } else {
+            sqlite3_result_double(ctx, result);
+          }
         } else if (typeof result === "bigint") {
           sqlite3_result_int64(ctx, result);
         } else if (typeof result === "string") {
           const buffer = new TextEncoder().encode(result);
-          sqlite3_result_text(ctx, buffer, buffer.byteLength, 0);
+          sqlite3_result_text(ctx, buffer, buffer.byteLength, 0n);
         } else if (result instanceof Uint8Array) {
-          sqlite3_result_blob(ctx, result, result.length, -1);
+          sqlite3_result_blob(ctx, result, result.length, -1n);
         } else {
           const buffer = new TextEncoder().encode(
             `Invalid return value: ${Deno.inspect(result)}`,
@@ -585,7 +578,7 @@ export class Database {
         const args: any[] = [];
         for (let i = 0; i < nArgs; i++) {
           const arg = Deno.UnsafePointer.create(
-            Number(argptr.getBigUint64(i * 8)),
+            argptr.getBigUint64(i * 8),
           );
           const type = sqlite3_value_type(arg);
           switch (type) {
@@ -662,15 +655,18 @@ export class Database {
         } else if (typeof result === "boolean") {
           sqlite3_result_int(ctx, result ? 1 : 0);
         } else if (typeof result === "number") {
-          if (Number.isSafeInteger(result)) sqlite3_result_int64(ctx, result);
-          else sqlite3_result_double(ctx, result);
+          if (Number.isSafeInteger(result)) {
+            sqlite3_result_int64(ctx, BigInt(result));
+          } else {
+            sqlite3_result_double(ctx, result);
+          }
         } else if (typeof result === "bigint") {
           sqlite3_result_int64(ctx, result);
         } else if (typeof result === "string") {
           const buffer = new TextEncoder().encode(result);
-          sqlite3_result_text(ctx, buffer, buffer.byteLength, 0);
+          sqlite3_result_text(ctx, buffer, buffer.byteLength, 0n);
         } else if (result instanceof Uint8Array) {
-          sqlite3_result_blob(ctx, result, result.length, -1);
+          sqlite3_result_blob(ctx, result, result.length, -1n);
         } else {
           const buffer = new TextEncoder().encode(
             `Invalid return value: ${Deno.inspect(result)}`,
@@ -739,7 +735,7 @@ export class Database {
     );
 
     const pzErrPtr = Deno.UnsafePointer.create(
-      pzErrMsg[0] + 2 ** 32 * pzErrMsg[1],
+      BigInt(pzErrMsg[0] + 2 ** 32 * pzErrMsg[1]),
     );
     if (pzErrPtr !== null) {
       const pzErr = readCstr(pzErrPtr);

@@ -1,6 +1,5 @@
-import type { Database } from "./database.ts";
-import ffi from "./ffi.ts";
-import { toCString, unwrap } from "./util.ts";
+import ffi, { unwrap } from "./ffi.ts";
+import { toCString } from "./util.ts";
 
 const {
   sqlite3_blob_open,
@@ -35,22 +34,24 @@ export interface BlobOpenOptions {
 export class SQLBlob {
   #handle: Deno.PointerValue;
 
-  constructor(db: Database, options: BlobOpenOptions) {
+  constructor(handle: Deno.PointerValue, options: BlobOpenOptions) {
     options = Object.assign({
       readonly: true,
       db: "main",
     }, options);
     const pHandle = new Uint32Array(2);
     unwrap(sqlite3_blob_open(
-      db.unsafeHandle,
+      handle,
       toCString(options.db ?? "main"),
       toCString(options.table),
       toCString(options.column),
-      options.row,
+      BigInt(options.row),
       options.readonly === false ? 1 : 0,
       pHandle,
     ));
-    this.#handle = Deno.UnsafePointer.create(pHandle[0] + 2 ** 32 * pHandle[1]);
+    this.#handle = Deno.UnsafePointer.create(
+      BigInt(pHandle[0] + 2 ** 32 * pHandle[1]),
+    );
   }
 
   /** Byte size of the Blob */

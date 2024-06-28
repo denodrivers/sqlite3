@@ -2,18 +2,21 @@
   "name": "@db/sqlite",
   "version": "0.11.2",
   "github": "https://github.com/denodrivers/sqlite3",
-
-  "exports": "./mod.ts",
-
+  "lock": false,
+  "exports": {
+    ".": "./mod.ts",
+    "./std_sql": "./std_sql.ts"
+  },
   "exclude": [
     "sqlite",
     "scripts"
   ],
-
   "tasks": {
-    "test": "deno test --unstable-ffi -A test/test.ts",
+    "test": "DENO_SQLITE_LOCAL=1 deno test --unstable-ffi -A",
+    "test:remote": "deno test --unstable-ffi -A",
     "build": "deno run -A scripts/build.ts",
     "bench-deno": "deno run -A --unstable-ffi bench/bench_deno.js 50 1000000",
+    "bench-deno-sqlx": "deno run -A --unstable-ffi bench/bench_deno_sqlx.js 50 1000000",
     "bench-deno-ffi": "deno run -A --unstable-ffi bench/bench_deno_ffi.js 50 1000000",
     "bench-deno-wasm": "deno run -A --unstable-ffi bench/bench_deno_wasm.js 50 1000000",
     "bench-node": "node bench/bench_node.js 50 1000000",
@@ -22,17 +25,16 @@
     "bench-c": "./bench/bench 50 1000000",
     "bench-python": "python ./bench/bench_python.py",
     "bench:northwind": "deno bench -A --unstable-ffi bench/northwind/deno.js",
+    "bench-sqlx:northwind": "deno bench -A --unstable-ffi bench/northwind/deno.js",
     "bench-wasm:northwind": "deno run -A --unstable-ffi bench/northwind/deno_wasm.js",
     "bench-node:northwind": "node bench/northwind/node.mjs",
     "bench-bun:northwind": "bun run bench/northwind/bun.js"
   },
-
   "fmt": {
     "exclude": [
       "sqlite"
     ]
   },
-
   "lint": {
     "rules": {
       "exclude": [
@@ -45,5 +47,12 @@
         "explicit-module-boundary-types"
       ]
     }
+  },
+  "imports": {
+    "@denosaurs/plug": "jsr:@denosaurs/plug@^1.0.5",
+    "@std/assert": "jsr:@std/assert@^0.221.0",
+    "@std/log": "jsr:@std/log@^0.223.0",
+    "@std/path": "jsr:@std/path@^0.217.0",
+    "@stdext/sql": "jsr:@stdext/sql@0.0.0-5"
   }
 }
