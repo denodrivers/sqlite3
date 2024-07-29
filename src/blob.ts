@@ -40,17 +40,17 @@ export class SQLBlob {
       readonly: true,
       db: "main",
     }, options);
-    const pHandle = new Uint32Array(2);
+    const pHandle = new BigUint64Array(1);
     unwrap(sqlite3_blob_open(
       db.unsafeHandle,
       toCString(options.db ?? "main"),
       toCString(options.table),
       toCString(options.column),
-      options.row,
+      BigInt(options.row),
       options.readonly === false ? 1 : 0,
       pHandle,
     ));
-    this.#handle = Deno.UnsafePointer.create(pHandle[0] + 2 ** 32 * pHandle[1]);
+    this.#handle = Deno.UnsafePointer.create(pHandle[0]);
   }
 
   /** Byte size of the Blob */
