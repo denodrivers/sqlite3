@@ -698,8 +698,9 @@ export class Statement {
   }
 
   /** Iterate over resultant rows from query. */
-  *[Symbol.iterator](): IterableIterator<any> {
+  *iter(...params: RestBindParameters): IterableIterator<any> {
     this.#begin();
+    this.#bindAll(params);
     const getRowObject = this.getRowObject();
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
@@ -710,6 +711,10 @@ export class Statement {
       unwrap(status, this.db.unsafeHandle);
     }
     sqlite3_reset(this.#handle);
+  }
+
+  [Symbol.iterator](): IterableIterator<any> {
+    return this.iter();
   }
 
   [Symbol.dispose](): void {
