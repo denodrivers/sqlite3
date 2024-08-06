@@ -79,15 +79,6 @@ const symbols = {
     result: "i32",
   },
 
-  sqlite3_step_cb: {
-    name: "sqlite3_step",
-    callback: true,
-    parameters: [
-      "pointer", // sqlite3_stmt *pStmt
-    ],
-    result: "i32",
-  },
-
   sqlite3_column_count: {
     parameters: [
       "pointer", // sqlite3_stmt *pStmt
