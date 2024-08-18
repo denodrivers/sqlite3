@@ -95,7 +95,9 @@ if (Deno.build.os === "windows") {
     new URL("../sqlite/configure", import.meta.url),
     "--enable-releasemode",
     "--enable-update-limit",
-    ...(Deno.build.arch === ARCH || Deno.build.os !== "linux" ? [] : ["--disable-tcl", "--host=arm-linux"]),
+    ...(Deno.build.arch === ARCH || Deno.build.os !== "linux"
+      ? []
+      : ["--disable-tcl", "--host=arm-linux"]),
   );
   $(
     "make",
