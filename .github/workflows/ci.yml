@@ -62,7 +62,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-latest, macos-latest]
+        os: [ubuntu-20.04, windows-2022, macos-14]
 
     runs-on: ${{ matrix.os }}
 
@@ -78,10 +78,28 @@ jobs:
           deno-version: 'v1.x'
       
       - name: Setup MSVC Dev Env
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-2022'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Build sqlite3
+      - name: Build sqlite3 (windows, linux)
+        if: matrix.os != 'macos-14'
+        env:
+          TARGET_ARCH: x86_64
+          CC: 
+        run: deno task build
+     
+      - name: Build sqlite3 (macos-x86_64)
+        if: matrix.os == 'macos-14'
+        env:
+          TARGET_ARCH: x86_64
+          CC: clang -arch x86_64
+        run: deno task build
+
+      - name: Build sqlite3 (macos-aarch64)
+        if: matrix.os == 'macos-14'
+        env:
+          TARGET_ARCH: aarch64
+          CC: clang -arch arm64
         run: deno task build
 
       - name: Run Tests
@@ -100,4 +118,5 @@ jobs:
           files: |
             build/libsqlite3.so
             build/libsqlite3.dylib
+            build/libsqlite3_aarch64.dylib
             build/sqlite3.dll

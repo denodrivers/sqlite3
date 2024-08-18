@@ -54,13 +54,11 @@ const $ = (cmd: string | URL, ...args: string[]) => {
   }).outputSync();
 };
 
-await Deno.remove(new URL("../build", import.meta.url), { recursive: true })
-  .catch(() => {});
 await Deno.remove(new URL("../sqlite/build", import.meta.url), {
   recursive: true,
 })
   .catch(() => {});
-await Deno.mkdir(new URL("../build", import.meta.url));
+await Deno.mkdir(new URL("../build", import.meta.url)).catch(() => {});
 await Deno.mkdir(new URL("../sqlite/build", import.meta.url));
 
 if (Deno.build.os !== "windows") {
@@ -97,7 +95,7 @@ if (Deno.build.os === "windows") {
     new URL("../sqlite/configure", import.meta.url),
     "--enable-releasemode",
     "--enable-update-limit",
-    ...(Deno.build.arch === ARCH ? [] : ["--disable-tcl", "--host=arm-linux"]),
+    ...(Deno.build.arch === ARCH || Deno.build.os !== "linux" ? [] : ["--disable-tcl", "--host=arm-linux"]),
   );
   $(
     "make",
