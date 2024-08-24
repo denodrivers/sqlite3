@@ -5,7 +5,7 @@ import {
   SQLITE_VERSION,
   SqliteError,
 } from "../mod.ts";
-import { assert, assertEquals, assertThrows } from "./deps.ts";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 
 console.log("sqlite version:", SQLITE_VERSION);
 
@@ -167,10 +167,10 @@ Deno.test("sqlite", async (t) => {
         double: number;
         blob: Uint8Array;
         nullable: null;
-      }>(
+      }>([
         1,
         "hello world",
-      );
+      ]);
 
     assertEquals(rows.length, 9);
     for (const row of rows) {
@@ -197,7 +197,7 @@ Deno.test("sqlite", async (t) => {
   await t.step("query with string param", () => {
     const row = db.prepare(
       "select * from test where text = ?",
-    ).values<[number, string, number, Uint8Array, null]>("hello 0")[0];
+    ).values<[number, string, number, Uint8Array, null]>(["hello 0"])[0];
 
     assertEquals(row[0], 0);
     assertEquals(row[1], "hello 0");
@@ -220,13 +220,13 @@ Deno.test("sqlite", async (t) => {
   await t.step("query parameters", () => {
     const row = db.prepare(
       "select ?, ?, ?, ?, ?",
-    ).values<[number, string, string, string, string]>(
+    ).values<[number, string, string, string, string]>([
       1,
       "alex",
       new Date("2023-01-01"),
       [1, 2, 3],
       { name: "alex" },
-    )[0];
+    ])[0];
 
     assertEquals(row[0], 1);
     assertEquals(row[1], "alex");
@@ -260,7 +260,7 @@ Deno.test("sqlite", async (t) => {
     );
     const [int] = db.prepare(
       "select integer from test where text = ?",
-    ).values<[number]>("bigint")[0];
+    ).values<[number]>(["bigint"], { int64: true })[0];
     assertEquals(int, value);
   });
 
@@ -277,7 +277,7 @@ Deno.test("sqlite", async (t) => {
     );
     const [int] = db.prepare(
       "select integer from test where text = ?",
-    ).values<[number]>("bigint2")[0];
+    ).values<[number]>(["bigint2"], { int64: true })[0];
     assertEquals(int, value);
   });
 
@@ -294,7 +294,7 @@ Deno.test("sqlite", async (t) => {
     );
     const [int] = db.prepare(
       "select integer from test where text = ?",
-    ).values<[bigint]>("bigint3")[0];
+    ).values<[bigint]>(["bigint3"], { int64: true })[0];
     assertEquals(int, value);
   });
 
@@ -310,7 +310,7 @@ Deno.test("sqlite", async (t) => {
     );
     const [int, double] = db.prepare(
       "select integer, double from test where text = ?",
-    ).values<[number, number]>("nan")[0];
+    ).values<[number, number]>(["nan"])[0];
     assertEquals(int, null);
     assertEquals(double, null);
   });
@@ -462,37 +462,37 @@ Deno.test("sqlite", async (t) => {
     const [result] = db
       .prepare("select deno_add(?, ?)")
       .enableCallback()
-      .value<[number]>(1, 2)!;
+      .value<[number]>([1, 2])!;
     assertEquals(result, 3);
 
     const [result2] = db
       .prepare("select deno_uppercase(?)")
       .enableCallback()
-      .value<[string]>("hello")!;
+      .value<[string]>(["hello"])!;
     assertEquals(result2, "HELLO");
 
     const [result3] = db
       .prepare("select deno_buffer_add_1(?)")
       .enableCallback()
-      .value<[Uint8Array]>(new Uint8Array([1, 2, 3]))!;
+      .value<[Uint8Array]>([new Uint8Array([1, 2, 3])])!;
     assertEquals(result3, new Uint8Array([2, 3, 4]));
 
-    const [result4] = db.prepare("select deno_add(?, ?)").value<[number]>(
+    const [result4] = db.prepare("select deno_add(?, ?)").value<[number]>([
       1.5,
       1.5,
-    )!;
+    ])!;
     assertEquals(result4, 3);
 
     const [result5] = db
       .prepare("select regexp(?, ?)")
       .enableCallback()
-      .value<[number]>("hello", "h.*")!;
+      .value<[number]>(["hello", "h.*"])!;
     assertEquals(result5, 1);
 
     const [result6] = db
       .prepare("select regexp(?, ?)")
       .enableCallback()
-      .value<[number]>("hello", "x.*")!;
+      .value<[number]>(["hello", "x.*"])!;
     assertEquals(result6, 0);
 
     db.exec("create table aggr_test (value integer)");

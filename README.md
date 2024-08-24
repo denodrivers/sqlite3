@@ -21,7 +21,20 @@ console.log(version);
 db.close();
 ```
 
+Using [stdext/sql](https://jsr.io/@stdext/sql) interfaces:
+
+```ts
+import { SqliteClient } from "jsr:@db/sqlite@0.11/std_sql";
+
+await using db = new SqliteClient("test.db");
+
+const [version] = await db.queryArray("select sqlite_version()");
+console.log(version);
+```
+
 ## Usage
+
+### Permissions
 
 Since this library depends on the unstable FFI API, you must pass `--allow-env`,
 `--allow-ffi` and `--unstable-ffi` flags. Network and FS permissions are also
@@ -33,6 +46,37 @@ access.
 ```sh
 deno run -A --unstable-ffi <file>
 ```
+
+### std/sql
+
+In addition to the existing `Database` class, a new entrypoint is also exported
+to provide compatibility with the [stdext/sql](https://jsr.io/@stdext/sql)
+interfaces. Due to the specs, this relies on promises.
+
+```ts
+import { SqliteClient } from "jsr:@db/sqlite@0.11/std_sql";
+
+await using db = new SqliteClient("test.db");
+
+await db.execute("create table people (name TEXT)"); // 0
+await db.execute("insert into people (name) values ('Alex'), ('Luca');"); // 2
+await db.query("select * from people"); // [{name:"Alex"}, {name:"Luca"}]
+await db.queryOne("select * from people"); // {name:"Alex"}
+Array.fromAsync(db.queryMany("select * from people")); // [{name:"Alex"}, {name:"Luca"}]
+await db.queryArray("select * from people"); // [["Alex"], ["Luca"]]
+await db.queryOneArray("select * from people"); // ["Alex"]
+Array.fromAsync(db.queryManyArray("select * from people")); // [["Alex"], ["Luca"]]
+await db.sql`select * from people`; // [{name:"Alex"}, {name:"Luca"}]
+await db.sqlArray`select * from people`; // [["Alex"], ["Luca"]]
+```
+
+> In general, the `SqliteClient` is good for most cases, and conforms to the
+> generalized interfaces in the standard library. However if you are facing
+> speed bottlenecks, the `Database` from the main export whould give you some
+> more performance.
+
+For more documentation regarding the standard interface, read the
+[docs](https://jsr.io/@stdext/sql)
 
 ## Benchmark
 
