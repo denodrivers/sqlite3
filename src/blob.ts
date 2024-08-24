@@ -1,6 +1,6 @@
 import type { Database } from "./database.ts";
-import ffi from "./ffi.ts";
-import { toCString, unwrap } from "./util.ts";
+import ffi, { unwrap } from "./ffi.ts";
+import { toCString } from "./util.ts";
 
 const {
   sqlite3_blob_open,

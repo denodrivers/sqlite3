@@ -1,5 +1,7 @@
 import meta from "../deno.json" with { type: "json" };
-import { dlopen } from "../deps.ts";
+import { dlopen } from "@denosaurs/plug";
+import { SQLITE3_DONE, SQLITE3_MISUSE, SQLITE3_OK } from "./constants.ts";
+import { SqliteError } from "./util.ts";
 
 const symbols = {
   sqlite3_open_v2: {
@@ -639,3 +641,28 @@ if (init !== 0) {
 }
 
 export default lib;
+
+export function unwrap(code: number, db?: Deno.PointerValue): void {
+  if (code === SQLITE3_OK || code === SQLITE3_DONE) return;
+  if (code === SQLITE3_MISUSE) {
+    throw new SqliteError(code, "SQLite3 API misuse");
+  } else if (db !== undefined) {
+    const errmsg = lib.sqlite3_errmsg(db);
+    if (errmsg === null) throw new SqliteError(code);
+    throw new Error(Deno.UnsafePointerView.getCString(errmsg));
+  } else {
+    throw new SqliteError(
+      code,
+      Deno.UnsafePointerView.getCString(lib.sqlite3_errstr(code)!),
+    );
+  }
+}
+
+/** SQLite version string */
+export const SQLITE_VERSION: string = Deno.UnsafePointerView.getCString(
+  lib.sqlite3_libversion()!,
+);
+/** SQLite source ID string */
+export const SQLITE_SOURCEID: string = Deno.UnsafePointerView.getCString(
+  lib.sqlite3_sourceid()!,
+);

@@ -1,6 +1,5 @@
-import type { Database } from "./database.ts";
-import { readCstr, toCString, unwrap } from "./util.ts";
-import ffi from "./ffi.ts";
+import { toCString } from "./util.ts";
+import ffi, { unwrap } from "./ffi.ts";
 import {
   SQLITE3_DONE,
   SQLITE3_ROW,
@@ -86,7 +85,7 @@ function getColumn(handle: Deno.PointerValue, i: number, int64: boolean): any {
     case SQLITE_TEXT: {
       const ptr = sqlite3_column_text(handle, i);
       if (ptr === null) return null;
-      const text = readCstr(ptr, 0);
+      const text = Deno.UnsafePointerView.getCString(ptr, 0);
       const value = sqlite3_column_value(handle, i);
       const subtype = sqlite3_value_subtype(value);
       if (subtype === JSON_SUBTYPE) {
@@ -130,6 +129,13 @@ function getColumn(handle: Deno.PointerValue, i: number, int64: boolean): any {
   }
 }
 
+export interface StatementOptions {
+  /** Uses unsafe concurrency */
+  unsafeConcurrency?: boolean;
+  /** Whether to use int64 for integer values. */
+  int64?: boolean;
+}
+
 /**
  * Represents a prepared statement.
  *
@@ -140,7 +146,7 @@ export class Statement {
   #finalizerToken: { handle: Deno.PointerValue };
   #bound = false;
   #hasNoArgs = false;
-  #unsafeConcurrency;
+  #options: StatementOptions;
 
   /**
    * Whether the query might call into JavaScript or not.
@@ -159,12 +165,14 @@ export class Statement {
 
   /** SQL string including bindings */
   get expandedSql(): string {
-    return readCstr(sqlite3_expanded_sql(this.#handle)!);
+    return Deno.UnsafePointerView.getCString(
+      sqlite3_expanded_sql(this.#handle)!,
+    );
   }
 
   /** The SQL string that we passed when creating statement */
   get sql(): string {
-    return readCstr(sqlite3_sql(this.#handle)!);
+    return Deno.UnsafePointerView.getCString(sqlite3_sql(this.#handle)!);
   }
 
   /** Whether this statement doesn't make any direct changes to the DB */
@@ -173,25 +181,84 @@ export class Statement {
   }
 
   /** Simply run the query without retrieving any output there may be. */
-  run(...args: RestBindParameters): number {
-    return this.#runWithArgs(...args);
+  run(args?: BindParameters): number {
+    if (this.#hasNoArgs) {
+      return this.#runNoArgs();
+    } else {
+      if (args === undefined) {
+        throw new Error("Arguments must be provided for this statement");
+      }
+      return this.#runWithArgs(args);
+    }
   }
 
   /**
    * Run the query and return the resulting rows where rows are array of columns.
    */
-  values<T extends unknown[] = any[]>(...args: RestBindParameters): T[] {
-    return this.#valuesWithArgs(...args);
+  values<T extends unknown[] = any[]>(
+    args?: BindParameters,
+    options?: StatementOptions,
+  ): T[] {
+    if (this.#hasNoArgs) {
+      return this.#valuesNoArgs(options);
+    } else {
+      if (args === undefined) {
+        throw new Error("Arguments must be provided for this statement");
+      }
+      return this.#valuesWithArgs(args, options);
+    }
   }
 
   /**
    * Run the query and return the resulting rows where rows are objects
    * mapping column name to their corresponding values.
    */
-  all<T extends object = Record<string, any>>(
-    ...args: RestBindParameters
+  all<T extends Record<string, unknown> = Record<string, any>>(
+    args?: BindParameters,
+    options?: StatementOptions,
   ): T[] {
-    return this.#allWithArgs(...args);
+    if (this.#hasNoArgs) {
+      return this.#allNoArgs(options);
+    } else {
+      if (args === undefined) {
+        throw new Error("Arguments must be provided for this statement");
+      }
+      return this.#allWithArgs(args, options);
+    }
+  }
+
+  /**
+   * Fetch only first row as an array, if any.
+   */
+  value<T extends unknown[] = any[]>(
+    args?: BindParameters,
+    options?: StatementOptions,
+  ): T | undefined {
+    if (this.#hasNoArgs) {
+      return this.#valueNoArgs(options);
+    } else {
+      if (args === undefined) {
+        throw new Error("Arguments must be provided for this statement");
+      }
+      return this.#valueWithArgs(args, options);
+    }
+  }
+
+  /**
+   * Fetch only first row as an object, if any.
+   */
+  get<T extends Record<string, unknown> = Record<string, any>>(
+    args?: BindParameters,
+    options?: StatementOptions,
+  ): T | undefined {
+    if (this.#hasNoArgs) {
+      return this.#getNoArgs(options);
+    } else {
+      if (args === undefined) {
+        throw new Error("Arguments must be provided for this statement");
+      }
+      return this.#getWithArgs(args, options);
+    }
   }
 
   #bindParameterCount: number;
@@ -201,35 +268,34 @@ export class Statement {
     return this.#bindParameterCount;
   }
 
-  constructor(public db: Database, sql: string) {
-    const pHandle = new BigUint64Array(1);
+  constructor(
+    public dbPointer: Deno.PointerValue,
+    sql: string,
+    options: StatementOptions = {},
+  ) {
+    this.#options = options;
+
+    const pHandle = new Uint32Array(2);
     unwrap(
       sqlite3_prepare_v2(
-        db.unsafeHandle,
+        this.dbPointer,
         toCString(sql),
         sql.length,
         pHandle,
         null,
       ),
-      db.unsafeHandle,
+      this.dbPointer,
     );
-    this.#handle = Deno.UnsafePointer.create(pHandle[0]);
-    STATEMENTS_TO_DB.set(this.#handle, db.unsafeHandle);
-    this.#unsafeConcurrency = db.unsafeConcurrency;
+    this.#handle = Deno.UnsafePointer.create(
+      BigInt(pHandle[0] + 2 ** 32 * pHandle[1]),
+    );
+    STATEMENTS_TO_DB.set(this.#handle, this.dbPointer);
     this.#finalizerToken = { handle: this.#handle };
     statementFinalizer.register(this, this.#handle, this.#finalizerToken);
 
-    if (
-      (this.#bindParameterCount = sqlite3_bind_parameter_count(
-        this.#handle,
-      )) === 0
-    ) {
+    this.#bindParameterCount = sqlite3_bind_parameter_count(this.#handle);
+    if (this.#bindParameterCount === 0) {
       this.#hasNoArgs = true;
-      this.all = this.#allNoArgs;
-      this.values = this.#valuesNoArgs;
-      this.run = this.#runNoArgs;
-      this.value = this.#valueNoArgs;
-      this.get = this.#getNoArgs;
     }
   }
 
@@ -241,7 +307,9 @@ export class Statement {
 
   /** Get bind parameter name by index */
   bindParameterName(i: number): string {
-    return readCstr(sqlite3_bind_parameter_name(this.#handle, i)!);
+    return Deno.UnsafePointerView.getCString(
+      sqlite3_bind_parameter_name(this.#handle, i)!,
+    );
   }
 
   /** Get bind parameter index by name */
@@ -366,20 +434,14 @@ export class Statement {
    * This method is merely just for optimization to avoid binding parameters
    * each time in prepared statement.
    */
-  bind(...params: RestBindParameters): this {
+  bind(params: BindParameters): this {
     this.#bindAll(params);
     this.#bound = true;
     return this;
   }
 
-  #bindAll(params: RestBindParameters | BindParameters): void {
+  #bindAll(params: BindParameters): void {
     if (this.#bound) throw new Error("Statement already bound to values");
-    if (
-      typeof params[0] === "object" && params[0] !== null &&
-      !(params[0] instanceof Uint8Array) && !(params[0] instanceof Date)
-    ) {
-      params = params[0];
-    }
     if (Array.isArray(params)) {
       for (let i = 0; i < params.length; i++) {
         this.#bind(i, (params as BindValue[])[i]);
@@ -398,30 +460,31 @@ export class Statement {
   #runNoArgs(): number {
     const handle = this.#handle;
     this.#begin();
-    const status = sqlite3_step(handle);
+    const status = sqlite3_step(this.#handle);
     if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
     sqlite3_reset(handle);
-    return sqlite3_changes(this.db.unsafeHandle);
+    return sqlite3_changes(this.dbPointer);
   }
 
-  #runWithArgs(...params: RestBindParameters): number {
+  #runWithArgs(params: BindParameters): number {
     const handle = this.#handle;
     this.#begin();
     this.#bindAll(params);
-    const status = sqlite3_step(handle);
+    const status = sqlite3_step(this.#handle);
     if (!this.#hasNoArgs && !this.#bound && params.length) {
       this.#bindRefs.clear();
     }
     if (status !== SQLITE3_ROW && status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
     sqlite3_reset(handle);
-    return sqlite3_changes(this.db.unsafeHandle);
+    return sqlite3_changes(this.dbPointer);
   }
 
-  #valuesNoArgs<T extends Array<unknown>>(): T[] {
+  #valuesNoArgs<T extends Array<unknown>>(options?: StatementOptions): T[] {
+    const mergedOptions = this.#getOptions(options);
     const handle = this.#handle;
     this.#begin();
     const columnCount = sqlite3_column_count(handle);
@@ -432,28 +495,30 @@ export class Statement {
       return function(h) {
         return [${
         Array.from({ length: columnCount }).map((_, i) =>
-          `getColumn(h, ${i}, ${this.db.int64})`
+          `getColumn(h, ${i}, ${mergedOptions.int64})`
         )
           .join(", ")
       }];
       };
       `,
     )(getColumn);
-    let status = sqlite3_step(handle);
+    let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
       result.push(getRowArray(handle));
       status = sqlite3_step(handle);
     }
     if (status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
     sqlite3_reset(handle);
     return result as T[];
   }
 
   #valuesWithArgs<T extends Array<unknown>>(
-    ...params: RestBindParameters
+    params: BindParameters,
+    options?: StatementOptions,
   ): T[] {
+    const mergedOptions = this.#getOptions(options);
     const handle = this.#handle;
     this.#begin();
     this.#bindAll(params);
@@ -465,7 +530,7 @@ export class Statement {
       return function(h) {
         return [${
         Array.from({ length: columnCount }).map((_, i) =>
-          `getColumn(h, ${i}, ${this.db.int64})`
+          `getColumn(h, ${i}, ${mergedOptions.int64})`
         )
           .join(", ")
       }];
@@ -481,7 +546,7 @@ export class Statement {
       this.#bindRefs.clear();
     }
     if (status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
     sqlite3_reset(handle);
     return result as T[];
@@ -489,9 +554,10 @@ export class Statement {
 
   #rowObjectFn: ((h: Deno.PointerValue) => any) | undefined;
 
-  getRowObject(): (h: Deno.PointerValue) => any {
-    if (!this.#rowObjectFn || !this.#unsafeConcurrency) {
-      const columnNames = this.columnNames();
+  getRowObject(options?: StatementOptions): (h: Deno.PointerValue) => any {
+    const mergedOptions = this.#getOptions(options);
+    if (!this.#rowObjectFn || !mergedOptions.unsafeConcurrency) {
+      const columnNames = this.columnNames(options);
       const getRowObject = new Function(
         "getColumn",
         `
@@ -499,7 +565,7 @@ export class Statement {
           return {
             ${
           columnNames.map((name, i) =>
-            `"${name}": getColumn(h, ${i}, ${this.db.int64})`
+            `"${name}": getColumn(h, ${i}, ${mergedOptions.int64})`
           ).join(",\n")
         }
           };
@@ -511,10 +577,12 @@ export class Statement {
     return this.#rowObjectFn!;
   }
 
-  #allNoArgs<T extends object>(): T[] {
+  #allNoArgs<T extends Record<string, unknown>>(
+    options?: StatementOptions,
+  ): T[] {
     const handle = this.#handle;
     this.#begin();
-    const getRowObject = this.getRowObject();
+    const getRowObject = this.getRowObject(options);
     const result: T[] = [];
     let status = sqlite3_step(handle);
     while (status === SQLITE3_ROW) {
@@ -522,19 +590,20 @@ export class Statement {
       status = sqlite3_step(handle);
     }
     if (status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
     sqlite3_reset(handle);
     return result as T[];
   }
 
-  #allWithArgs<T extends object>(
-    ...params: RestBindParameters
+  #allWithArgs<T extends Record<string, unknown>>(
+    params: BindParameters,
+    options?: StatementOptions,
   ): T[] {
     const handle = this.#handle;
     this.#begin();
     this.#bindAll(params);
-    const getRowObject = this.getRowObject();
+    const getRowObject = this.getRowObject(options);
     const result: T[] = [];
     let status = sqlite3_step(handle);
     while (status === SQLITE3_ROW) {
@@ -545,27 +614,22 @@ export class Statement {
       this.#bindRefs.clear();
     }
     if (status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
     sqlite3_reset(handle);
     return result as T[];
   }
 
   /** Fetch only first row as an array, if any. */
-  value<T extends Array<unknown>>(
-    ...params: RestBindParameters
+  #valueWithArgs<T extends Array<unknown>>(
+    params: BindParameters,
+    options?: StatementOptions,
   ): T | undefined {
+    const mergedOptions = this.#getOptions(options);
     const handle = this.#handle;
-    const int64 = this.db.int64;
     const arr = new Array(sqlite3_column_count(handle));
-    sqlite3_reset(handle);
-    if (!this.#hasNoArgs && !this.#bound) {
-      sqlite3_clear_bindings(handle);
-      this.#bindRefs.clear();
-      if (params.length) {
-        this.#bindAll(params);
-      }
-    }
+    this.#begin();
+    this.#bindAll(params);
 
     const status = sqlite3_step(handle);
 
@@ -575,46 +639,51 @@ export class Statement {
 
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < arr.length; i++) {
-        arr[i] = getColumn(handle, i, int64);
+        arr[i] = getColumn(handle, i, mergedOptions.int64);
       }
       sqlite3_reset(this.#handle);
       return arr as T;
     } else if (status === SQLITE3_DONE) {
       return;
     } else {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
   }
 
-  #valueNoArgs<T extends Array<unknown>>(): T | undefined {
+  #valueNoArgs<T extends Array<unknown>>(
+    options?: StatementOptions,
+  ): T | undefined {
+    const mergedOptions = this.#getOptions(options);
     const handle = this.#handle;
-    const int64 = this.db.int64;
     const cc = sqlite3_column_count(handle);
     const arr = new Array(cc);
     sqlite3_reset(handle);
     const status = sqlite3_step(handle);
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < cc; i++) {
-        arr[i] = getColumn(handle, i, int64);
+        arr[i] = getColumn(handle, i, mergedOptions.int64);
       }
       sqlite3_reset(this.#handle);
       return arr as T;
     } else if (status === SQLITE3_DONE) {
       return;
     } else {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
   }
 
   #columnNames: string[] | undefined;
   #rowObject: Record<string, unknown> = {};
 
-  columnNames(): string[] {
-    if (!this.#columnNames || !this.#unsafeConcurrency) {
+  columnNames(options?: StatementOptions): string[] {
+    const mergedOptions = this.#getOptions(options);
+    if (!this.#columnNames || !mergedOptions.unsafeConcurrency) {
       const columnCount = sqlite3_column_count(this.#handle);
       const columnNames = new Array(columnCount);
       for (let i = 0; i < columnCount; i++) {
-        columnNames[i] = readCstr(sqlite3_column_name(this.#handle, i)!);
+        columnNames[i] = Deno.UnsafePointerView.getCString(
+          sqlite3_column_name(this.#handle, i)!,
+        );
       }
       this.#columnNames = columnNames;
       this.#rowObject = {};
@@ -626,23 +695,18 @@ export class Statement {
   }
 
   /** Fetch only first row as an object, if any. */
-  get<T extends object>(
-    ...params: RestBindParameters
+  #getWithArgs<T extends Record<string, unknown>>(
+    params: BindParameters,
+    options?: StatementOptions,
   ): T | undefined {
+    const mergedOptions = this.#getOptions(options);
     const handle = this.#handle;
-    const int64 = this.db.int64;
 
-    const columnNames = this.columnNames();
+    const columnNames = this.columnNames(options);
 
     const row: Record<string, unknown> = {};
-    sqlite3_reset(handle);
-    if (!this.#hasNoArgs && !this.#bound) {
-      sqlite3_clear_bindings(handle);
-      this.#bindRefs.clear();
-      if (params.length) {
-        this.#bindAll(params);
-      }
-    }
+    this.#begin();
+    this.#bindAll(params);
 
     const status = sqlite3_step(handle);
 
@@ -652,34 +716,36 @@ export class Statement {
 
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < columnNames.length; i++) {
-        row[columnNames[i]] = getColumn(handle, i, int64);
+        row[columnNames[i]] = getColumn(handle, i, mergedOptions.int64);
       }
       sqlite3_reset(this.#handle);
       return row as T;
     } else if (status === SQLITE3_DONE) {
       return;
     } else {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
   }
 
-  #getNoArgs<T extends object>(): T | undefined {
+  #getNoArgs<T extends Record<string, unknown>>(
+    options?: StatementOptions,
+  ): T | undefined {
+    const mergedOptions = this.#getOptions(options);
     const handle = this.#handle;
-    const int64 = this.db.int64;
-    const columnNames = this.columnNames();
+    const columnNames = this.columnNames(options);
     const row: Record<string, unknown> = this.#rowObject;
     sqlite3_reset(handle);
     const status = sqlite3_step(handle);
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < columnNames?.length; i++) {
-        row[columnNames[i]] = getColumn(handle, i, int64);
+        row[columnNames[i]] = getColumn(handle, i, mergedOptions.int64);
       }
       sqlite3_reset(handle);
       return row as T;
     } else if (status === SQLITE3_DONE) {
       return;
     } else {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
   }
 
@@ -694,27 +760,82 @@ export class Statement {
 
   /** Coerces the statement to a string, which in this case is expanded SQL. */
   toString(): string {
-    return readCstr(sqlite3_expanded_sql(this.#handle)!);
+    return Deno.UnsafePointerView.getCString(
+      sqlite3_expanded_sql(this.#handle)!,
+    );
   }
 
-  /** Iterate over resultant rows from query. */
-  *iter(...params: RestBindParameters): IterableIterator<any> {
+  /**
+   * Iterate over resultant rows from query as objects.
+   */
+  *getMany<T extends Record<string, unknown>>(
+    params?: BindParameters,
+    options?: StatementOptions,
+  ): IterableIterator<T> {
     this.#begin();
-    this.#bindAll(params);
-    const getRowObject = this.getRowObject();
+    if (!this.#bound && !this.#hasNoArgs && params?.length) {
+      this.#bindAll(params);
+    }
+    const getRowObject = this.getRowObject(options);
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
       yield getRowObject(this.#handle);
       status = sqlite3_step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
+      unwrap(status, this.dbPointer);
     }
     sqlite3_reset(this.#handle);
   }
 
+  /**
+   * Iterate over resultant rows from query as arrays.
+   */
+  *valueMany<T extends Array<unknown>>(
+    params?: BindParameters,
+    options?: StatementOptions,
+  ): IterableIterator<T> {
+    const mergedOptions = this.#getOptions(options);
+    const handle = this.#handle;
+    this.#begin();
+    if (!this.#bound && !this.#hasNoArgs && params?.length) {
+      this.#bindAll(params);
+    }
+    const columnCount = sqlite3_column_count(handle);
+    const getRowArray = new Function(
+      "getColumn",
+      `
+      return function(h) {
+        return [${
+        Array.from({ length: columnCount }).map((_, i) =>
+          `getColumn(h, ${i}, ${mergedOptions.int64})`
+        )
+          .join(", ")
+      }];
+      };
+      `,
+    )(getColumn);
+    let status = sqlite3_step(handle);
+    while (status === SQLITE3_ROW) {
+      yield getRowArray(handle);
+      status = sqlite3_step(handle);
+    }
+    if (status !== SQLITE3_DONE) {
+      unwrap(status, this.dbPointer);
+    }
+    sqlite3_reset(handle);
+  }
+
+  #getOptions(options?: StatementOptions): Required<StatementOptions> {
+    return {
+      int64: options?.int64 ?? this.#options.int64 ?? false,
+      unsafeConcurrency: options?.unsafeConcurrency ??
+        this.#options.unsafeConcurrency ?? false,
+    };
+  }
+
   [Symbol.iterator](): IterableIterator<any> {
-    return this.iter();
+    return this.getMany();
   }
 
   [Symbol.dispose](): void {

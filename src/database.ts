@@ -1,5 +1,5 @@
-import ffi from "./ffi.ts";
-import { fromFileUrl } from "../deps.ts";
+import ffi, { unwrap } from "./ffi.ts";
+import { fromFileUrl } from "@std/path";
 import {
   SQLITE3_OPEN_CREATE,
   SQLITE3_OPEN_MEMORY,
@@ -11,7 +11,7 @@ import {
   SQLITE_NULL,
   SQLITE_TEXT,
 } from "./constants.ts";
-import { readCstr, toCString, unwrap } from "./util.ts";
+import { toCString } from "./util.ts";
 import {
   type RestBindParameters,
   Statement,
@@ -83,8 +83,6 @@ const {
   sqlite3_get_autocommit,
   sqlite3_exec,
   sqlite3_free,
-  sqlite3_libversion,
-  sqlite3_sourceid,
   sqlite3_complete,
   sqlite3_finalize,
   sqlite3_result_blob,
@@ -109,11 +107,6 @@ const {
   sqlite3_backup_finish,
   sqlite3_errcode,
 } = ffi;
-
-/** SQLite version string */
-export const SQLITE_VERSION: string = readCstr(sqlite3_libversion()!);
-/** SQLite source ID string */
-export const SQLITE_SOURCEID: string = readCstr(sqlite3_sourceid()!);
 
 /**
  * Whether the given SQL statement is complete.
@@ -277,7 +270,7 @@ export class Database {
    * @returns Statement object
    */
   prepare(sql: string): Statement {
-    return new Statement(this, sql);
+    return new Statement(this.#handle, sql);
   }
 
   /**
@@ -326,7 +319,7 @@ export class Database {
       );
       const errPtr = Deno.UnsafePointer.create(pErr[0]);
       if (errPtr !== null) {
-        const err = readCstr(errPtr);
+        const err = Deno.UnsafePointerView.getCString(errPtr);
         sqlite3_free(errPtr);
         throw new Error(err);
       }
@@ -334,7 +327,7 @@ export class Database {
     }
 
     const stmt = this.prepare(sql);
-    stmt.run(...params);
+    stmt.run(params);
     return sqlite3_changes(this.#handle);
   }
 
@@ -350,7 +343,7 @@ export class Database {
   ): T[] {
     const sql = strings.join("?");
     const stmt = this.prepare(sql);
-    return stmt.all(...parameters);
+    return stmt.all(parameters);
   }
 
   /**
@@ -758,7 +751,7 @@ export class Database {
       pzErrMsg[0],
     );
     if (pzErrPtr !== null) {
-      const pzErr = readCstr(pzErrPtr);
+      const pzErr = Deno.UnsafePointerView.getCString(pzErrPtr);
       sqlite3_free(pzErrPtr);
       throw new Error(pzErr);
     }
