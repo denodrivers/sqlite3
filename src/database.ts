@@ -344,7 +344,7 @@ export class Database {
   }
 
   /** Safely execute SQL with parameters using a tagged template */
-  sql<T extends Record<string, unknown> = Record<string, any>>(
+  sql<T extends Record<string, any> = Record<string, any>>(
     strings: TemplateStringsArray,
     ...parameters: RestBindParameters
   ): T[] {
