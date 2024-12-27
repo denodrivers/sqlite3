@@ -4,10 +4,9 @@ export {
   type DatabaseOpenOptions,
   type FunctionOptions,
   isComplete,
-  SQLITE_SOURCEID,
-  SQLITE_VERSION,
   type Transaction,
 } from "./src/database.ts";
+export { SQLITE_SOURCEID, SQLITE_VERSION } from "./src/ffi.ts";
 export { type BlobOpenOptions, SQLBlob } from "./src/blob.ts";
 export {
   type BindParameters,
