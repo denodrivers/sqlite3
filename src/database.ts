@@ -495,7 +495,7 @@ export class Database {
         let result: any;
         try {
           result = fn(...args);
-        } catch (err) {
+        } catch (err: any) {
           const buf = new TextEncoder().encode(err.message);
           sqlite3_result_error(ctx, buf, buf.byteLength);
           return;
@@ -643,7 +643,7 @@ export class Database {
         let result: any;
         try {
           result = options.step(aggregate, ...args);
-        } catch (err) {
+        } catch (err: any) {
           const buf = new TextEncoder().encode(err.message);
           sqlite3_result_error(ctx, buf, buf.byteLength);
           return;
@@ -666,7 +666,7 @@ export class Database {
         let result: any;
         try {
           result = options.final ? options.final(aggregate) : aggregate;
-        } catch (err) {
+        } catch (err: any) {
           const buf = new TextEncoder().encode(err.message);
           sqlite3_result_error(ctx, buf, buf.byteLength);
           return;
