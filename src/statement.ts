@@ -135,7 +135,7 @@ function getColumn(handle: Deno.PointerValue, i: number, int64: boolean): any {
  *
  * See `Database#prepare` for more information.
  */
-export class Statement {
+export class Statement<TStatement extends object = Record<string, any>> {
   #handle: Deno.PointerValue;
   #finalizerToken: { handle: Deno.PointerValue };
   #bound = false;
@@ -188,7 +188,7 @@ export class Statement {
    * Run the query and return the resulting rows where rows are objects
    * mapping column name to their corresponding values.
    */
-  all<T extends object = Record<string, any>>(
+  all<T extends object = TStatement>(
     ...args: RestBindParameters
   ): T[] {
     return this.#allWithArgs(...args);
@@ -626,7 +626,7 @@ export class Statement {
   }
 
   /** Fetch only first row as an object, if any. */
-  get<T extends object>(
+  get<T extends object = TStatement>(
     ...params: RestBindParameters
   ): T | undefined {
     const handle = this.#handle;

@@ -276,8 +276,8 @@ export class Database {
    * @param sql SQL statement string
    * @returns Statement object
    */
-  prepare(sql: string): Statement {
-    return new Statement(this, sql);
+  prepare<T extends object = Record<string, any>>(sql: string): Statement<T> {
+    return new Statement<T>(this, sql);
   }
 
   /**
