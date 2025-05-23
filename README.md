@@ -23,15 +23,15 @@ db.close();
 
 ## Usage
 
-Since this library depends on the unstable FFI API, you must pass `--allow-env`,
-`--allow-ffi` and `--unstable-ffi` flags. Network and FS permissions are also
+Since this library depends on the FFI API, you must pass `--allow-env`,
+`--allow-ffi`. Network and FS permissions are also
 needed to download and cache prebuilt library.
 
 You can also just use `--allow-all` / `-A` flag since FFI basically gives full
 access.
 
 ```sh
-deno run -A --unstable-ffi <file>
+deno run -A <file>
 ```
 
 ## Benchmark
