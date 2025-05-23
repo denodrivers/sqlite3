@@ -17,7 +17,7 @@ export function isObject(value: unknown): boolean {
 }
 
 export class SqliteError extends Error {
-  name = "SqliteError";
+  override name = "SqliteError";
 
   constructor(
     public code: number = 1,
