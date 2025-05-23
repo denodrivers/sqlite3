@@ -2,11 +2,14 @@
   "name": "@db/sqlite",
   "version": "0.12.0",
   "github": "https://github.com/denodrivers/sqlite3",
+
   "exports": "./mod.ts",
+
   "exclude": [
     "sqlite",
     "scripts"
   ],
+
   "tasks": {
     "test": "deno test -A test/test.ts",
     "build": "deno run -A scripts/build.ts",
@@ -23,11 +26,13 @@
     "bench-node:northwind": "node bench/northwind/node.mjs",
     "bench-bun:northwind": "bun run bench/northwind/bun.js"
   },
+
   "fmt": {
     "exclude": [
       "sqlite"
     ]
   },
+
   "lint": {
     "rules": {
       "exclude": [
