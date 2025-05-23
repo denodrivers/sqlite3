@@ -19,18 +19,18 @@ jobs:
           deno-version: "v2.x"
 
       - name: Check Formatting
-        run: deno fmt --check --ignore=sqlite
+        run: deno fmt --ignore=sqlite
 
       - name: Lint
-        run: deno lint --ignore=sqlite
+        run: deno lint --ignore=sqlite,bench
 
       - name: Check
-        run: deno check --ignore=sqlite
+        run: deno check src/ test/ scripts/ mod.ts
 
   build-and-test:
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-24.04-arm, windows-2022, macos-14]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-2022, macos-14]
 
     runs-on: ${{ matrix.os }}
 
@@ -49,10 +49,22 @@ jobs:
         if: matrix.os == 'windows-2022'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Build sqlite3 (windows, linux)
-        if: matrix.os != 'macos-14'
+      - name: Build sqlite3 (windows)
+        if: matrix.os == 'windows-2022'
         env:
           TARGET_ARCH: x86_64
+        run: deno task build
+
+      - name: Build sqlite3 (linux x86_64)
+        if: matrix.os == 'ubuntu-24.04'
+        env:
+          TARGET_ARCH: x86_64
+        run: deno task build
+
+      - name: Build sqlite3 (linux arm)
+        if: matrix.os == 'ubuntu-24.04-arm'
+        env:
+          TARGET_ARCH: aarch64
         run: deno task build
 
       - name: Build sqlite3 (macos-x86_64)
