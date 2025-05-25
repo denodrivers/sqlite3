@@ -394,3 +394,21 @@ When retrieving rows, the types are mapped back to JavaScript types:
 | `TEXT`                   | `string`                  |
 | `TEXT` with JSON subtype | `object` (`JSON.parse()`) |
 | `BLOB`                   | `Uint8Array`              |
+
+Note: We only support `Uint8Array` for the `BLOB` type as V8 Fast API will
+optimize for it instead of other arrays like `Uint16Array`. And it is also to
+stay consistent: we only support passing `Uint8Array` and we consistently return
+`Uint8Array` when we return a `BLOB` to JS. It is easy to support passing all
+typed arrays with good performance, but then at the time we have to retreive
+again we don't know what the original typed array type was, as the only type
+into in the column is that it is a `BLOB`.
+
+You can easily convert between other typed arrays and `Uint8Array` like this:
+
+```ts
+const f32 = new Float32Array(1);
+const u8 = new Uint8Array(f32.buffer); // no copy, can pass this
+
+const u8FromSqlite = new Uint8Array(4);
+const f32FromSqlite = new Float32Array(u8FromSqlite.buffer); // safely convert back when retrieved from sqlite, no copy
+```
