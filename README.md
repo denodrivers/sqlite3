@@ -24,8 +24,8 @@ db.close();
 ## Usage
 
 Since this library depends on the FFI API, you must pass `--allow-env`,
-`--allow-ffi`. Network and FS permissions are also
-needed to download and cache prebuilt library.
+`--allow-ffi`. Network and FS permissions are also needed to download and cache
+prebuilt library.
 
 You can also just use `--allow-all` / `-A` flag since FFI basically gives full
 access.
