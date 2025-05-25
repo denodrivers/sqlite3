@@ -352,6 +352,11 @@ export class Statement<TStatement extends object = Record<string, any>> {
           param ? 1 : 0,
         ));
         break;
+
+      case "undefined":
+        // pass
+        break;
+
       default: {
         throw new Error(`Value of unsupported type: ${Deno.inspect(param)}`);
       }
