@@ -496,7 +496,9 @@ export class Database {
         try {
           result = fn(...args);
         } catch (err) {
-          const buf = new TextEncoder().encode(err.message);
+          const buf = new TextEncoder().encode(
+            err instanceof Error ? err.message : String(err),
+          );
           sqlite3_result_error(ctx, buf, buf.byteLength);
           return;
         }
@@ -644,7 +646,9 @@ export class Database {
         try {
           result = options.step(aggregate, ...args);
         } catch (err) {
-          const buf = new TextEncoder().encode(err.message);
+          const buf = new TextEncoder().encode(
+            err instanceof Error ? err.message : String(err),
+          );
           sqlite3_result_error(ctx, buf, buf.byteLength);
           return;
         }
@@ -667,7 +671,9 @@ export class Database {
         try {
           result = options.final ? options.final(aggregate) : aggregate;
         } catch (err) {
-          const buf = new TextEncoder().encode(err.message);
+          const buf = new TextEncoder().encode(
+            err instanceof Error ? err.message : String(err),
+          );
           sqlite3_result_error(ctx, buf, buf.byteLength);
           return;
         }
