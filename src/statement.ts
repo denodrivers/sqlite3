@@ -77,7 +77,12 @@ const JSON_SUBTYPE = 74;
 
 const BIG_MAX = BigInt(Number.MAX_SAFE_INTEGER);
 
-function getColumn(handle: Deno.PointerValue, i: number, int64: boolean): any {
+function getColumn(
+  handle: Deno.PointerValue,
+  i: number,
+  int64: boolean,
+  parseJson: boolean,
+): any {
   const ty = sqlite3_column_type(handle, i);
 
   if (ty === SQLITE_INTEGER && !int64) return sqlite3_column_int(handle, i);
@@ -89,7 +94,7 @@ function getColumn(handle: Deno.PointerValue, i: number, int64: boolean): any {
       const text = readCstr(ptr, 0);
       const value = sqlite3_column_value(handle, i);
       const subtype = sqlite3_value_subtype(value);
-      if (subtype === JSON_SUBTYPE) {
+      if (subtype === JSON_SUBTYPE && parseJson) {
         try {
           return JSON.parse(text);
         } catch (_error) {
@@ -141,16 +146,6 @@ export class Statement<TStatement extends object = Record<string, any>> {
   #bound = false;
   #hasNoArgs = false;
   #unsafeConcurrency;
-
-  /**
-   * Whether the query might call into JavaScript or not.
-   *
-   * Must enable if the query makes use of user defined functions,
-   * otherwise there can be V8 crashes.
-   *
-   * Off by default. Causes performance degradation.
-   */
-  callback = false;
 
   /** Unsafe Raw (pointer) to the sqlite object */
   get unsafeHandle(): Deno.PointerValue {
@@ -231,12 +226,6 @@ export class Statement<TStatement extends object = Record<string, any>> {
       this.value = this.#valueNoArgs;
       this.get = this.#getNoArgs;
     }
-  }
-
-  /** Shorthand for `this.callback = true`. Enables calling user defined functions. */
-  enableCallback(): this {
-    this.callback = true;
-    return this;
   }
 
   /** Get bind parameter name by index */
@@ -437,7 +426,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
       return function(h) {
         return [${
         Array.from({ length: columnCount }).map((_, i) =>
-          `getColumn(h, ${i}, ${this.db.int64})`
+          `getColumn(h, ${i}, ${this.db.int64}, ${this.db.parseJson})`
         )
           .join(", ")
       }];
@@ -470,7 +459,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
       return function(h) {
         return [${
         Array.from({ length: columnCount }).map((_, i) =>
-          `getColumn(h, ${i}, ${this.db.int64})`
+          `getColumn(h, ${i}, ${this.db.int64}, ${this.db.parseJson})`
         )
           .join(", ")
       }];
@@ -504,7 +493,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
           return {
             ${
           columnNames.map((name, i) =>
-            `"${name}": getColumn(h, ${i}, ${this.db.int64})`
+            `"${name}": getColumn(h, ${i}, ${this.db.int64}, ${this.db.parseJson})`
           ).join(",\n")
         }
           };
@@ -562,6 +551,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
   ): T | undefined {
     const handle = this.#handle;
     const int64 = this.db.int64;
+    const parseJson = this.db.parseJson;
     const arr = new Array(sqlite3_column_count(handle));
     sqlite3_reset(handle);
     if (!this.#hasNoArgs && !this.#bound) {
@@ -580,7 +570,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
 
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < arr.length; i++) {
-        arr[i] = getColumn(handle, i, int64);
+        arr[i] = getColumn(handle, i, int64, parseJson);
       }
       sqlite3_reset(this.#handle);
       return arr as T;
@@ -594,13 +584,14 @@ export class Statement<TStatement extends object = Record<string, any>> {
   #valueNoArgs<T extends Array<unknown>>(): T | undefined {
     const handle = this.#handle;
     const int64 = this.db.int64;
+    const parseJson = this.db.parseJson;
     const cc = sqlite3_column_count(handle);
     const arr = new Array(cc);
     sqlite3_reset(handle);
     const status = sqlite3_step(handle);
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < cc; i++) {
-        arr[i] = getColumn(handle, i, int64);
+        arr[i] = getColumn(handle, i, int64, parseJson);
       }
       sqlite3_reset(this.#handle);
       return arr as T;
@@ -636,7 +627,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
   ): T | undefined {
     const handle = this.#handle;
     const int64 = this.db.int64;
-
+    const parseJson = this.db.parseJson;
     const columnNames = this.columnNames();
 
     const row: Record<string, unknown> = {};
@@ -657,7 +648,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
 
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < columnNames.length; i++) {
-        row[columnNames[i]] = getColumn(handle, i, int64);
+        row[columnNames[i]] = getColumn(handle, i, int64, parseJson);
       }
       sqlite3_reset(this.#handle);
       return row as T;
@@ -671,13 +662,14 @@ export class Statement<TStatement extends object = Record<string, any>> {
   #getNoArgs<T extends object>(): T | undefined {
     const handle = this.#handle;
     const int64 = this.db.int64;
+    const parseJson = this.db.parseJson;
     const columnNames = this.columnNames();
     const row: Record<string, unknown> = this.#rowObject;
     sqlite3_reset(handle);
     const status = sqlite3_step(handle);
     if (status === SQLITE3_ROW) {
       for (let i = 0; i < columnNames?.length; i++) {
-        row[columnNames[i]] = getColumn(handle, i, int64);
+        row[columnNames[i]] = getColumn(handle, i, int64, parseJson);
       }
       sqlite3_reset(handle);
       return row as T;

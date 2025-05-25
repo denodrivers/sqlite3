@@ -461,19 +461,16 @@ Deno.test("sqlite", async (t) => {
   await t.step("test functions", () => {
     const [result] = db
       .prepare("select deno_add(?, ?)")
-      .enableCallback()
       .value<[number]>(1, 2)!;
     assertEquals(result, 3);
 
     const [result2] = db
       .prepare("select deno_uppercase(?)")
-      .enableCallback()
       .value<[string]>("hello")!;
     assertEquals(result2, "HELLO");
 
     const [result3] = db
       .prepare("select deno_buffer_add_1(?)")
-      .enableCallback()
       .value<[Uint8Array]>(new Uint8Array([1, 2, 3]))!;
     assertEquals(result3, new Uint8Array([2, 3, 4]));
 
@@ -485,13 +482,11 @@ Deno.test("sqlite", async (t) => {
 
     const [result5] = db
       .prepare("select regexp(?, ?)")
-      .enableCallback()
       .value<[number]>("hello", "h.*")!;
     assertEquals(result5, 1);
 
     const [result6] = db
       .prepare("select regexp(?, ?)")
-      .enableCallback()
       .value<[number]>("hello", "x.*")!;
     assertEquals(result6, 0);
 
@@ -501,7 +496,6 @@ Deno.test("sqlite", async (t) => {
     db.exec("insert into aggr_test (value) values (3)");
 
     const stmt = db.prepare("select deno_sum_2x(value) from aggr_test");
-    stmt.callback = true;
     const [result7] = stmt.value<[number]>()!;
     assertEquals(result7, 12);
     // Releases lock from table.

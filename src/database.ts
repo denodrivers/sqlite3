@@ -35,6 +35,8 @@ export interface DatabaseOpenOptions {
   unsafeConcurrency?: boolean;
   /** Enable or disable extension loading */
   enableLoadExtension?: boolean;
+  /** Whether to parse JSON columns as JS objects. True by default. */
+  parseJson?: boolean;
 }
 
 /** Transaction function created using `Database#transaction`. */
@@ -153,6 +155,9 @@ export class Database {
   /** Whether to support BigInt columns. False by default, integers larger than 32 bit will be inaccurate. */
   int64: boolean;
 
+  /** Whether to parse JSON columns as JS objects. True by default. */
+  parseJson: boolean;
+
   unsafeConcurrency: boolean;
 
   /** Whether DB connection is open */
@@ -214,6 +219,7 @@ export class Database {
     this.#path = path instanceof URL ? fromFileUrl(path) : path;
     let flags = 0;
     this.int64 = options.int64 ?? false;
+    this.parseJson = options.parseJson ?? true;
     this.unsafeConcurrency = options.unsafeConcurrency ?? false;
     if (options.flags !== undefined) {
       flags = options.flags;

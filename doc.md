@@ -15,7 +15,8 @@ pass `create: false` in the options.
 - `memory: boolean` - Whether to open the database in memory. Defaults to
   `false`.
 - `int64: boolean` - Whether to support BigInt columns. False by default, which
-  means integers larger than 32 bit will be inaccurate.
+  means integers larger than 32 bit will be inaccurate. Causes mixed values to
+  be returned like `number | bigint`.
 - `flags: number` - Raw flags to pass to the C API. Normally you don't need
   this. Passing this ignores all other options.
 - `unsafeConcurrency: boolean` - Enable optimizations that will affect
@@ -24,6 +25,7 @@ pass `create: false` in the options.
 - `enableLoadExtension: boolean` - Enables the loading of SQLite extensions from
   a dynamic library, this needs to be set to true for the method `loadExtension`
   to work. Defaults to `false`.
+- `parseJson: boolean` - Enables parsing JSON. True by default.
 
 ### Usage
 
