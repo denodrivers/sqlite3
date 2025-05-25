@@ -1,3 +1,4 @@
+import process from "node:process";
 import { Database } from "bun:sqlite";
 
 // Unsafe concurrency is default.

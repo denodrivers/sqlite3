@@ -1,4 +1,4 @@
-import { DB } from "https://deno.land/x/sqlite/mod.ts";
+import { DB } from "https://deno.land/x/sqlite@v3.9.1/mod.ts";
 import { nextTick } from "https://deno.land/std@0.126.0/node/_next_tick.ts";
 
 const db = new DB(":memory:");

@@ -46,5 +46,10 @@
         "explicit-module-boundary-types"
       ]
     }
+  },
+  "compilerOptions": {
+    "types": [
+      "./node_modules/bun-types/index.d.ts"
+    ]
   }
 }

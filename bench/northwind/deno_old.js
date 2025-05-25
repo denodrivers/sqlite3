@@ -1,5 +1,5 @@
 import { Database } from "https://deno.land/x/sqlite3@0.4.3/mod.ts";
-import { bench, run } from "../node_modules/mitata/src/cli.mjs";
+import { bench, run } from "../../node_modules/mitata/src/cli.mjs";
 
 const db = new Database("./bench/northwind.sqlite");
 

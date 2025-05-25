@@ -1,3 +1,4 @@
+import process from "node:process";
 const db = require("better-sqlite3")(":memory:");
 
 db.exec("PRAGMA auto_vacuum = none");
