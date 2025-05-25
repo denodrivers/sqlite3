@@ -119,6 +119,10 @@ Any parameters past the first argument will be bound to the statement. When you
 pass parameters, the function under the hood instead uses the prepared statement
 API.
 
+Note that when the prepared statement API is used, this method only supports one
+statement at a time. You cannot execute multiple statements AND pass parameters
+at the same time.
+
 See [Binding Parameters](#binding-parameters) for more details.
 
 Alternatively, use the `.sql` tagged template to safely execute SQL with given
