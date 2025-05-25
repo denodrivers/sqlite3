@@ -174,6 +174,11 @@ For more details on binding parameters, see
 - `readonly: boolean` - Whether the statement is read-only.
 - `bindParameterCount: number` - The number of parameters the statement expects.
 
+You can use `enableInt64`, `enableParseJson`, `disableInt64`,
+`disableParseJson`, `defaultInt64`, `defaultParseJson` at statement level to
+override the behavior just for this statement and not whole database. Default
+falls back to database, not the default value for these options.
+
 ## Executing Statement
 
 To execute a statement, use the `run()` method. This method will execute the
@@ -397,7 +402,14 @@ When retrieving rows, the types are mapped back to JavaScript types:
 | `TEXT` with JSON subtype | `object` (`JSON.parse()`) |
 | `BLOB`                   | `Uint8Array`              |
 
-Note: We only support `Uint8Array` for the `BLOB` type as V8 Fast API will
+Note 1: The `int64` option allows you to return `BigInt` for integers bigger
+than max safe integer in JavaScript. It is disabled by default, and precision
+may not be accurate for bigger numbers. When enabled, the library can return
+both `number | bigint`, but when disabled (default), it will only return
+`number`. In the former case, `bigint` is returned ONLY if its too big to fit in
+a JavaScript Number.
+
+Note 2: We only support `Uint8Array` for the `BLOB` type as V8 Fast API will
 optimize for it instead of other arrays like `Uint16Array`. And it is also to
 stay consistent: we only support passing `Uint8Array` and we consistently return
 `Uint8Array` when we return a `BLOB` to JS. It is easy to support passing all
@@ -414,3 +426,6 @@ const u8 = new Uint8Array(f32.buffer); // no copy, can pass this
 const u8FromSqlite = new Uint8Array(4);
 const f32FromSqlite = new Float32Array(u8FromSqlite.buffer); // safely convert back when retrieved from sqlite, no copy
 ```
+
+Note 3: The `parseJson` option allows you to disable JSON parsing which is
+enabled by default.

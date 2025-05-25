@@ -196,6 +196,39 @@ export class Statement<TStatement extends object = Record<string, any>> {
     return this.#bindParameterCount;
   }
 
+  int64?: boolean;
+  parseJson?: boolean;
+
+  enableInt64(): this {
+    this.int64 = true;
+    return this;
+  }
+
+  enableParseJson(): this {
+    this.parseJson = true;
+    return this;
+  }
+
+  disableInt64(): this {
+    this.int64 = false;
+    return this;
+  }
+
+  disableParseJson(): this {
+    this.parseJson = false;
+    return this;
+  }
+
+  defaultInt64(): this {
+    this.int64 = undefined;
+    return this;
+  }
+
+  defaultParseJson(): this {
+    this.parseJson = undefined;
+    return this;
+  }
+
   constructor(public db: Database, sql: string) {
     const pHandle = new BigUint64Array(1);
     unwrap(
@@ -423,10 +456,10 @@ export class Statement<TStatement extends object = Record<string, any>> {
     const getRowArray = new Function(
       "getColumn",
       `
-      return function(h) {
+      return function(h, int64, parseJson) {
         return [${
         Array.from({ length: columnCount }).map((_, i) =>
-          `getColumn(h, ${i}, ${this.db.int64}, ${this.db.parseJson})`
+          `getColumn(h, ${i}, int64, parseJson)`
         )
           .join(", ")
       }];
@@ -435,7 +468,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
     )(getColumn);
     let status = sqlite3_step(handle);
     while (status === SQLITE3_ROW) {
-      result.push(getRowArray(handle));
+      result.push(getRowArray(handle, this.int64 ?? this.db.int64, this.parseJson ?? this.db.parseJson));
       status = sqlite3_step(handle);
     }
     if (status !== SQLITE3_DONE) {
@@ -456,10 +489,10 @@ export class Statement<TStatement extends object = Record<string, any>> {
     const getRowArray = new Function(
       "getColumn",
       `
-      return function(h) {
+      return function(h, int64, parseJson) {
         return [${
         Array.from({ length: columnCount }).map((_, i) =>
-          `getColumn(h, ${i}, ${this.db.int64}, ${this.db.parseJson})`
+          `getColumn(h, ${i}, int64, parseJson)`
         )
           .join(", ")
       }];
@@ -468,7 +501,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
     )(getColumn);
     let status = sqlite3_step(handle);
     while (status === SQLITE3_ROW) {
-      result.push(getRowArray(handle));
+      result.push(getRowArray(handle, this.int64 ?? this.db.int64, this.parseJson ?? this.db.parseJson));
       status = sqlite3_step(handle);
     }
     if (!this.#hasNoArgs && !this.#bound && params.length) {
@@ -481,19 +514,19 @@ export class Statement<TStatement extends object = Record<string, any>> {
     return result as T[];
   }
 
-  #rowObjectFn: ((h: Deno.PointerValue) => any) | undefined;
+  #rowObjectFn: ((h: Deno.PointerValue, int64: boolean, parseJson: boolean) => any) | undefined;
 
-  getRowObject(): (h: Deno.PointerValue) => any {
+  getRowObject(): (h: Deno.PointerValue, int64: boolean, parseJson: boolean) => any {
     if (!this.#rowObjectFn || !this.#unsafeConcurrency) {
       const columnNames = this.columnNames();
       const getRowObject = new Function(
         "getColumn",
         `
-        return function(h) {
+        return function(h, int64, parseJson) {
           return {
             ${
           columnNames.map((name, i) =>
-            `"${name}": getColumn(h, ${i}, ${this.db.int64}, ${this.db.parseJson})`
+            `"${name}": getColumn(h, ${i}, int64, parseJson)`
           ).join(",\n")
         }
           };
@@ -507,12 +540,14 @@ export class Statement<TStatement extends object = Record<string, any>> {
 
   #allNoArgs<T extends object>(): T[] {
     const handle = this.#handle;
+    const int64 = this.int64 ?? this.db.int64;
+    const parseJson = this.parseJson ?? this.db.parseJson;
     this.#begin();
     const getRowObject = this.getRowObject();
     const result: T[] = [];
     let status = sqlite3_step(handle);
     while (status === SQLITE3_ROW) {
-      result.push(getRowObject(handle));
+      result.push(getRowObject(handle, int64, parseJson));
       status = sqlite3_step(handle);
     }
     if (status !== SQLITE3_DONE) {
@@ -526,13 +561,15 @@ export class Statement<TStatement extends object = Record<string, any>> {
     ...params: RestBindParameters
   ): T[] {
     const handle = this.#handle;
+    const int64 = this.int64 ?? this.db.int64;
+    const parseJson = this.parseJson ?? this.db.parseJson;
     this.#begin();
     this.#bindAll(params);
     const getRowObject = this.getRowObject();
     const result: T[] = [];
     let status = sqlite3_step(handle);
     while (status === SQLITE3_ROW) {
-      result.push(getRowObject(handle));
+      result.push(getRowObject(handle, int64, parseJson));
       status = sqlite3_step(handle);
     }
     if (!this.#hasNoArgs && !this.#bound && params.length) {
@@ -550,8 +587,8 @@ export class Statement<TStatement extends object = Record<string, any>> {
     ...params: RestBindParameters
   ): T | undefined {
     const handle = this.#handle;
-    const int64 = this.db.int64;
-    const parseJson = this.db.parseJson;
+    const int64 = this.int64 ?? this.db.int64;
+    const parseJson = this.parseJson ?? this.db.parseJson;
     const arr = new Array(sqlite3_column_count(handle));
     sqlite3_reset(handle);
     if (!this.#hasNoArgs && !this.#bound) {
@@ -583,8 +620,8 @@ export class Statement<TStatement extends object = Record<string, any>> {
 
   #valueNoArgs<T extends Array<unknown>>(): T | undefined {
     const handle = this.#handle;
-    const int64 = this.db.int64;
-    const parseJson = this.db.parseJson;
+    const int64 = this.int64 ?? this.db.int64;
+    const parseJson = this.parseJson ?? this.db.parseJson;
     const cc = sqlite3_column_count(handle);
     const arr = new Array(cc);
     sqlite3_reset(handle);
@@ -626,8 +663,8 @@ export class Statement<TStatement extends object = Record<string, any>> {
     ...params: RestBindParameters
   ): T | undefined {
     const handle = this.#handle;
-    const int64 = this.db.int64;
-    const parseJson = this.db.parseJson;
+    const int64 = this.int64 ?? this.db.int64;
+    const parseJson = this.parseJson ?? this.db.parseJson;
     const columnNames = this.columnNames();
 
     const row: Record<string, unknown> = {};
@@ -661,8 +698,8 @@ export class Statement<TStatement extends object = Record<string, any>> {
 
   #getNoArgs<T extends object>(): T | undefined {
     const handle = this.#handle;
-    const int64 = this.db.int64;
-    const parseJson = this.db.parseJson;
+    const int64 = this.int64 ?? this.db.int64;
+    const parseJson = this.parseJson ?? this.db.parseJson;
     const columnNames = this.columnNames();
     const row: Record<string, unknown> = this.#rowObject;
     sqlite3_reset(handle);
@@ -696,12 +733,14 @@ export class Statement<TStatement extends object = Record<string, any>> {
 
   /** Iterate over resultant rows from query. */
   *iter(...params: RestBindParameters): IterableIterator<any> {
-    this.#begin();
+    this.#begin();  
     this.#bindAll(params);
     const getRowObject = this.getRowObject();
+    const int64 = this.int64 ?? this.db.int64;
+    const parseJson = this.parseJson ?? this.db.parseJson;
     let status = sqlite3_step(this.#handle);
     while (status === SQLITE3_ROW) {
-      yield getRowObject(this.#handle);
+      yield getRowObject(this.#handle, int64, parseJson);
       status = sqlite3_step(this.#handle);
     }
     if (status !== SQLITE3_DONE) {

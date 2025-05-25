@@ -237,6 +237,19 @@ Deno.test("sqlite", async (t) => {
     assertEquals(row[2], '{"no_subtype": true}');
   });
 
+  await t.step("query json (disableParseJson at statement level)", () => {
+    const row = db
+      .prepare(
+        "select json('[1,2,3]'), json_object('name', 'alex'), '{\"no_subtype\": true}'",
+      )
+      .disableParseJson()
+      .values<[string, string, string]>()[0];
+
+    assertEquals(row[0], "[1,2,3]");
+    assertEquals(row[1], '{"name":"alex"}');
+    assertEquals(row[2], '{"no_subtype": true}');
+  });
+
   await t.step("query with string param", () => {
     const row = db.prepare(
       "select * from test where text = ?",
@@ -339,6 +352,23 @@ Deno.test("sqlite", async (t) => {
       "select integer from test where text = ?",
     ).values<[bigint]>("bigint3")[0];
     assertEquals(int, value);
+  });
+
+  await t.step("max 64-bit signed int (disableInt64)", () => {
+    const value = 0x7fffffffffffffffn;
+    db.exec(
+      `insert into test (integer, text, double, blob, nullable)
+    values (?, ?, ?, ?, ?)`,
+      value,
+      "bigint3",
+      0,
+      new Uint8Array(1),
+      null,
+    );
+    const [int] = db.prepare(
+      "select integer from test where text = ?",
+    ).disableInt64().values<[bigint]>("bigint3")[0];
+    assertEquals(int as unknown, -1);
   });
 
   await t.step("nan value", () => {
