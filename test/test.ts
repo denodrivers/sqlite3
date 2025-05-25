@@ -182,6 +182,33 @@ Deno.test("sqlite", async (t) => {
     }
   });
 
+  await t.step("query object (interface type)", () => {
+    interface Row {
+      integer: number;
+      text: string;
+      double: number;
+      blob: Uint8Array;
+      nullable: null;
+    }
+
+    const rows = db.prepare(
+      "select * from test where integer != ? and text != ?",
+    )
+      .all<Row>(
+        1,
+        "hello world",
+      );
+
+    assertEquals(rows.length, 9);
+    for (const row of rows) {
+      assertEquals(typeof row.integer, "number");
+      assertEquals(row.text, `hello ${row.integer}`);
+      assertEquals(row.double, 3.14);
+      assertEquals(row.blob, new Uint8Array([3, 2, 1]));
+      assertEquals(row.nullable, null);
+    }
+  });
+
   await t.step("query json", () => {
     const row = db
       .prepare(
@@ -191,6 +218,22 @@ Deno.test("sqlite", async (t) => {
 
     assertEquals(row[0], [1, 2, 3]);
     assertEquals(row[1], { name: "alex" });
+    assertEquals(row[2], '{"no_subtype": true}');
+  });
+
+  await t.step("query json (parseJson: false)", () => {
+    db.parseJson = false;
+
+    const row = db
+      .prepare(
+        "select json('[1,2,3]'), json_object('name', 'alex'), '{\"no_subtype\": true}'",
+      )
+      .values<[string, string, string]>()[0];
+
+    db.parseJson = true;
+
+    assertEquals(row[0], "[1,2,3]");
+    assertEquals(row[1], '{"name":"alex"}');
     assertEquals(row[2], '{"no_subtype": true}');
   });
 
