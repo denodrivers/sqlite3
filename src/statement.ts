@@ -468,7 +468,13 @@ export class Statement<TStatement extends object = Record<string, any>> {
     )(getColumn);
     let status = sqlite3_step(handle);
     while (status === SQLITE3_ROW) {
-      result.push(getRowArray(handle, this.int64 ?? this.db.int64, this.parseJson ?? this.db.parseJson));
+      result.push(
+        getRowArray(
+          handle,
+          this.int64 ?? this.db.int64,
+          this.parseJson ?? this.db.parseJson,
+        ),
+      );
       status = sqlite3_step(handle);
     }
     if (status !== SQLITE3_DONE) {
@@ -501,7 +507,13 @@ export class Statement<TStatement extends object = Record<string, any>> {
     )(getColumn);
     let status = sqlite3_step(handle);
     while (status === SQLITE3_ROW) {
-      result.push(getRowArray(handle, this.int64 ?? this.db.int64, this.parseJson ?? this.db.parseJson));
+      result.push(
+        getRowArray(
+          handle,
+          this.int64 ?? this.db.int64,
+          this.parseJson ?? this.db.parseJson,
+        ),
+      );
       status = sqlite3_step(handle);
     }
     if (!this.#hasNoArgs && !this.#bound && params.length) {
@@ -514,9 +526,15 @@ export class Statement<TStatement extends object = Record<string, any>> {
     return result as T[];
   }
 
-  #rowObjectFn: ((h: Deno.PointerValue, int64: boolean, parseJson: boolean) => any) | undefined;
+  #rowObjectFn:
+    | ((h: Deno.PointerValue, int64: boolean, parseJson: boolean) => any)
+    | undefined;
 
-  getRowObject(): (h: Deno.PointerValue, int64: boolean, parseJson: boolean) => any {
+  getRowObject(): (
+    h: Deno.PointerValue,
+    int64: boolean,
+    parseJson: boolean,
+  ) => any {
     if (!this.#rowObjectFn || !this.#unsafeConcurrency) {
       const columnNames = this.columnNames();
       const getRowObject = new Function(
@@ -733,7 +751,7 @@ export class Statement<TStatement extends object = Record<string, any>> {
 
   /** Iterate over resultant rows from query. */
   *iter(...params: RestBindParameters): IterableIterator<any> {
-    this.#begin();  
+    this.#begin();
     this.#bindAll(params);
     const getRowObject = this.getRowObject();
     const int64 = this.int64 ?? this.db.int64;

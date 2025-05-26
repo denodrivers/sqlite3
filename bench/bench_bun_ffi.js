@@ -1,3 +1,4 @@
+import process from "node:process";
 import { dlopen, ptr } from "bun:ffi";
 
 import {

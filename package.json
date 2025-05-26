@@ -23,5 +23,8 @@
   "dependencies": {
     "better-sqlite3": "^7.6.2",
     "mitata": "^0.1.6"
+  },
+  "devDependencies": {
+    "bun-types": "^1.2.14"
   }
 }
