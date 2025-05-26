@@ -22,7 +22,7 @@ jobs:
         run: deno fmt --check --ignore=sqlite
 
       - name: Lint
-        run: deno lint --ignore=sqlite
+        run: deno lint
 
       - name: Check
         run: deno check src/ test/ scripts/ mod.ts
