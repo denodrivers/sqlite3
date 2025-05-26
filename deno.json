@@ -7,7 +7,6 @@
 
   "exclude": [
     "sqlite",
-    "sqlite3",
     "scripts"
   ],
 
@@ -26,12 +25,6 @@
     "bench-wasm:northwind": "deno run -A bench/northwind/deno_wasm.js",
     "bench-node:northwind": "node bench/northwind/node.mjs",
     "bench-bun:northwind": "bun run bench/northwind/bun.js"
-  },
-
-  "fmt": {
-    "exclude": [
-      "sqlite"
-    ]
   },
 
   "lint": {
