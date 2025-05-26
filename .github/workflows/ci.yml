@@ -19,7 +19,7 @@ jobs:
           deno-version: "v2.x"
 
       - name: Check Formatting
-        run: deno fmt --check --ignore=sqlite
+        run: deno fmt --check
 
       - name: Lint
         run: deno lint
