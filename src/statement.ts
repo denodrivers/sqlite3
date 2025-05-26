@@ -231,11 +231,12 @@ export class Statement<TStatement extends object = Record<string, any>> {
 
   constructor(public db: Database, sql: string) {
     const pHandle = new BigUint64Array(1);
+    const cString = toCString(sql);
     unwrap(
       sqlite3_prepare_v2(
         db.unsafeHandle,
-        toCString(sql),
-        sql.length,
+        cString,
+        cString.byteLength,
         pHandle,
         null,
       ),

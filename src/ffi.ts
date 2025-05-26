@@ -574,6 +574,15 @@ const symbols = {
     parameters: [],
     result: "i32",
   },
+
+  sqlite3_update_hook: {
+    parameters: [
+      "pointer", // sqlite3 *db
+      "pointer", // void *pArg
+      "pointer", // void (*xUpdate)(sqlite3_context*,int,sqlite3_value**,sqlite3_value**)
+    ],
+    result: "pointer",
+  },
 } as const satisfies Deno.ForeignLibraryInterface;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];

@@ -611,6 +611,14 @@ Deno.test("sqlite", async (t) => {
     );
   });
 
+  await t.step("unicode support", () => {
+    const [value] = db.prepare("select ?").value<[string]>("💩")!;
+    assertEquals(value, "💩");
+
+    const [valueInStmt] = db.prepare("select '💩'").value<[string]>()!;
+    assertEquals(valueInStmt, "💩");
+  });
+
   await t.step({
     name: "close",
     sanitizeResources: false,
