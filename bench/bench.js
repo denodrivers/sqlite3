@@ -10,7 +10,7 @@ function $(name) {
       args: ["task", name],
       env: {
         NO_COLOR: "1",
-      }
+      },
     }).outputSync().stdout,
   )
     .split("\n")
