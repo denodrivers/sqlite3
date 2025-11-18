@@ -8,7 +8,7 @@ const {
 
 export const encoder = new TextEncoder();
 
-export function toCString(str: string): Uint8Array {
+export function toCString(str: string): Uint8Array<ArrayBuffer> {
   return encoder.encode(str + "\0");
 }
 

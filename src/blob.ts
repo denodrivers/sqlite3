@@ -60,12 +60,12 @@ export class SQLBlob {
 
   /** Read from the Blob at given offset into a buffer (Uint8Array) */
   readSync(offset: number, p: Uint8Array): void {
-    unwrap(sqlite3_blob_read(this.#handle, p, p.byteLength, offset));
+    unwrap(sqlite3_blob_read(this.#handle, p as BufferSource, p.byteLength, offset));
   }
 
   /** Write a buffer (Uint8Array) at given offset in the Blob */
   writeSync(offset: number, p: Uint8Array): void {
-    unwrap(sqlite3_blob_write(this.#handle, p, p.byteLength, offset));
+    unwrap(sqlite3_blob_write(this.#handle, p as BufferSource, p.byteLength, offset));
   }
 
   /** Close the Blob. It **must** be called to prevent leaks. */

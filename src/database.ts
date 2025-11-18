@@ -523,7 +523,7 @@ export class Database {
           const buffer = new TextEncoder().encode(result);
           sqlite3_result_text(ctx, buffer, buffer.byteLength, 0n);
         } else if (result instanceof Uint8Array) {
-          sqlite3_result_blob(ctx, result, result.length, -1n);
+          sqlite3_result_blob(ctx, result as BufferSource, result.length, -1n);
         } else {
           const buffer = new TextEncoder().encode(
             `Invalid return value: ${Deno.inspect(result)}`,
@@ -698,7 +698,7 @@ export class Database {
           const buffer = new TextEncoder().encode(result);
           sqlite3_result_text(ctx, buffer, buffer.byteLength, 0n);
         } else if (result instanceof Uint8Array) {
-          sqlite3_result_blob(ctx, result, result.length, -1n);
+          sqlite3_result_blob(ctx, result as BufferSource, result.length, -1n);
         } else {
           const buffer = new TextEncoder().encode(
             `Invalid return value: ${Deno.inspect(result)}`,

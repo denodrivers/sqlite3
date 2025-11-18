@@ -330,7 +330,9 @@ export class Statement<TStatement extends object = Record<string, any>> {
             sqlite3_bind_blob(
               this.#handle,
               i + 1,
-              param.byteLength === 0 ? emptyStringBuffer : param,
+              param.byteLength === 0
+                ? emptyStringBuffer
+                : param as BufferSource,
               param.byteLength,
               null,
             ),
