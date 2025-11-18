@@ -1,4 +1,4 @@
-import { createCanvas } from "https://deno.land/x/skia_canvas@0.5.2/mod.ts";
+import { createCanvas } from "jsr:@gfx/canvas@0.5.8";
 import "https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js";
 import "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0/dist/chartjs-plugin-datalabels.min.js";
 
@@ -6,13 +6,12 @@ Chart.register(ChartDataLabels);
 
 function $(name) {
   const lines = new TextDecoder().decode(
-    Deno.spawnSync(Deno.execPath(), {
+    new Deno.Command(Deno.execPath(), {
       args: ["task", name],
       env: {
         NO_COLOR: "1",
-      },
-      stdout: "piped",
-    }).stdout,
+      }
+    }).outputSync().stdout,
   )
     .split("\n")
     .map((line) => line.trim())
@@ -45,9 +44,17 @@ console.log("Running Bun benchmark...");
 const bunOut = $("bench-bun");
 console.log("Bun Avg:", bunOut);
 
-console.log("Running Bun FFI benchmark...");
-const bunFfiOut = $("bench-bun-ffi");
-console.log("Bun FFI Avg:", bunFfiOut);
+console.log("Running Deno Builtin benchmark...");
+const denoBuiltinOut = $("bench-deno-builtin");
+console.log("Deno Builtin Avg:", denoBuiltinOut);
+
+console.log("Running Node Builtin benchmark...");
+const nodeBuiltinOut = $("bench-node-builtin");
+console.log("Node Builtin Avg:", nodeBuiltinOut);
+
+// console.log("Running Bun FFI benchmark...");
+// const bunFfiOut = $("bench-bun-ffi");
+// console.log("Bun FFI Avg:", bunFfiOut);
 
 console.log("Running Python benchmark...");
 const pyOut = $("bench-python");
@@ -60,9 +67,11 @@ const data = {
     "x/sqlite3 (FFI)",
     "x/sqlite (WASM)",
     "better-sqlite3",
-    "bun:ffi",
+    // "bun:ffi",
     "bun:sqlite",
     "python sqlite",
+    "Deno node:sqlite",
+    "Node node:sqlite",
   ],
   datasets: [{
     label: "Performance",
@@ -72,9 +81,11 @@ const data = {
       denoOut,
       denoWasmOut,
       nodeOut,
-      bunFfiOut,
+      // bunFfiOut,
       bunOut,
       pyOut,
+      denoBuiltinOut,
+      nodeBuiltinOut,
     ],
     backgroundColor: [
       "#8dc149",

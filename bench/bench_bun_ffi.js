@@ -18,7 +18,7 @@ const {
     sqlite3_column_int,
     sqlite3_errstr,
   },
-} = dlopen("build/libsqlite3.so", {
+} = dlopen("build/libsqlite3_aarch64.dylib", {
   sqlite3_open_v2: {
     args: [
       "ptr", // const char *filename

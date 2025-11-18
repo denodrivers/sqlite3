@@ -14,9 +14,11 @@
     "test": "deno test -A test/test.ts",
     "build": "deno run -A scripts/build.ts",
     "bench-deno": "deno run -A bench/bench_deno.js 50 1000000",
+    "bench-deno-builtin": "deno run -A bench/bench_node_sqlite.mjs 50 1000000",
     "bench-deno-ffi": "deno run -A bench/bench_deno_ffi.js 50 1000000",
     "bench-deno-wasm": "deno run -A bench/bench_deno_wasm.js 50 1000000",
     "bench-node": "node bench/bench_node.js 50 1000000",
+    "bench-node-builtin": "node bench/bench_node_sqlite.mjs 50 1000000",
     "bench-bun": "bun run bench/bench_bun.js 50 1000000",
     "bench-bun-ffi": "bun run bench/bench_bun_ffi.js 50 1000000",
     "bench-c": "./bench/bench 50 1000000",
@@ -24,7 +26,8 @@
     "bench:northwind": "deno bench -A bench/northwind/deno.js",
     "bench-wasm:northwind": "deno run -A bench/northwind/deno_wasm.js",
     "bench-node:northwind": "node bench/northwind/node.mjs",
-    "bench-bun:northwind": "bun run bench/northwind/bun.js"
+    "bench-bun:northwind": "bun run bench/northwind/bun.js",
+    "bench-charts": "deno run -A bench/bench.js"
   },
 
   "lint": {

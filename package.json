@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/denodrivers/sqlite3#readme",
   "dependencies": {
-    "better-sqlite3": "^7.6.2",
+    "better-sqlite3": "^12.4.1",
     "mitata": "^0.1.6"
   },
   "devDependencies": {
