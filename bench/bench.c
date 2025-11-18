@@ -27,6 +27,7 @@ void bench (sqlite3_stmt* stmt) {
 int main (int argc, char** argv) {
   if (argc > 1) total = atoi(argv[1]);
   if (argc > 2) count = atoi(argv[2]);
+  sqlite3_initialize();
   sqlite3* db;
   int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_PRIVATECACHE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_CREATE;
   sqlite3_open_v2(":memory:", &db, flags, NULL);
@@ -40,4 +41,5 @@ int main (int argc, char** argv) {
   while (total--) bench(stmt);
   sqlite3_finalize(stmt);
   sqlite3_close(db);
+  sqlite3_shutdown();
 }
