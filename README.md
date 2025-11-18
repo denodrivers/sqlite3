@@ -38,10 +38,17 @@ deno run -A <file>
 
 ![image](./bench/results.png)
 
+(results generated from `bench/bench.js`, after running all benchmarks present
+in there)
+
 [Benchmark](./bench) based on
 [just-js/02-sqlite](https://just-js.github.io/benchmarks/02-sqlite.html)
 
-See [bench](./bench) for benchmarks source.
+The just-js page does not include this library in their results. To verify
+against this library, run the benchmarks in `bench` dir. You can simply run
+`deno task bench-deno` too.
+
+See [benchmarks source](./bench).
 
 ## Documentation
 
