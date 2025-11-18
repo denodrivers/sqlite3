@@ -11,7 +11,7 @@ The fastest and correct module for SQLite3 in Deno.
 ## Example
 
 ```ts
-import { Database } from "jsr:@db/sqlite@0.12";
+import { Database } from "jsr:@db/sqlite@0.13";
 
 const db = new Database("test.db");
 
