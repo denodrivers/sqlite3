@@ -34,7 +34,7 @@ export const symbols = {
     parameters: [
       "pointer", // sqlite3 *db
     ],
-    result: "i32",
+    result: "i64",
   },
 
   sqlite3_get_autocommit: {
