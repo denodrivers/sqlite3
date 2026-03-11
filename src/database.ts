@@ -110,6 +110,7 @@ const {
   sqlite3_backup_step,
   sqlite3_backup_finish,
   sqlite3_errcode,
+  sqlite3_update_hook,
 } = ffi;
 
 /** SQLite version string */
@@ -124,6 +125,12 @@ export const SQLITE_SOURCEID: string = readCstr(sqlite3_sourceid()!);
  */
 export function isComplete(statement: string): boolean {
   return Boolean(sqlite3_complete(toCString(statement)));
+}
+
+export enum SqliteUpdateType {
+  SQLITE_INSERT = 18,
+  SQLITE_DELETE = 9,
+  SQLITE_UPDATE = 23,
 }
 
 const BIG_MAX = BigInt(Number.MAX_SAFE_INTEGER);
@@ -778,6 +785,68 @@ export class Database {
     unwrap(result, this.#handle);
   }
 
+  #updateHook?: Deno.UnsafeCallback<{
+    readonly parameters: readonly [
+      "pointer",
+      "i32",
+      "pointer",
+      "pointer",
+      "i64",
+    ];
+    readonly result: "void";
+  }>;
+
+  /**
+   * Sets a callback function that is invoked whenever a row is updated, inserted or deleted.
+   *
+   * The callback function receives the type of update (insert, update, or delete), the database name, the table name, and the row ID of the row being modified.
+   *
+   * Example:
+   * ```ts
+   * db.setUpdateHook((type, dbName, tableName, rowId) => {
+   *   console.log(`Row with ID ${rowId} in table ${tableName} was modified in database ${dbName}. Update type: ${type}`);
+   * });
+   * ```
+   */
+  setUpdateHook(
+    hook:
+      | ((
+        type: SqliteUpdateType,
+        dbName: string,
+        tableName: string,
+        rowId: bigint,
+      ) => void)
+      | null,
+  ): void {
+    if (hook === null) {
+      sqlite3_update_hook(this.#handle, null, null);
+      if (this.#updateHook) {
+        this.#updateHook.close();
+        this.#updateHook = undefined;
+      }
+      return;
+    }
+
+    const updateHook = new Deno.UnsafeCallback(
+      {
+        parameters: ["pointer", "i32", "pointer", "pointer", "i64"],
+        result: "void",
+      } as const,
+      (_, type, pDbName, pTableName, rowId) => {
+        const dbName = readCstr(pDbName!);
+        const tableName = readCstr(pTableName!);
+        hook(type, dbName, tableName, rowId);
+      },
+    );
+
+    sqlite3_update_hook(this.#handle, updateHook.pointer, null);
+
+    if (this.#updateHook) {
+      this.#updateHook.close();
+    }
+    this.#updateHook = updateHook;
+  }
+
   /**
    * Closes the database connection.
    *
@@ -793,6 +862,9 @@ export class Database {
     }
     for (const cb of this.#callbacks) {
       cb.close();
+    }
+    if (this.#updateHook) {
+      this.#updateHook.close();
     }
     unwrap(sqlite3_close_v2(this.#handle));
     this.#open = false;

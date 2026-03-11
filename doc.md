@@ -349,6 +349,33 @@ runTransaction.deferred([
 ]);
 ```
 
+## Update hooks
+
+Use `setUpdateHook()` to observe row-level `INSERT`, `UPDATE`, and `DELETE`
+operations on the current database connection.
+
+Pass a callback to enable the hook:
+
+```ts
+db.setUpdateHook((type, dbName, tableName, rowId) => {
+  console.log({ type, dbName, tableName, rowId });
+});
+```
+
+The callback receives:
+
+- `type: number` - SQLite update type. Insert is `18`, delete is `9`, and
+  update is `23`.
+- `dbName: string` - Database name, usually `"main"`.
+- `tableName: string` - Name of the table that changed.
+- `rowId: bigint` - Row ID of the affected row.
+
+Pass `null` to remove the current hook:
+
+```ts
+db.setUpdateHook(null);
+```
+
 ## Binding Parameters
 
 Parameters can be bound both by name and positiion. To bind by name, just pass

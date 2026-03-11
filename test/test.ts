@@ -5,6 +5,7 @@ import {
   SQLITE_VERSION,
   SqliteError,
 } from "../mod.ts";
+import { SqliteUpdateType } from "../src/database.ts";
 import { assert, assertEquals, assertThrows } from "./deps.ts";
 
 console.log("sqlite version:", SQLITE_VERSION);
@@ -580,6 +581,73 @@ Deno.test("sqlite", async (t) => {
   await t.step("fts5", () => {
     db.exec("create virtual table tbl_fts using fts5(a)");
     db.exec("drop table tbl_fts");
+  });
+
+  await t.step("update hook", () => {
+    db.exec(`
+      create table hook_test (
+        id integer primary key,
+        value text not null
+      )
+    `);
+
+    const events: Array<{
+      type: SqliteUpdateType;
+      dbName: string;
+      tableName: string;
+      rowId: bigint;
+    }> = [];
+
+    db.setUpdateHook((type, dbName, tableName, rowId) => {
+      events.push({ type, dbName, tableName, rowId });
+    });
+
+    db.exec("insert into hook_test (id, value) values (?, ?)", 10, "before");
+    db.exec("update hook_test set value = ? where id = ?", "after", 10);
+    db.exec("delete from hook_test where id = ?", 10);
+
+    assertEquals(events, [
+      {
+        type: SqliteUpdateType.SQLITE_INSERT,
+        dbName: "main",
+        tableName: "hook_test",
+        rowId: 10n,
+      },
+      {
+        type: SqliteUpdateType.SQLITE_UPDATE,
+        dbName: "main",
+        tableName: "hook_test",
+        rowId: 10n,
+      },
+      {
+        type: SqliteUpdateType.SQLITE_DELETE,
+        dbName: "main",
+        tableName: "hook_test",
+        rowId: 10n,
+      },
+    ]);
+
+    db.setUpdateHook(null);
+    db.exec("insert into hook_test (id, value) values (?, ?)", 11, "disabled");
+    assertEquals(events.length, 3);
+
+    const firstHookCalls: bigint[] = [];
+    const secondHookCalls: bigint[] = [];
+
+    db.setUpdateHook((_, __, ___, rowId) => {
+      firstHookCalls.push(rowId);
+    });
+    db.setUpdateHook((_, __, ___, rowId) => {
+      secondHookCalls.push(rowId);
+    });
+
+    db.exec("insert into hook_test (id, value) values (?, ?)", 12, "replaced");
+
+    assertEquals(firstHookCalls, []);
+    assertEquals(secondHookCalls, [12n]);
+
+    db.setUpdateHook(null);
+    db.exec("drop table hook_test");
   });
 
   await t.step("string param with null", () => {
