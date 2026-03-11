@@ -9,6 +9,7 @@ import {
   SQLITE_FLOAT,
   SQLITE_INTEGER,
   SQLITE_NULL,
+  SQLITE_SERIALIZE_NOCOPY,
   SQLITE_TEXT,
 } from "./constants.ts";
 import { readCstr, toCString, unwrap } from "./util.ts";
@@ -87,6 +88,7 @@ const {
   sqlite3_free,
   sqlite3_libversion,
   sqlite3_sourceid,
+  sqlite3_serialize,
   sqlite3_complete,
   sqlite3_finalize,
   sqlite3_result_blob,
@@ -110,6 +112,7 @@ const {
   sqlite3_backup_step,
   sqlite3_backup_finish,
   sqlite3_errcode,
+  sqlite3_update_hook,
 } = ffi;
 
 /** SQLite version string */
@@ -124,6 +127,12 @@ export const SQLITE_SOURCEID: string = readCstr(sqlite3_sourceid()!);
  */
 export function isComplete(statement: string): boolean {
   return Boolean(sqlite3_complete(toCString(statement)));
+}
+
+export enum SqliteUpdateType {
+  SQLITE_INSERT = 18,
+  SQLITE_DELETE = 9,
+  SQLITE_UPDATE = 23,
 }
 
 const BIG_MAX = BigInt(Number.MAX_SAFE_INTEGER);
@@ -778,6 +787,68 @@ export class Database {
     unwrap(result, this.#handle);
   }
 
+  #updateHook?: Deno.UnsafeCallback<{
+    readonly parameters: readonly [
+      "pointer",
+      "i32",
+      "pointer",
+      "pointer",
+      "i64",
+    ];
+    readonly result: "void";
+  }>;
+
+  /**
+   * Sets a callback function that is invoked whenever a row is updated, inserted or deleted.
+   *
+   * The callback function receives the type of update (insert, update, or delete), the database name, the table name, and the row ID of the row being modified.
+   *
+   * Example:
+   * ```ts
+   * db.setUpdateHook((type, dbName, tableName, rowId) => {
+   *   console.log(`Row with ID ${rowId} in table ${tableName} was modified in database ${dbName}. Update type: ${type}`);
+   * });
+   * ```
+   */
+  setUpdateHook(
+    hook:
+      | ((
+        type: SqliteUpdateType,
+        dbName: string,
+        tableName: string,
+        rowId: bigint,
+      ) => void)
+      | null,
+  ): void {
+    if (hook === null) {
+      sqlite3_update_hook(this.#handle, null, null);
+      if (this.#updateHook) {
+        this.#updateHook.close();
+        this.#updateHook = undefined;
+      }
+      return;
+    }
+
+    const updateHook = new Deno.UnsafeCallback(
+      {
+        parameters: ["pointer", "i32", "pointer", "pointer", "i64"],
+        result: "void",
+      } as const,
+      (_, type, pDbName, pTableName, rowId) => {
+        const dbName = readCstr(pDbName!);
+        const tableName = readCstr(pTableName!);
+        hook(type, dbName, tableName, rowId);
+      },
+    );
+
+    sqlite3_update_hook(this.#handle, updateHook.pointer, null);
+
+    if (this.#updateHook) {
+      this.#updateHook.close();
+    }
+    this.#updateHook = updateHook;
+  }
+
   /**
    * Closes the database connection.
    *
@@ -793,6 +864,9 @@ export class Database {
     }
     for (const cb of this.#callbacks) {
       cb.close();
+    }
+    if (this.#updateHook) {
+      this.#updateHook.close();
     }
     unwrap(sqlite3_close_v2(this.#handle));
     this.#open = false;
@@ -816,6 +890,61 @@ export class Database {
     } else {
       unwrap(sqlite3_errcode(dest.#handle), dest.#handle);
     }
+  }
+
+  #serialize(name: string, flags: number): [Deno.PointerValue, number] {
+    if (sqlite3_serialize === null) {
+      throw new Error(
+        "Database serialization is not supported by the shared library that was used.",
+      );
+    }
+
+    const size = new BigInt64Array(1);
+    const ptr = sqlite3_serialize(this.#handle, toCString(name), size, flags);
+    const bytes = size[0];
+
+    if (bytes < 0) {
+      throw new Error("Failed to serialize database");
+    }
+
+    if (bytes > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new RangeError("Database is too large to represent in JavaScript");
+    }
+
+    return [ptr, Number(bytes)];
+  }
+
+  /**
+   * Export a database schema as serialized bytes.
+   *
+   * For on-disk databases this is equivalent to the database file contents.
+   * For in-memory databases this is the same byte sequence that would be
+   * written if the database were backed up to disk.
+   *
+   * @param name Schema name to export. Defaults to "main".
+   */
+  export(name = "main"): Uint8Array {
+    const [ptr, size] = this.#serialize(name, 0);
+    if (ptr === null) {
+      throw new Error("Failed to serialize database");
+    }
+
+    try {
+      return new Uint8Array(
+        Deno.UnsafePointerView.getArrayBuffer(ptr, size).slice(0),
+      );
+    } finally {
+      sqlite3_free(ptr);
+    }
+  }
+
+  /**
+   * Get the serialized size of a database schema in bytes.
+   *
+   * @param name Schema name to measure. Defaults to "main".
+   */
+  size(name = "main"): number {
+    return this.#serialize(name, SQLITE_SERIALIZE_NOCOPY)[1];
   }
 
   [Symbol.for("Deno.customInspect")](): string {

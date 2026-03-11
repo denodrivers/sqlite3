@@ -5,6 +5,7 @@ import {
   SQLITE_VERSION,
   SqliteError,
 } from "../mod.ts";
+import { SqliteUpdateType } from "../src/database.ts";
 import { assert, assertEquals, assertThrows } from "./deps.ts";
 
 console.log("sqlite version:", SQLITE_VERSION);
@@ -57,6 +58,62 @@ Deno.test("sqlite", async (t) => {
     db.exec("pragma journal_mode = WAL");
     db.exec("pragma synchronous = normal");
     assertEquals(db.exec("pragma temp_store = memory"), 0);
+  });
+
+  await t.step("export and size (in-memory)", async () => {
+    const memoryDb = new Database(":memory:");
+    const exportPath = await Deno.makeTempFile({ suffix: ".db" });
+
+    try {
+      memoryDb.exec(
+        "create table export_test (id integer primary key, value text)",
+      );
+      memoryDb.exec(
+        "insert into export_test (value) values (?)",
+        "hello export",
+      );
+
+      const exported = memoryDb.export();
+      assertEquals(memoryDb.size(), exported.byteLength);
+
+      await Deno.writeFile(exportPath, exported);
+
+      const restored = new Database(exportPath);
+      try {
+        const row = restored.prepare(
+          "select id, value from export_test",
+        ).get<{ id: number; value: string }>()!;
+        assertEquals(row, { id: 1, value: "hello export" });
+      } finally {
+        restored.close();
+      }
+    } finally {
+      memoryDb.close();
+      await Deno.remove(exportPath).catch(() => {});
+    }
+  });
+
+  await t.step("export and size (file-backed)", async () => {
+    const filePath = await Deno.makeTempFile({ suffix: ".db" });
+    const fileDb = new Database(filePath);
+
+    try {
+      fileDb.exec(
+        "create table export_test (id integer primary key, value text)",
+      );
+      fileDb.exec("insert into export_test (value) values (?)", "hello file");
+
+      const exported = fileDb.export();
+      assertEquals(fileDb.size(), exported.byteLength);
+
+      fileDb.close();
+
+      const fileBytes = await Deno.readFile(filePath);
+      assertEquals(exported, fileBytes);
+    } finally {
+      if (fileDb.open) fileDb.close();
+      await Deno.remove(filePath).catch(() => {});
+    }
   });
 
   await t.step("select version (row as array)", () => {
@@ -207,6 +264,37 @@ Deno.test("sqlite", async (t) => {
       assertEquals(row.blob, new Uint8Array([3, 2, 1]));
       assertEquals(row.nullable, null);
     }
+  });
+
+  await t.step("bound statement works across execution helpers", () => {
+    interface Row {
+      integer: number;
+      text: string;
+    }
+
+    const stmt = db.prepare(
+      "select integer, text from test where integer > ? order by integer",
+    );
+
+    stmt.bind(7);
+
+    assertEquals(
+      stmt.all<Row>(),
+      [
+        { integer: 8, text: "hello 8" },
+        { integer: 9, text: "hello 9" },
+      ],
+    );
+
+    assertEquals(
+      Array.from(stmt as Iterable<Row>),
+      [
+        { integer: 8, text: "hello 8" },
+        { integer: 9, text: "hello 9" },
+      ],
+    );
+
+    stmt.finalize();
   });
 
   await t.step("query json", () => {
@@ -580,6 +668,97 @@ Deno.test("sqlite", async (t) => {
   await t.step("fts5", () => {
     db.exec("create virtual table tbl_fts using fts5(a)");
     db.exec("drop table tbl_fts");
+  });
+
+  await t.step("update hook", () => {
+    db.exec(`
+      create table hook_test (
+        id integer primary key,
+        value text not null
+      )
+    `);
+
+    const events: Array<{
+      type: SqliteUpdateType;
+      dbName: string;
+      tableName: string;
+      rowId: bigint;
+    }> = [];
+
+    db.setUpdateHook((type, dbName, tableName, rowId) => {
+      events.push({ type, dbName, tableName, rowId });
+    });
+
+    db.exec("insert into hook_test (id, value) values (?, ?)", 10, "before");
+    db.exec("update hook_test set value = ? where id = ?", "after", 10);
+    db.exec("delete from hook_test where id = ?", 10);
+
+    assertEquals(events, [
+      {
+        type: SqliteUpdateType.SQLITE_INSERT,
+        dbName: "main",
+        tableName: "hook_test",
+        rowId: 10n,
+      },
+      {
+        type: SqliteUpdateType.SQLITE_UPDATE,
+        dbName: "main",
+        tableName: "hook_test",
+        rowId: 10n,
+      },
+      {
+        type: SqliteUpdateType.SQLITE_DELETE,
+        dbName: "main",
+        tableName: "hook_test",
+        rowId: 10n,
+      },
+    ]);
+
+    db.setUpdateHook(null);
+    db.exec("insert into hook_test (id, value) values (?, ?)", 11, "disabled");
+    assertEquals(events.length, 3);
+
+    const firstHookCalls: bigint[] = [];
+    const secondHookCalls: bigint[] = [];
+
+    db.setUpdateHook((_, __, ___, rowId) => {
+      firstHookCalls.push(rowId);
+    });
+    db.setUpdateHook((_, __, ___, rowId) => {
+      secondHookCalls.push(rowId);
+    });
+
+    db.exec("insert into hook_test (id, value) values (?, ?)", 12, "replaced");
+
+    assertEquals(firstHookCalls, []);
+    assertEquals(secondHookCalls, [12n]);
+
+    db.setUpdateHook(null);
+    db.exec("drop table hook_test");
+  });
+
+  await t.step("string param with null", async () => {
+    const dbPath = await Deno.makeTempFile({ suffix: ".db" });
+    const db = new Database(dbPath);
+    try {
+      db.run(
+        "CREATE TABLE IF NOT EXISTS Data(key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)",
+      );
+      const readStatement = db.prepare("SELECT value FROM Data WHERE key = ?");
+      const writeStatement = db.prepare(
+        "REPLACE INTO Data(key, value) VALUES(?, ?)",
+      );
+
+      writeStatement.run("foo", "bar\x00baz");
+      const [value] = readStatement.value<[string]>("foo")!;
+      assertEquals(value, "bar\x00baz");
+      db.exec("drop table Data");
+    } finally {
+      db.close();
+      try {
+        await Deno.remove(dbPath);
+      } catch (_) { /* ignore */ }
+    }
   });
 
   await t.step("drop table", () => {
