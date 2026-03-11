@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/github/license/denodrivers/sqlite3)](https://github.com/denodrivers/sqlite3/blob/master/LICENSE)
 [![Sponsor](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/DjDeveloperr)
 
-The fastest and correct module for SQLite3 in Deno.
+The fastest and correct SQLite3 client for Deno.
 
 ## Example
 
@@ -92,4 +92,4 @@ DENO_SQLITE_LOCAL=1 deno task bench
 
 Apache-2.0. Check [LICENSE](./LICENSE) for details.
 
-Copyright © 2023 DjDeveloperr
+Copyright © 2026 DjDeveloperr

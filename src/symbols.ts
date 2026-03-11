@@ -131,6 +131,17 @@ export const symbols = {
     result: "void",
   },
 
+  sqlite3_serialize: {
+    parameters: [
+      "pointer", // sqlite3 *db
+      "buffer", // const char *zSchema
+      "buffer", // sqlite3_int64 *piSize
+      "u32", // unsigned int mFlags
+    ],
+    result: "pointer",
+    optional: true,
+  },
+
   sqlite3_column_int: {
     parameters: [
       "pointer", // sqlite3_stmt *pStmt

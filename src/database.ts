@@ -9,6 +9,7 @@ import {
   SQLITE_FLOAT,
   SQLITE_INTEGER,
   SQLITE_NULL,
+  SQLITE_SERIALIZE_NOCOPY,
   SQLITE_TEXT,
 } from "./constants.ts";
 import { readCstr, toCString, unwrap } from "./util.ts";
@@ -87,6 +88,7 @@ const {
   sqlite3_free,
   sqlite3_libversion,
   sqlite3_sourceid,
+  sqlite3_serialize,
   sqlite3_complete,
   sqlite3_finalize,
   sqlite3_result_blob,
@@ -888,6 +890,61 @@ export class Database {
     } else {
       unwrap(sqlite3_errcode(dest.#handle), dest.#handle);
     }
+  }
+
+  #serialize(name: string, flags: number): [Deno.PointerValue, number] {
+    if (sqlite3_serialize === null) {
+      throw new Error(
+        "Database serialization is not supported by the shared library that was used.",
+      );
+    }
+
+    const size = new BigInt64Array(1);
+    const ptr = sqlite3_serialize(this.#handle, toCString(name), size, flags);
+    const bytes = size[0];
+
+    if (bytes < 0) {
+      throw new Error("Failed to serialize database");
+    }
+
+    if (bytes > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new RangeError("Database is too large to represent in JavaScript");
+    }
+
+    return [ptr, Number(bytes)];
+  }
+
+  /**
+   * Export a database schema as serialized bytes.
+   *
+   * For on-disk databases this is equivalent to the database file contents.
+   * For in-memory databases this is the same byte sequence that would be
+   * written if the database were backed up to disk.
+   *
+   * @param name Schema name to export. Defaults to "main".
+   */
+  export(name = "main"): Uint8Array {
+    const [ptr, size] = this.#serialize(name, 0);
+    if (ptr === null) {
+      throw new Error("Failed to serialize database");
+    }
+
+    try {
+      return new Uint8Array(
+        Deno.UnsafePointerView.getArrayBuffer(ptr, size).slice(0),
+      );
+    } finally {
+      sqlite3_free(ptr);
+    }
+  }
+
+  /**
+   * Get the serialized size of a database schema in bytes.
+   *
+   * @param name Schema name to measure. Defaults to "main".
+   */
+  size(name = "main"): number {
+    return this.#serialize(name, SQLITE_SERIALIZE_NOCOPY)[1];
   }
 
   [Symbol.for("Deno.customInspect")](): string {

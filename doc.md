@@ -63,6 +63,46 @@ const db = new Database("test.db", { create: false });
   a dynamic library, this needs to be set to true for the method `loadExtension`
   to work. Defaults to `false`.
 
+## Exporting Database Bytes
+
+Use `db.export()` to serialize a schema into a `Uint8Array`.
+
+For on-disk databases, this is equivalent to the database file bytes. For
+in-memory databases, it is the byte sequence that would be written to disk.
+
+```ts
+const db = new Database(":memory:");
+db.exec("create table test (id integer primary key, value text)");
+db.exec("insert into test (value) values (?)", "hello");
+
+const bytes = db.export();
+console.log(bytes.byteLength);
+```
+
+You can optionally pass a schema name, such as `"main"` or an attached database
+name:
+
+```ts
+const mainBytes = db.export("main");
+```
+
+## Getting Database Size
+
+Use `db.size()` to get the serialized size of a schema in bytes.
+
+```ts
+const db = new Database(":memory:");
+db.exec("create table test (id integer primary key, value text)");
+
+console.log(db.size()); // serialized byte size
+```
+
+As with `export()`, you may pass a schema name:
+
+```ts
+const mainSize = db.size("main");
+```
+
 ## Loading extensions
 
 Loading SQLite3 extensions is enabled through the `enableLoadExtension` property
@@ -197,6 +237,9 @@ execute the statement, and return an array of rows as objects.
 const rows = stmt.all(...params);
 ```
 
+`all()` loads the entire result set into memory. For large result sets, prefer
+iterating the statement row by row instead.
+
 To get rows in array form, use `values()` method.
 
 ```ts
@@ -305,10 +348,30 @@ memory at once. Since it does not accept any parameters, you must bind the
 parameters before iterating using `bind` method.
 
 ```ts
+const stmt = db.prepare("SELECT * FROM logs WHERE created_at >= ?");
+stmt.bind("2026-01-01");
+
 for (const row of stmt) {
   console.log(row);
 }
 ```
+
+This processes rows lazily, one row at a time, without building a large array
+first.
+
+You can also call `iter(...params)` directly when you want to provide parameters
+for that specific iteration.
+
+```ts
+const stmt = db.prepare("SELECT * FROM logs WHERE created_at >= ?");
+
+for (const row of stmt.iter("2026-01-01")) {
+  console.log(row);
+}
+```
+
+Use `all()` when you explicitly want an in-memory array. Use `for...of` or
+`iter()` when you want to stream through a large dataset.
 
 ## Transactions
 
@@ -364,8 +427,8 @@ db.setUpdateHook((type, dbName, tableName, rowId) => {
 
 The callback receives:
 
-- `type: number` - SQLite update type. Insert is `18`, delete is `9`, and
-  update is `23`.
+- `type: number` - SQLite update type. Insert is `18`, delete is `9`, and update
+  is `23`.
 - `dbName: string` - Database name, usually `"main"`.
 - `tableName: string` - Name of the table that changed.
 - `rowId: bigint` - Row ID of the affected row.

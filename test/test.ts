@@ -60,6 +60,62 @@ Deno.test("sqlite", async (t) => {
     assertEquals(db.exec("pragma temp_store = memory"), 0);
   });
 
+  await t.step("export and size (in-memory)", async () => {
+    const memoryDb = new Database(":memory:");
+    const exportPath = await Deno.makeTempFile({ suffix: ".db" });
+
+    try {
+      memoryDb.exec(
+        "create table export_test (id integer primary key, value text)",
+      );
+      memoryDb.exec(
+        "insert into export_test (value) values (?)",
+        "hello export",
+      );
+
+      const exported = memoryDb.export();
+      assertEquals(memoryDb.size(), exported.byteLength);
+
+      await Deno.writeFile(exportPath, exported);
+
+      const restored = new Database(exportPath);
+      try {
+        const row = restored.prepare(
+          "select id, value from export_test",
+        ).get<{ id: number; value: string }>()!;
+        assertEquals(row, { id: 1, value: "hello export" });
+      } finally {
+        restored.close();
+      }
+    } finally {
+      memoryDb.close();
+      await Deno.remove(exportPath).catch(() => {});
+    }
+  });
+
+  await t.step("export and size (file-backed)", async () => {
+    const filePath = await Deno.makeTempFile({ suffix: ".db" });
+    const fileDb = new Database(filePath);
+
+    try {
+      fileDb.exec(
+        "create table export_test (id integer primary key, value text)",
+      );
+      fileDb.exec("insert into export_test (value) values (?)", "hello file");
+
+      const exported = fileDb.export();
+      assertEquals(fileDb.size(), exported.byteLength);
+
+      fileDb.close();
+
+      const fileBytes = await Deno.readFile(filePath);
+      assertEquals(exported, fileBytes);
+    } finally {
+      if (fileDb.open) fileDb.close();
+      await Deno.remove(filePath).catch(() => {});
+    }
+  });
+
   await t.step("select version (row as array)", () => {
     const [version] = db.prepare("select sqlite_version()").value<[string]>()!;
     assertEquals(version, SQLITE_VERSION);
@@ -208,6 +264,37 @@ Deno.test("sqlite", async (t) => {
       assertEquals(row.blob, new Uint8Array([3, 2, 1]));
       assertEquals(row.nullable, null);
     }
+  });
+
+  await t.step("bound statement works across execution helpers", () => {
+    interface Row {
+      integer: number;
+      text: string;
+    }
+
+    const stmt = db.prepare(
+      "select integer, text from test where integer > ? order by integer",
+    );
+
+    stmt.bind(7);
+
+    assertEquals(
+      stmt.all<Row>(),
+      [
+        { integer: 8, text: "hello 8" },
+        { integer: 9, text: "hello 9" },
+      ],
+    );
+
+    assertEquals(
+      Array.from(stmt as Iterable<Row>),
+      [
+        { integer: 8, text: "hello 8" },
+        { integer: 9, text: "hello 9" },
+      ],
+    );
+
+    stmt.finalize();
   });
 
   await t.step("query json", () => {

@@ -59,6 +59,9 @@ export const SQLITE3_PREPARE_PERSISTENT = 0x00000001;
 export const SQLITE3_PREPARE_NORMALIZE = 0x00000002;
 export const SQLITE3_PREPARE_NO_VTAB = 0x00000004;
 
+// Serialize Flags
+export const SQLITE_SERIALIZE_NOCOPY = 0x001;
+
 // Fundamental Datatypes
 export const SQLITE_INTEGER = 1;
 export const SQLITE_FLOAT = 2;

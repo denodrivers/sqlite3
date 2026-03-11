@@ -442,7 +442,9 @@ export class Statement<TStatement extends object = Record<string, any>> {
   #runWithArgs(...params: RestBindParameters): number {
     const handle = this.#handle;
     this.#begin();
-    this.#bindAll(params);
+    if (params.length) {
+      this.#bindAll(params);
+    }
     const status = sqlite3_step(handle);
     if (!this.#hasNoArgs && !this.#bound && params.length) {
       this.#bindRefs.clear();
@@ -495,7 +497,9 @@ export class Statement<TStatement extends object = Record<string, any>> {
   ): T[] {
     const handle = this.#handle;
     this.#begin();
-    this.#bindAll(params);
+    if (params.length) {
+      this.#bindAll(params);
+    }
     const columnCount = sqlite3_column_count(handle);
     const result: T[] = [];
     const getRowArray = new Function(
@@ -588,7 +592,9 @@ export class Statement<TStatement extends object = Record<string, any>> {
     const int64 = this.int64 ?? this.db.int64;
     const parseJson = this.parseJson ?? this.db.parseJson;
     this.#begin();
-    this.#bindAll(params);
+    if (params.length) {
+      this.#bindAll(params);
+    }
     const getRowObject = this.getRowObject();
     const result: T[] = [];
     let status = sqlite3_step(handle);
@@ -758,7 +764,9 @@ export class Statement<TStatement extends object = Record<string, any>> {
   /** Iterate over resultant rows from query. */
   *iter(...params: RestBindParameters): IterableIterator<any> {
     this.#begin();
-    this.#bindAll(params);
+    if (params.length) {
+      this.#bindAll(params);
+    }
     const getRowObject = this.getRowObject();
     const int64 = this.int64 ?? this.db.int64;
     const parseJson = this.parseJson ?? this.db.parseJson;
