@@ -91,7 +91,10 @@ function getColumn(
     case SQLITE_TEXT: {
       const ptr = sqlite3_column_text(handle, i);
       if (ptr === null) return null;
-      const text = readCstr(ptr, 0);
+      const bytes = sqlite3_column_bytes(handle, i);
+      const text = new TextDecoder().decode(
+        Deno.UnsafePointerView.getArrayBuffer(ptr, bytes),
+      );
       const value = sqlite3_column_value(handle, i);
       const subtype = sqlite3_value_subtype(value);
       if (subtype === JSON_SUBTYPE && parseJson) {

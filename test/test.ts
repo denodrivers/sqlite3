@@ -582,6 +582,23 @@ Deno.test("sqlite", async (t) => {
     db.exec("drop table tbl_fts");
   });
 
+  await t.step("string param with null", () => {
+    const db = new Database("./example.db");
+    db.run(
+      "CREATE TABLE IF NOT EXISTS Data(key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)",
+    );
+    const readStatement = db.prepare("SELECT value FROM Data WHERE key = ?");
+    const writeStatement = db.prepare(
+      "REPLACE INTO Data(key, value) VALUES(?, ?)",
+    );
+
+    writeStatement.run("foo", "bar\x00baz");
+    const [value] = readStatement.value<[string]>("foo")!;
+    assertEquals(value, "bar\x00baz");
+    db.exec("drop table Data");
+    db.close();
+  });
+
   await t.step("drop table", () => {
     db.exec("drop table test");
     db.exec("drop table blobs");
