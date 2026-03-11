@@ -737,21 +737,28 @@ Deno.test("sqlite", async (t) => {
     db.exec("drop table hook_test");
   });
 
-  await t.step("string param with null", () => {
-    const db = new Database("./example.db");
-    db.run(
-      "CREATE TABLE IF NOT EXISTS Data(key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)",
-    );
-    const readStatement = db.prepare("SELECT value FROM Data WHERE key = ?");
-    const writeStatement = db.prepare(
-      "REPLACE INTO Data(key, value) VALUES(?, ?)",
-    );
+  await t.step("string param with null", async () => {
+    const dbPath = await Deno.makeTempFile({ suffix: ".db" });
+    const db = new Database(dbPath);
+    try {
+      db.run(
+        "CREATE TABLE IF NOT EXISTS Data(key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)",
+      );
+      const readStatement = db.prepare("SELECT value FROM Data WHERE key = ?");
+      const writeStatement = db.prepare(
+        "REPLACE INTO Data(key, value) VALUES(?, ?)",
+      );
 
-    writeStatement.run("foo", "bar\x00baz");
-    const [value] = readStatement.value<[string]>("foo")!;
-    assertEquals(value, "bar\x00baz");
-    db.exec("drop table Data");
-    db.close();
+      writeStatement.run("foo", "bar\x00baz");
+      const [value] = readStatement.value<[string]>("foo")!;
+      assertEquals(value, "bar\x00baz");
+      db.exec("drop table Data");
+    } finally {
+      db.close();
+      try {
+        await Deno.remove(dbPath);
+      } catch (_) { /* ignore */ }
+    }
   });
 
   await t.step("drop table", () => {
