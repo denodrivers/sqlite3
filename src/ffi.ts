@@ -583,6 +583,11 @@ const symbols = {
     ],
     result: "pointer",
   },
+
+  sqlite3_stmt_status: {
+    parameters: ["pointer", "i32", "i32"],
+    result: "i32",
+  },
 } as const satisfies Deno.ForeignLibraryInterface;
 
 let lib: Deno.DynamicLibrary<typeof symbols>["symbols"];

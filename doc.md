@@ -429,3 +429,31 @@ const f32FromSqlite = new Float32Array(u8FromSqlite.buffer); // safely convert b
 
 Note 3: The `parseJson` option allows you to disable JSON parsing which is
 enabled by default.
+
+## Statement Status Counters
+
+Prepared statements expose SQLite `sqlite3_stmt_status()` values through helper
+methods:
+
+- `statusFullscanStep(reset?: boolean): number`
+- `statusSort(reset?: boolean): number`
+- `statusAutoindex(reset?: boolean): number`
+- `statusVmStep(reset?: boolean): number`
+- `statusReprepare(reset?: boolean): number`
+- `statusRun(reset?: boolean): number`
+- `statusFilterMiss(reset?: boolean): number`
+- `statusFilterHit(reset?: boolean): number`
+- `statusMemused(): number`
+
+Passing `true` to `reset` returns the current counter value and resets it to
+zero for future reads.
+
+```ts
+const stmt = db.prepare("SELECT text FROM test ORDER BY text");
+stmt.values();
+
+const runs = stmt.statusRun(); // > 0
+const vmSteps = stmt.statusVmStep(true); // read and reset
+const vmStepsAfterReset = stmt.statusVmStep(); // 0
+const mem = stmt.statusMemused(); // approximate bytes used by statement
+```
