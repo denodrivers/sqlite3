@@ -145,6 +145,42 @@ Deno.test("sqlite", async (t) => {
     assertEquals(db.totalChanges, 12);
   });
 
+  await t.step("statement status", () => {
+    const stmt = db.prepare("select text from test order by text");
+
+    assert(stmt.statusMemused() > 0);
+    assertEquals(stmt.statusRun(), 0);
+    assertEquals(stmt.statusVmStep(), 0);
+    assertEquals(stmt.statusSort(), 0);
+
+    const rows = stmt.values<[string]>();
+    assert(rows.length > 0);
+
+    assertEquals(stmt.statusRun(), 1);
+    assert(stmt.statusVmStep() > 0);
+    assert(stmt.statusFullscanStep() > 0);
+    assert(stmt.statusSort() > 0);
+
+    assertEquals(typeof stmt.statusAutoindex(), "number");
+    assertEquals(typeof stmt.statusReprepare(), "number");
+    assertEquals(typeof stmt.statusFilterMiss(), "number");
+    assertEquals(typeof stmt.statusFilterHit(), "number");
+
+    const sortCount = stmt.statusSort(true);
+    assert(sortCount > 0);
+    assertEquals(stmt.statusSort(), 0);
+
+    const runCount = stmt.statusRun(true);
+    assert(runCount > 0);
+    assertEquals(stmt.statusRun(), 0);
+
+    const vmStepCount = stmt.statusVmStep(true);
+    assert(vmStepCount > 0);
+    assertEquals(stmt.statusVmStep(), 0);
+
+    stmt.finalize();
+  });
+
   await t.step("query array", () => {
     const row = db.prepare("select * from test where integer = 0").values<
       [number, string, number, Uint8Array, null]

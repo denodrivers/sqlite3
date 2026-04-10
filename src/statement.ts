@@ -7,6 +7,15 @@ import {
   SQLITE_BLOB,
   SQLITE_FLOAT,
   SQLITE_INTEGER,
+  SQLITE_STMTSTATUS_AUTOINDEX,
+  SQLITE_STMTSTATUS_FILTER_HIT,
+  SQLITE_STMTSTATUS_FILTER_MISS,
+  SQLITE_STMTSTATUS_FULLSCAN_STEP,
+  SQLITE_STMTSTATUS_MEMUSED,
+  SQLITE_STMTSTATUS_REPREPARE,
+  SQLITE_STMTSTATUS_RUN,
+  SQLITE_STMTSTATUS_SORT,
+  SQLITE_STMTSTATUS_VM_STEP,
   SQLITE_TEXT,
 } from "./constants.ts";
 
@@ -39,6 +48,7 @@ const {
   sqlite3_bind_parameter_name,
   sqlite3_changes,
   sqlite3_column_int,
+  sqlite3_stmt_status,
 } = ffi;
 
 /** Types that can be possibly serialized as SQLite bind values */
@@ -54,6 +64,17 @@ export type BindValue =
   | Uint8Array
   | BindValue[]
   | { [key: string]: BindValue };
+
+type StmtStatusOp =
+  | typeof SQLITE_STMTSTATUS_FULLSCAN_STEP
+  | typeof SQLITE_STMTSTATUS_SORT
+  | typeof SQLITE_STMTSTATUS_AUTOINDEX
+  | typeof SQLITE_STMTSTATUS_VM_STEP
+  | typeof SQLITE_STMTSTATUS_REPREPARE
+  | typeof SQLITE_STMTSTATUS_RUN
+  | typeof SQLITE_STMTSTATUS_FILTER_MISS
+  | typeof SQLITE_STMTSTATUS_FILTER_HIT
+  | typeof SQLITE_STMTSTATUS_MEMUSED;
 
 export type BindParameters = BindValue[] | Record<string, BindValue>;
 export type RestBindParameters = BindValue[] | [BindParameters];
@@ -736,6 +757,64 @@ export class Statement<TStatement extends object = Record<string, any>> {
     } else {
       unwrap(status, this.db.unsafeHandle);
     }
+  }
+
+  #status(op: StmtStatusOp, reset?: boolean): number {
+    return sqlite3_stmt_status(this.#handle, op, reset ? 1 : 0);
+  }
+
+  /** This is the number of times that SQLite has stepped forward in a table as part of a full table scan.
+   * Large numbers for this counter may indicate opportunities for performance improvement through careful use of indices. */
+  statusFullscanStep(reset?: boolean): number {
+    return this.#status(SQLITE_STMTSTATUS_FULLSCAN_STEP, reset);
+  }
+
+  /** This is the number of sort operations that have occurred.
+   * A non-zero value in this counter may indicate an opportunity to improve performance through careful use of indices. */
+  statusSort(reset?: boolean): number {
+    return this.#status(SQLITE_STMTSTATUS_SORT, reset);
+  }
+
+  /** This is the number of rows inserted into transient indices that were created automatically in order to help joins run faster.
+   * A non-zero value in this counter may indicate an opportunity to improve performance by adding permanent indices that do not need to be reinitialized each time the statement is run. */
+  statusAutoindex(reset?: boolean): number {
+    return this.#status(SQLITE_STMTSTATUS_AUTOINDEX, reset);
+  }
+
+  /** This is the number of virtual machine operations executed by the prepared statement if that number is less than or equal to 2147483647.
+   * The number of virtual machine operations can be used as a proxy for the total work done by the prepared statement.
+   * If the number of virtual machine operations exceeds 2147483647 then the value returned by this statement status code is undefined. */
+  statusVmStep(reset?: boolean): number {
+    return this.#status(SQLITE_STMTSTATUS_VM_STEP, reset);
+  }
+
+  /** This is the number of times that the prepare statement has been automatically regenerated due to schema changes or changes to bound parameters that might affect the query plan. */
+  statusReprepare(reset?: boolean): number {
+    return this.#status(SQLITE_STMTSTATUS_REPREPARE, reset);
+  }
+
+  /** This is the number of times that the prepared statement has been run.
+   * A single "run" for the purposes of this counter is one or more calls to sqlite3_step() followed by a call to sqlite3_reset().
+   * The counter is incremented on the first sqlite3_step() call of each cycle. */
+  statusRun(reset?: boolean): number {
+    return this.#status(SQLITE_STMTSTATUS_RUN, reset);
+  }
+
+  /** This is the number of times that a join step was bypassed because a Bloom filter returned not-found. */
+  statusFilterMiss(reset?: boolean): number {
+    return this.#status(SQLITE_STMTSTATUS_FILTER_MISS, reset);
+  }
+
+  /** The corresponding SQLITE_STMTSTATUS_FILTER_MISS value is the number of times that the Bloom filter returned a find,
+   * and thus the join step had to be processed as normal. */
+  statusFilterHit(reset?: boolean): number {
+    return this.#status(SQLITE_STMTSTATUS_FILTER_HIT, reset);
+  }
+
+  /** This is the approximate number of bytes of heap memory used to store the prepared statement.
+   * This value is not actually a counter. */
+  statusMemused(): number {
+    return this.#status(SQLITE_STMTSTATUS_MEMUSED);
   }
 
   /** Free up the statement object. */

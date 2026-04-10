@@ -65,3 +65,14 @@ export const SQLITE_FLOAT = 2;
 export const SQLITE_TEXT = 3;
 export const SQLITE_BLOB = 4;
 export const SQLITE_NULL = 5;
+
+// Statement Status
+export const SQLITE_STMTSTATUS_FULLSCAN_STEP = 1;
+export const SQLITE_STMTSTATUS_SORT = 2;
+export const SQLITE_STMTSTATUS_AUTOINDEX = 3;
+export const SQLITE_STMTSTATUS_VM_STEP = 4;
+export const SQLITE_STMTSTATUS_REPREPARE = 5;
+export const SQLITE_STMTSTATUS_RUN = 6;
+export const SQLITE_STMTSTATUS_FILTER_MISS = 7;
+export const SQLITE_STMTSTATUS_FILTER_HIT = 8;
+export const SQLITE_STMTSTATUS_MEMUSED = 99;
