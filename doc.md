@@ -310,6 +310,18 @@ for (const row of stmt) {
 }
 ```
 
+Use `iter()` to pass bind parameters to the same kind of iteration:
+
+```ts
+for (const row of stmt.iter("bar", "baz")) {
+  console.log(row);
+}
+```
+
+Either way, the statement is reset as soon as the loop ends, including when you
+`break` out of it or an exception leaves it, so a partly consumed iteration does
+not hold a read transaction open on the connection.
+
 ## Transactions
 
 To start a transaction, use the `transaction()` method. This method takes a
