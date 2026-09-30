@@ -339,6 +339,48 @@ Deno.test("sqlite", async (t) => {
     assertEquals(db.sql`select ${"1; DROP TABLE"}`, [{ "?": "1; DROP TABLE" }]);
   });
 
+  await t.step("iterate (early exit resets the statement)", () => {
+    db.exec("create table iter_reset (id integer primary key)");
+    db.exec("insert into iter_reset (id) values (1), (2), (3)");
+    const stmt = db.prepare("select id from iter_reset");
+
+    // A statement left mid-iteration keeps a read cursor open on the table,
+    // which makes `drop table` fail with "database table is locked".
+    const dropTable = (): void => {
+      db.exec("drop table iter_reset");
+      db.exec("create table iter_reset (id integer primary key)");
+      db.exec("insert into iter_reset (id) values (1), (2), (3)");
+    };
+
+    for (const _ of stmt.iter()) break;
+    dropTable();
+
+    for (const _ of stmt) break;
+    dropTable();
+
+    assertThrows(
+      () => {
+        for (const _ of stmt.iter()) throw new Error("abandon");
+      },
+      Error,
+      "abandon",
+    );
+    dropTable();
+
+    // The open cursor also pins a WAL read snapshot, so once another
+    // connection commits, this connection cannot begin a write transaction.
+    for (const _ of stmt.iter()) break;
+    const other = new Database(DB_URL);
+    other.exec("insert into iter_reset (id) values (4)");
+    other.close();
+    db.exec("begin immediate");
+    db.exec("rollback");
+
+    assertEquals(stmt.all(), [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
+    stmt.finalize();
+    db.exec("drop table iter_reset");
+  });
+
   await t.step("more than 32-bit int", () => {
     const value = 978307200000;
     db.exec(

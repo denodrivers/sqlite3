@@ -831,22 +831,34 @@ export class Statement<TStatement extends object = Record<string, any>> {
     return readCstr(sqlite3_expanded_sql(this.#handle)!);
   }
 
-  /** Iterate over resultant rows from query. */
+  /**
+   * Iterate over resultant rows from query.
+   *
+   * The statement is reset when the iterator finishes, whether it was
+   * exhausted, left early (`break`, `return`), or exited by an exception, so
+   * an abandoned iteration does not keep a read transaction open on the
+   * connection.
+   */
   *iter(...params: RestBindParameters): IterableIterator<any> {
     this.#begin();
     this.#bindAll(params);
     const getRowObject = this.getRowObject();
     const int64 = this.int64 ?? this.db.int64;
     const parseJson = this.parseJson ?? this.db.parseJson;
-    let status = sqlite3_step(this.#handle);
-    while (status === SQLITE3_ROW) {
-      yield getRowObject(this.#handle, int64, parseJson);
-      status = sqlite3_step(this.#handle);
+    try {
+      let status = sqlite3_step(this.#handle);
+      while (status === SQLITE3_ROW) {
+        yield getRowObject(this.#handle, int64, parseJson);
+        status = sqlite3_step(this.#handle);
+      }
+      if (status !== SQLITE3_DONE) {
+        unwrap(status, this.db.unsafeHandle);
+      }
+    } finally {
+      // Ignore the result: after a failed step, reset returns that same error,
+      // which `unwrap` above has already thrown.
+      sqlite3_reset(this.#handle);
     }
-    if (status !== SQLITE3_DONE) {
-      unwrap(status, this.db.unsafeHandle);
-    }
-    sqlite3_reset(this.#handle);
   }
 
   [Symbol.iterator](): IterableIterator<any> {
